@@ -23,15 +23,15 @@ mod swc_utils;
 use crate::{
     hast_util_to_swc::hast_util_to_swc,
     mdast_util_to_hast::mdast_util_to_hast,
-    mdx_plugin_recma_document::{
-        mdx_plugin_recma_document, JsxRuntime, Options as DocumentOptions,
-    },
+    mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions},
     mdx_plugin_recma_jsx_rewrite::{mdx_plugin_recma_jsx_rewrite, Options as RewriteOptions},
     swc::{parse_esm, parse_expression, serialize},
 };
 use markdown::{to_mdast, Constructs, Location, ParseOptions};
 
 use swc_common::comments::{Comments, SingleThreadedComments};
+
+pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
 // use swc_ecma_transforms_react::{jsx, Options as JsxBuildOptions};
 // use swc_ecma_visit::VisitMutWith;
@@ -181,10 +181,14 @@ pub struct Options {
     /// `pragma_import_source` is `"c"`, the following will be generated:
     /// `import a from 'c'`.
     pub pragma_import_source: Option<String>,
+
+    // New:
+    /// To do.
+    pub filepath: Option<String>,
 }
 
 #[allow(dead_code)]
-fn mdx(value: &str, filepath: Option<String>, options: &Options) -> Result<String, String> {
+fn mdx(value: &str, options: &Options) -> Result<String, String> {
     let parse_options = ParseOptions {
         constructs: Constructs::mdx(),
         mdx_esm_parse: Some(Box::new(parse_esm)),
@@ -206,7 +210,7 @@ fn mdx(value: &str, filepath: Option<String>, options: &Options) -> Result<Strin
     let location = Location::new(value.as_bytes());
     let mdast = to_mdast(value, &parse_options)?;
     let hast = mdast_util_to_hast(&mdast);
-    let mut program = hast_util_to_swc(&hast, filepath, Some(&location))?;
+    let mut program = hast_util_to_swc(&hast, options.filepath.clone(), Some(&location))?;
     mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
     mdx_plugin_recma_jsx_rewrite(&mut program, &rewrite_options, Some(&location));
 
@@ -254,6 +258,7 @@ fn mdx(value: &str, filepath: Option<String>, options: &Options) -> Result<Strin
 /// ## Errors
 ///
 /// To do.
-pub fn compile(value: &str) -> Result<String, String> {
-    mdx(value, None, &Options::default())
+pub fn compile(value: &str, options: &Options) -> Result<String, String> {
+    // to do: inline with above.
+    mdx(value, options)
 }
