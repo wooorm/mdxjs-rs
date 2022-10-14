@@ -785,6 +785,7 @@ mod tests {
     use crate::hast;
     use crate::hast_util_to_swc::{hast_util_to_swc, Program};
     use crate::swc::serialize;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn comments() -> Result<(), String> {

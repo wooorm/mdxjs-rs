@@ -1278,6 +1278,7 @@ fn list_item_loose(node: &mdast::Node) -> bool {
 mod tests {
     use super::*;
     use crate::hast;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn blockquote() {

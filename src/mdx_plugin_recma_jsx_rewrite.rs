@@ -1165,3 +1165,416 @@ fn is_identifier_name(name: &str) -> bool {
 
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::hast_util_to_swc::hast_util_to_swc;
+    use crate::mdast_util_to_hast::mdast_util_to_hast;
+    use crate::mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions};
+    use crate::swc::{parse_esm, parse_expression, serialize};
+    use markdown::{to_mdast, Location, ParseOptions};
+    use pretty_assertions::assert_eq;
+
+    // To do: compile.
+    fn compile(value: &str, options: &Options) -> Result<String, String> {
+        let location = Location::new(value.as_bytes());
+        let mdast = to_mdast(
+            value,
+            &ParseOptions {
+                mdx_esm_parse: Some(Box::new(parse_esm)),
+                mdx_expression_parse: Some(Box::new(parse_expression)),
+                ..ParseOptions::mdx()
+            },
+        )?;
+        let hast = mdast_util_to_hast(&mdast);
+        let mut program = hast_util_to_swc(&hast, Some("example.mdx".into()), Some(&location))?;
+        mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
+        mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location));
+        Ok(serialize(&program.module))
+    }
+
+    #[test]
+    fn core() -> Result<(), String> {
+        assert_eq!(
+            compile("", &Options::default())?,
+            "function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should work on an empty file",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn passing() -> Result<(), String> {
+        assert_eq!(
+            compile("# hi", &Options::default())?,
+            "function _createMdxContent(props) {
+    const _components = Object.assign({
+        h1: \"h1\"
+    }, props.components);
+    return <_components.h1 >{\"hi\"}</_components.h1>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support passing in a layout (as `wrapper`) and components for literal tags",
+        );
+
+        assert_eq!(
+            compile(
+                "export {MyLayout as default} from './a.js'\n\n# hi",
+                &Options::default()
+            )?,
+            "import { MyLayout as MDXLayout } from './a.js';
+function _createMdxContent(props) {
+    const _components = Object.assign({
+        h1: \"h1\"
+    }, props.components);
+    return <_components.h1 >{\"hi\"}</_components.h1>;
+}
+function MDXContent(props = {}) {
+    return <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout>;
+}
+export default MDXContent;
+",
+            "should not support passing in a layout if one is defined locally",
+        );
+
+        assert_eq!(
+            compile("# <Hi />", &Options::default())?,
+            "function _createMdxContent(props) {
+    const _components = Object.assign({
+        h1: \"h1\"
+    }, props.components), { Hi  } = _components;
+    if (!Hi) _missingMdxReference(\"Hi\", true);
+    return <_components.h1 ><Hi /></_components.h1>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support passing in a component",
+        );
+
+        assert_eq!(
+            compile("<X />, <X.y />, <Y.Z />", &Options::default())?,
+          "function _createMdxContent(props) {
+    const _components = Object.assign({
+        p: \"p\"
+    }, props.components), { X , Y  } = _components;
+    if (!X) _missingMdxReference(\"X\", true);
+    if (!X.y) _missingMdxReference(\"X.y\", true);
+    if (!Y) _missingMdxReference(\"Y\", false);
+    if (!Y.Z) _missingMdxReference(\"Y.Z\", true);
+    return <_components.p ><X />{\", \"}<X.y />{\", \"}<Y.Z /></_components.p>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support passing in component objects",
+        );
+
+        assert_eq!(
+            compile("import {Hi} from './a.js'\n\n# <Hi />", &Options::default())?,
+            "import { Hi } from './a.js';
+function _createMdxContent(props) {
+    const _components = Object.assign({
+        h1: \"h1\"
+    }, props.components);
+    return <_components.h1 ><Hi /></_components.h1>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should not support passing in a component if one is defined locally",
+        );
+
+        assert_eq!(
+            compile("# <a-b />", &Options::default())?,
+            "function _createMdxContent(props) {
+    const _components = Object.assign({
+        h1: \"h1\",
+        \"a-b\": \"a-b\"
+    }, props.components), _component0 = _components[\"a-b\"];
+    return <_components.h1 ><_component0 /></_components.h1>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support passing in a component for a JSX identifier that is not a valid JS identifier",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn provider() -> Result<(), String> {
+        assert_eq!(
+            compile(
+                "# <Hi />",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+function _createMdxContent(props) {
+    const _components = Object.assign({
+        h1: \"h1\"
+    }, _provideComponents(), props.components), { Hi  } = _components;
+    if (!Hi) _missingMdxReference(\"Hi\", true);
+    return <_components.h1 ><Hi /></_components.h1>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support providing a layout, literal tags, and components",
+        );
+
+        assert_eq!(
+            compile(
+                "",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support a provider on an empty file",
+        );
+
+        assert_eq!(
+            compile(
+                "<X />, <X.y />, <Y.Z />",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+function _createMdxContent(props) {
+    const _components = Object.assign({
+        p: \"p\"
+    }, _provideComponents(), props.components), { X , Y  } = _components;
+    if (!X) _missingMdxReference(\"X\", true);
+    if (!X.y) _missingMdxReference(\"X.y\", true);
+    if (!Y) _missingMdxReference(\"Y\", false);
+    if (!Y.Z) _missingMdxReference(\"Y.Z\", true);
+    return <_components.p ><X />{\", \"}<X.y />{\", \"}<Y.Z /></_components.p>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support providing component objects",
+        );
+
+        assert_eq!(
+            compile(
+                "export function A() {
+    return <B />
+}
+
+<A />
+",
+            &Options::default()
+        )?,
+            "export function A() {
+    return <B />;
+}
+function _createMdxContent(props) {
+    return <A />;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should not support passing components in locally defined components",
+        );
+
+        assert_eq!(
+            compile(
+                "export function A() {
+    return <B />
+}
+
+<A />
+",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+export function A() {
+    const { B  } = _provideComponents();
+    if (!B) _missingMdxReference(\"B\", true);
+    return <B />;
+}
+function _createMdxContent(props) {
+    return <A />;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support providing components in locally defined components",
+        );
+
+        assert_eq!(
+            compile(
+                "export function A() {
+    return <b-c />
+}
+
+<A />
+",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+export function A() {
+    const _components = Object.assign({
+        \"b-c\": \"b-c\"
+    }, _provideComponents()), _component0 = _components[\"b-c\"];
+    return <_component0 />;
+}
+function _createMdxContent(props) {
+    return <A />;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support providing components with JSX identifiers that are not JS identifiers in locally defined components",
+        );
+
+        assert_eq!(
+            compile(
+                "export function A() {
+    return <X />, <X.y />, <Y.Z />
+}
+
+<A />
+",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+export function A() {
+    const { X , Y  } = _provideComponents();
+    if (!X) _missingMdxReference(\"X\", true);
+    if (!X.y) _missingMdxReference(\"X.y\", true);
+    if (!Y) _missingMdxReference(\"Y\", false);
+    if (!Y.Z) _missingMdxReference(\"Y.Z\", true);
+    return <X />, <X.y />, <Y.Z />;
+}
+function _createMdxContent(props) {
+    return <A />;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support providing components with JSX identifiers that are not JS identifiers in locally defined components",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn development() -> Result<(), String> {
+        assert_eq!(
+            compile("# <Hi />", &Options {
+                development: true,
+                ..Options::default()
+            })?,
+            "function _createMdxContent(props) {
+    const _components = Object.assign({
+        h1: \"h1\"
+    }, props.components), { Hi  } = _components;
+    if (!Hi) _missingMdxReference(\"Hi\", true, \"1:3-1:9\");
+    return <_components.h1 ><Hi /></_components.h1>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component, place) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\" + (place ? \"\\nIt’s referenced in your code at `\" + place + \"` in `example.mdx`\" : \"\"));
+}
+",
+            "should create missing reference helpers w/o positional info in `development` mode",
+        );
+
+        Ok(())
+    }
+}

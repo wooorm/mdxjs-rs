@@ -665,6 +665,7 @@ mod tests {
     use crate::mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions};
     use crate::swc::{parse_esm, parse_expression, serialize};
     use markdown::{to_mdast, ParseOptions};
+    use pretty_assertions::assert_eq;
 
     // To do: rename.
     fn compile(value: &str) -> Result<String, String> {

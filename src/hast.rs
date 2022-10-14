@@ -276,6 +276,7 @@ pub struct MdxjsEsm {
 mod tests {
     use super::*;
     use markdown::unist::Position;
+    use pretty_assertions::assert_eq;
 
     // Literals.
 
