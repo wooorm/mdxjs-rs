@@ -667,7 +667,6 @@ mod tests {
     use markdown::{to_mdast, ParseOptions};
     use pretty_assertions::assert_eq;
 
-    // To do: rename.
     fn compile(value: &str) -> Result<String, String> {
         let location = Location::new(value.as_bytes());
         let mdast = to_mdast(

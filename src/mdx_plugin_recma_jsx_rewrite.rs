@@ -1176,7 +1176,6 @@ mod tests {
     use markdown::{to_mdast, Location, ParseOptions};
     use pretty_assertions::assert_eq;
 
-    // To do: compile.
     fn compile(value: &str, options: &Options) -> Result<String, String> {
         let location = Location::new(value.as_bytes());
         let mdast = to_mdast(

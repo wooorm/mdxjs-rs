@@ -183,12 +183,25 @@ pub struct Options {
     pub pragma_import_source: Option<String>,
 
     // New:
-    /// To do.
+    /// File path to the source file (example:
+    /// `Some("path/to/example.mdx".into())`).
+    ///
+    /// Used when `development: true` to improve error messages.
     pub filepath: Option<String>,
 }
 
-#[allow(dead_code)]
-fn mdx(value: &str, options: &Options) -> Result<String, String> {
+/// Turn MDX into JavaScript.
+///
+/// ## Examples
+///
+/// ```rust ignore
+/// To do.
+/// ```
+///
+/// ## Errors
+///
+/// To do.
+pub fn compile(value: &str, options: &Options) -> Result<String, String> {
     let parse_options = ParseOptions {
         constructs: Constructs::mdx(),
         mdx_esm_parse: Some(Box::new(parse_esm)),
@@ -245,20 +258,4 @@ fn mdx(value: &str, options: &Options) -> Result<String, String> {
 
     // To do: include comments.
     Ok(serialize(&program.module))
-}
-
-/// Turn MDX into JavaScript.
-///
-/// ## Examples
-///
-/// ```rust ignore
-/// To do.
-/// ```
-///
-/// ## Errors
-///
-/// To do.
-pub fn compile(value: &str, options: &Options) -> Result<String, String> {
-    // to do: inline with above.
-    mdx(value, options)
 }
