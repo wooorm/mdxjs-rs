@@ -1,0 +1,24 @@
+name: main
+on:
+  - pull_request
+  - push
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - run: cargo fmt --check && cargo clippy --examples --tests
+      - run: cargo test
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo install cargo-tarpaulin && cargo tarpaulin --out Xml
+      - uses: codecov/codecov-action@v3

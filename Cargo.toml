@@ -1,0 +1,25 @@
+[package]
+name = "mdxjs"
+version = "0.0.0"
+authors = ["Titus Wormer <tituswormer@gmail.com>"]
+edition = "2018"
+rust-version = "1.56"
+description = "Compile MDX to JavaScript"
+homepage = "https://github.com/wooorm/mdxjs-rs"
+repository = "https://github.com/wooorm/mdxjs-rs"
+license = "MIT"
+keywords = ["markdown", "mdx", "compile"]
+categories = ["compilers", "text-processing"]
+include = ["src/", "license"]
+publish = false
+
+[dependencies]
+markdown = "1.0.0-alpha.1"
+swc_common = "0.29"
+swc_ecma_ast = "0.94"
+swc_ecma_parser = "0.122"
+swc_ecma_codegen = "0.127"
+swc_ecma_visit = "0.80"
+
+[dev-dependencies]
+pretty_assertions = "1"
