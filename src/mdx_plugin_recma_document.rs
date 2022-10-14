@@ -657,3 +657,233 @@ fn create_double_layout_message(at: Option<&Point>, previous: Option<&Position>)
         at,
     )
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::hast_util_to_swc::hast_util_to_swc;
+    use crate::mdast_util_to_hast::mdast_util_to_hast;
+    use crate::mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions};
+    use crate::swc::{parse_esm, parse_expression, serialize};
+    use markdown::{to_mdast, ParseOptions};
+
+    // To do: rename.
+    fn compile(value: &str) -> Result<String, String> {
+        let location = Location::new(value.as_bytes());
+        let mdast = to_mdast(
+            value,
+            &ParseOptions {
+                mdx_esm_parse: Some(Box::new(parse_esm)),
+                mdx_expression_parse: Some(Box::new(parse_expression)),
+                ..ParseOptions::mdx()
+            },
+        )?;
+        let hast = mdast_util_to_hast(&mdast);
+        let mut program = hast_util_to_swc(&hast, None, Some(&location))?;
+        mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
+        Ok(serialize(&program.module))
+    }
+
+    #[test]
+    fn small() -> Result<(), String> {
+        assert_eq!(
+            compile("# hi\n\nAlpha *bravo* **charlie**.")?,
+            "function _createMdxContent(props) {
+    return <><h1 >{\"hi\"}</h1>{\"\\n\"}<p >{\"Alpha \"}<em >{\"bravo\"}</em>{\" \"}<strong >{\"charlie\"}</strong>{\".\"}</p></>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support a small program",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn import() -> Result<(), String> {
+        assert_eq!(
+            compile("import a from 'b'\n\n# {a}")?,
+            "import a from 'b';
+function _createMdxContent(props) {
+    return <h1 >{a}</h1>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support an import",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn export() -> Result<(), String> {
+        assert_eq!(
+            compile("export * from 'a'\n\n# b")?,
+            "export * from 'a';
+function _createMdxContent(props) {
+    return <h1 >{\"b\"}</h1>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+        "should support an export all",
+    );
+
+        assert_eq!(
+            compile("export function a() {}")?,
+            "export function a() {}
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support an export declaration",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn export_default() -> Result<(), String> {
+        assert_eq!(
+            compile("export default a")?,
+            "const MDXLayout = a;
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout>;
+}
+export default MDXContent;
+",
+            "should support an export default expression",
+        );
+
+        assert_eq!(
+            compile("export default function () {}")?,
+            "const MDXLayout = function() {};
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout>;
+}
+export default MDXContent;
+",
+            "should support an export default declaration",
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn named_exports() -> Result<(), String> {
+        assert_eq!(
+            compile("export {a, b as default}")?,
+            "export { a };
+const MDXLayout = b;
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout>;
+}
+export default MDXContent;
+",
+            "should support a named export w/o source, w/ a default specifier",
+        );
+
+        assert_eq!(
+            compile("export {a}")?,
+            "export { a };
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support a named export w/o source, w/o a default specifier",
+        );
+
+        assert_eq!(
+            compile("export {}")?,
+            "export { };
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support a named export w/o source, w/o a specifiers",
+        );
+
+        assert_eq!(
+            compile("export {a, b as default} from 'c'")?,
+            "export { a } from 'c';
+import { b as MDXLayout } from 'c';
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout>;
+}
+export default MDXContent;
+",
+            "should support a named export w/ source, w/ a default specifier",
+        );
+
+        assert_eq!(
+            compile("export {a} from 'b'")?,
+            "export { a } from 'b';
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support a named export w/ source, w/o a default specifier",
+        );
+
+        assert_eq!(
+            compile("export {} from 'a'")?,
+            "export { } from 'a';
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support a named export w/ source, w/o a specifiers",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn multiple_layouts() {
+        assert_eq!(
+            compile("export default a = 1\n\nexport default b = 2")
+                .err()
+                .unwrap(),
+            "3:1: Cannot specify multiple layouts (previous: 1:1-1:21 (0-20))",
+            "should crash on multiple layouts"
+        );
+    }
+}
