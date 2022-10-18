@@ -1,6 +1,7 @@
 //! HTML syntax tree: [hast][].
 //!
 //! [hast]: https://github.com/syntax-tree/hast
+#![allow(dead_code)]
 
 extern crate alloc;
 extern crate markdown;

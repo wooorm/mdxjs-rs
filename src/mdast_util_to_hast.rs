@@ -61,7 +61,6 @@ enum Result {
     None,
 }
 
-#[allow(dead_code)]
 pub fn mdast_util_to_hast(mdast: &mdast::Node) -> hast::Node {
     let mut definitions = vec![];
 
@@ -1155,16 +1154,6 @@ where
     visit_impl(node, visitor);
 }
 
-/// Visit, mutably.
-// Probably useful later:
-#[allow(dead_code)]
-fn visit_mut<Visitor>(node: &mut mdast::Node, visitor: Visitor)
-where
-    Visitor: FnMut(&mut mdast::Node),
-{
-    visit_mut_impl(node, visitor);
-}
-
 /// Internal implementation to visit.
 fn visit_impl<Visitor>(node: &mdast::Node, mut visitor: Visitor) -> Visitor
 where
@@ -1177,24 +1166,6 @@ where
         while index < children.len() {
             let child = &children[index];
             visitor = visit_impl(child, visitor);
-            index += 1;
-        }
-    }
-
-    visitor
-}
-
-/// Internal implementation to visit, mutably.
-fn visit_mut_impl<Visitor>(node: &mut mdast::Node, mut visitor: Visitor) -> Visitor
-where
-    Visitor: FnMut(&mut mdast::Node),
-{
-    visitor(node);
-
-    if let Some(children) = node.children_mut() {
-        let mut index = 0;
-        while let Some(child) = children.get_mut(index) {
-            visitor = visit_mut_impl(child, visitor);
             index += 1;
         }
     }

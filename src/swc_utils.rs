@@ -1,6 +1,7 @@
 //! Lots of helpers for dealing with SWC, particularly from unist.
 
 use markdown::{
+    id_cont, id_start,
     mdast::Stop,
     unist::{Point, Position},
     Location,
@@ -224,5 +225,88 @@ pub fn create_member_expression(name: &str) -> Expr {
         Expr::Member(member)
     } else {
         create_ident_expression(name)
+    }
+}
+
+/// Check if a name is a literal tag name or an identifier to a component.
+pub fn is_literal_name(name: &str) -> bool {
+    matches!(name.as_bytes().first(), Some(b'a'..=b'z')) || !is_identifier_name(name)
+}
+
+// Check if a name is a valid identifier name.
+pub fn is_identifier_name(name: &str) -> bool {
+    for (index, char) in name.chars().enumerate() {
+        if if index == 0 {
+            !id_start(char)
+        } else {
+            !id_cont(char, false)
+        } {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Different kinds of JS names.
+pub enum JsName<'a> {
+    // `a.b.c`
+    Member(Vec<&'a str>),
+    // `a`
+    Normal(&'a str),
+}
+
+/// Different kinds of JSX names.
+pub enum JsxName<'a> {
+    // `a.b.c`
+    Member(Vec<&'a str>),
+    // `a:b`
+    Namespace(&'a str, &'a str),
+    // `a`
+    Normal(&'a str),
+}
+
+/// To do.
+pub fn parse_js_name(name: &str) -> JsName {
+    let bytes = name.as_bytes();
+    let mut index = 0;
+    let mut start = 0;
+    let mut parts = vec![];
+
+    while index < bytes.len() {
+        if bytes[index] == b'.' {
+            parts.push(&name[start..index]);
+            start = index + 1;
+        }
+
+        index += 1;
+    }
+
+    // `a`
+    if parts.is_empty() {
+        JsName::Normal(name)
+    }
+    // `a.b.c`
+    else {
+        parts.push(&name[start..]);
+        JsName::Member(parts)
+    }
+}
+
+/// Parse a JSX name from a string.
+pub fn parse_jsx_name(name: &str) -> JsxName {
+    match parse_js_name(name) {
+        // `<a.b.c />`
+        JsName::Member(parts) => JsxName::Member(parts),
+        JsName::Normal(name) => {
+            // `<a:b />`
+            if let Some(colon) = name.as_bytes().iter().position(|d| matches!(d, b':')) {
+                JsxName::Namespace(&name[0..colon], &name[(colon + 1)..])
+            }
+            // `<a />`
+            else {
+                JsxName::Normal(name)
+            }
+        }
     }
 }

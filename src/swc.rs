@@ -16,7 +16,6 @@ use swc_ecma_parser::{
 use swc_ecma_visit::VisitMutWith;
 
 /// Lex ESM in MDX with SWC.
-#[allow(dead_code)]
 pub fn parse_esm(value: &str) -> MdxSignal {
     let (file, syntax, version) = create_config(value.into());
     let mut errors = vec![];
@@ -36,7 +35,6 @@ pub fn parse_esm(value: &str) -> MdxSignal {
 
 /// Parse ESM in MDX with SWC.
 /// See `drop_span` in `swc_ecma_utils` for inspiration?
-#[allow(dead_code)]
 pub fn parse_esm_to_tree(
     value: &str,
     stops: &[Stop],
@@ -65,7 +63,6 @@ pub fn parse_esm_to_tree(
 }
 
 /// Lex expressions in MDX with SWC.
-#[allow(dead_code)]
 pub fn parse_expression(value: &str, kind: &MdxExpressionKind) -> MdxSignal {
     // Empty expressions are OK.
     if matches!(kind, MdxExpressionKind::Expression)
@@ -107,7 +104,6 @@ pub fn parse_expression(value: &str, kind: &MdxExpressionKind) -> MdxSignal {
 
 /// Parse ESM in MDX with SWC.
 /// See `drop_span` in `swc_ecma_utils` for inspiration?
-#[allow(dead_code)]
 pub fn parse_expression_to_tree(
     value: &str,
     kind: &MdxExpressionKind,
@@ -190,7 +186,6 @@ pub fn parse_expression_to_tree(
 
 /// Serialize an SWC module.
 /// To do: support comments.
-#[allow(dead_code)]
 pub fn serialize(module: &Module) -> String {
     let mut buf = vec![];
     let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));

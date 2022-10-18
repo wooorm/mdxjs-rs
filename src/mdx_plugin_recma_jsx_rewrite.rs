@@ -8,9 +8,10 @@ extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
     create_binary_expression, create_ident, create_ident_expression, create_member_expression,
-    position_to_string, span_to_position,
+    is_identifier_name, is_literal_name, position_to_string, span_to_position,
 };
-use markdown::{id_cont, id_start, unist::Position, Location};
+use markdown::{unist::Position, Location};
+use swc_common::util::take::Take;
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
 /// Configuration.
@@ -22,12 +23,10 @@ pub struct Options {
     /// on the MDX website for more info.
     pub provider_import_source: Option<String>,
     /// Whether to add extra information to error messages in generated code.
-    /// This is not yet supported.
     pub development: bool,
 }
 
 /// Rewrite JSX in an MDX file so that components can be passed in and provided.
-#[allow(dead_code)]
 pub fn mdx_plugin_recma_jsx_rewrite(
     program: &mut Program,
     options: &Options,
@@ -118,6 +117,7 @@ struct Scope {
 /// Context.
 #[derive(Debug, Default, Clone)]
 struct State<'a> {
+    /// Location info.
     location: Option<&'a Location>,
     /// Path to file.
     path: Option<String>,
@@ -540,8 +540,7 @@ impl<'a> State<'a> {
                         arr.body =
                             swc_ecma_ast::BlockStmtOrExpr::BlockStmt(swc_ecma_ast::BlockStmt {
                                 stmts: vec![swc_ecma_ast::Stmt::Return(swc_ecma_ast::ReturnStmt {
-                                    // To do: figure out non-clone.
-                                    arg: Some(expr.clone()),
+                                    arg: Some(expr.take()),
                                     span: swc_common::DUMMY_SP,
                                 })],
                                 span: swc_common::DUMMY_SP,
@@ -1144,26 +1143,6 @@ fn is_props_receiving_fn(name: &Option<String>) -> bool {
     } else {
         false
     }
-}
-
-/// Check if a name is a literal tag name or an identifier to a component.
-fn is_literal_name(name: &str) -> bool {
-    matches!(name.as_bytes().first(), Some(b'a'..=b'z')) || !is_identifier_name(name)
-}
-
-// Check if a name is a valid identifier name.
-fn is_identifier_name(name: &str) -> bool {
-    for (index, char) in name.chars().enumerate() {
-        if if index == 0 {
-            !id_start(char)
-        } else {
-            !id_cont(char, false)
-        } {
-            return false;
-        }
-    }
-
-    true
 }
 
 #[cfg(test)]

@@ -9,7 +9,6 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::struct_excessive_bools)]
 #![allow(clippy::cast_possible_truncation)]
-#![allow(dead_code)]
 
 extern crate markdown;
 mod hast;

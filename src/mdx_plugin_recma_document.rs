@@ -68,7 +68,6 @@ impl Default for Options {
     }
 }
 
-#[allow(dead_code)]
 pub fn mdx_plugin_recma_document(
     program: &mut Program,
     options: &Options,

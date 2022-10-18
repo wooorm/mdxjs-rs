@@ -30,7 +30,7 @@ extern crate swc_common;
 extern crate swc_ecma_ast;
 use crate::hast;
 use crate::swc::{parse_esm_to_tree, parse_expression_to_tree};
-use crate::swc_utils::{create_ident, position_to_span};
+use crate::swc_utils::{create_ident, position_to_span, parse_jsx_name, JsxName};
 use core::str;
 use markdown::{Location, MdxExpressionKind};
 
@@ -65,7 +65,6 @@ struct Context<'a> {
     location: Option<&'a Location>,
 }
 
-#[allow(dead_code)]
 pub fn hast_util_to_swc(
     tree: &hast::Node,
     path: Option<String>,
@@ -558,47 +557,6 @@ fn inter_element_whitespace(value: &str) -> bool {
     }
 
     true
-}
-
-/// Different kinds of JSX names.
-enum JsxName<'a> {
-    // `a.b.c`
-    Member(Vec<&'a str>),
-    // `a:b`
-    Namespace(&'a str, &'a str),
-    // `a`
-    Normal(&'a str),
-}
-
-/// Parse a JSX name from a string.
-fn parse_jsx_name(name: &str) -> JsxName {
-    let bytes = name.as_bytes();
-    let mut index = 0;
-    let mut start = 0;
-    let mut parts = vec![];
-
-    while index < bytes.len() {
-        if bytes[index] == b'.' {
-            parts.push(&name[start..index]);
-            start = index + 1;
-        }
-
-        index += 1;
-    }
-
-    // `<a.b.c />`
-    if !parts.is_empty() {
-        parts.push(&name[start..]);
-        JsxName::Member(parts)
-    }
-    // `<a:b />`
-    else if let Some(colon) = bytes.iter().position(|d| matches!(d, b':')) {
-        JsxName::Namespace(&name[0..colon], &name[(colon + 1)..])
-    }
-    // `<a />`
-    else {
-        JsxName::Normal(name)
-    }
 }
 
 /// Turn a hast property into something that particularly React understands.
