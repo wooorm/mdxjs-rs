@@ -32,46 +32,193 @@ use swc_common::comments::{Comments, SingleThreadedComments};
 
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
-// use swc_ecma_transforms_react::{jsx, Options as JsxBuildOptions};
-// use swc_ecma_visit::VisitMutWith;
+/// Like `Constructs` from `markdown-rs`.
+///
+/// You can’t use:
+///
+/// *   `autolink`
+/// *   `code_indented`
+/// *   `html_flow`
+/// *   `html_text`
+/// *   `mdx_esm`
+/// *   `mdx_expression_flow`
+/// *   `mdx_expression_text`
+/// *   `mdx_jsx_flow`
+/// *   `mdx_jsx_text`
+///
+// To do: link all docs when `markdown-rs` is stable.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MdxConstructs {
+    pub attention: bool,
+    pub block_quote: bool,
+    pub character_escape: bool,
+    pub character_reference: bool,
+    pub code_fenced: bool,
+    pub code_text: bool,
+    pub definition: bool,
+    pub frontmatter: bool,
+    pub gfm_autolink_literal: bool,
+    pub gfm_footnote_definition: bool,
+    pub gfm_label_start_footnote: bool,
+    pub gfm_strikethrough: bool,
+    pub gfm_table: bool,
+    pub gfm_task_list_item: bool,
+    pub hard_break_escape: bool,
+    pub hard_break_trailing: bool,
+    pub heading_atx: bool,
+    pub heading_setext: bool,
+    pub label_start_image: bool,
+    pub label_start_link: bool,
+    pub label_end: bool,
+    pub list_item: bool,
+    pub math_flow: bool,
+    pub math_text: bool,
+    pub thematic_break: bool,
+}
+
+impl Default for MdxConstructs {
+    /// MDX with `CommonMark`.
+    ///
+    /// `CommonMark` is a relatively strong specification of how markdown
+    /// works.
+    /// Most markdown parsers try to follow it.
+    ///
+    /// For more information, see the `CommonMark` specification:
+    /// <https://spec.commonmark.org>.
+    fn default() -> Self {
+        Self {
+            attention: true,
+            block_quote: true,
+            character_escape: true,
+            character_reference: true,
+            code_fenced: true,
+            code_text: true,
+            definition: true,
+            frontmatter: false,
+            gfm_autolink_literal: false,
+            gfm_label_start_footnote: false,
+            gfm_footnote_definition: false,
+            gfm_strikethrough: false,
+            gfm_table: false,
+            gfm_task_list_item: false,
+            hard_break_escape: true,
+            hard_break_trailing: true,
+            heading_atx: true,
+            heading_setext: true,
+            label_start_image: true,
+            label_start_link: true,
+            label_end: true,
+            list_item: true,
+            math_flow: false,
+            math_text: false,
+            thematic_break: true,
+        }
+    }
+}
+
+impl MdxConstructs {
+    /// MDX with GFM.
+    ///
+    /// GFM stands for **GitHub flavored markdown**.
+    /// GFM extends `CommonMark` and adds support for autolink literals,
+    /// footnotes, strikethrough, tables, and tasklists.
+    ///
+    /// For more information, see the GFM specification:
+    /// <https://github.github.com/gfm/>.
+    pub fn gfm() -> Self {
+        Self {
+            gfm_autolink_literal: true,
+            gfm_footnote_definition: true,
+            gfm_label_start_footnote: true,
+            gfm_strikethrough: true,
+            gfm_table: true,
+            gfm_task_list_item: true,
+            ..Self::default()
+        }
+    }
+}
+
+/// Like `ParseOptions` from `markdown-rs`.
+///
+/// The constructs you can pass are limited.
+///
+/// Additionally, you can’t use:
+///
+/// *   `mdx_expression_parse`
+/// *   `mdx_esm_parse`
+// To do: link all docs when `markdown-rs` is stable.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MdxParseOptions {
+    pub constructs: MdxConstructs,
+    pub gfm_strikethrough_single_tilde: bool,
+    pub math_text_single_dollar: bool,
+}
+
+impl Default for MdxParseOptions {
+    /// MDX with `CommonMark` defaults.
+    fn default() -> Self {
+        Self {
+            constructs: MdxConstructs::default(),
+            gfm_strikethrough_single_tilde: true,
+            math_text_single_dollar: true,
+        }
+    }
+}
+
+impl MdxParseOptions {
+    /// MDX with GFM.
+    ///
+    /// GFM stands for GitHub flavored markdown.
+    /// GFM extends `CommonMark` and adds support for autolink literals,
+    /// footnotes, strikethrough, tables, and tasklists.
+    ///
+    /// For more information, see the GFM specification:
+    /// <https://github.github.com/gfm/>
+    pub fn gfm() -> Self {
+        Self {
+            constructs: MdxConstructs::gfm(),
+            ..Self::default()
+        }
+    }
+}
 
 // To do: use `Format`.
-/// Format the file is in (default: `Format::Detect`).
-#[allow(dead_code)]
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub enum Format {
-    /// Use `Format::Markdown` for files with an extension in `md_extensions`
-    /// and `Format::Mdx` otherwise.
-    #[default]
-    Detect,
-    /// Treat file as MDX.
-    Mdx,
-    /// Treat file as plain vanilla markdown.
-    Markdown,
-}
+// /// Format the file is in (default: `Format::Detect`).
+// #[derive(Clone, Debug, Default, Eq, PartialEq)]
+// pub enum Format {
+//     /// Use `Format::Markdown` for files with an extension in `md_extensions`
+//     /// and `Format::Mdx` otherwise.
+//     #[default]
+//     Detect,
+//     /// Treat file as MDX.
+//     Mdx,
+//     /// Treat file as plain vanilla markdown.
+//     Markdown,
+// }
 
 // To do: use `OutputFormat`.
-/// Output format to generate (default: `OutputFormat::Program`).
-#[allow(dead_code)]
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub enum OutputFormat {
-    /// The `Program` format will use import statements to import the JSX
-    /// runtime (and optionally provider) and use an export statement to yield
-    /// the `MDXContent` component.
-    #[default]
-    Program,
-    /// The `FunctionBody` format will get the JSX runtime (and optionally
-    /// provider) from `arguments[0]`, rewrite export statements, and use a
-    /// return statement to yield what was exported.
-    /// Normally, this output format will throw on `import` (and
-    /// `export … from`) statements, but you can support them by setting
-    /// `options.useDynamicImport`.
-    FunctionBody,
-}
+// /// Output format to generate (default: `OutputFormat::Program`).
+// #[derive(Clone, Debug, Default, Eq, PartialEq)]
+// pub enum OutputFormat {
+//     /// The `Program` format will use import statements to import the JSX
+//     /// runtime (and optionally provider) and use an export statement to yield
+//     /// the `MDXContent` component.
+//     #[default]
+//     Program,
+//     /// The `FunctionBody` format will get the JSX runtime (and optionally
+//     /// provider) from `arguments[0]`, rewrite export statements, and use a
+//     /// return statement to yield what was exported.
+//     /// Normally, this output format will throw on `import` (and
+//     /// `export … from`) statements, but you can support them by setting
+//     /// `options.useDynamicImport`.
+//     FunctionBody,
+// }
 
 /// Configuration (optional).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Options {
+    /// Configuration that describes how to parse from markdown.
+    pub parse: MdxParseOptions,
     // /// List of markdown extensions, with dot.
     // ///
     // /// Default: `vec![".md".into(), ".markdown".into(), ".mdown".into(), ".mkdn".into(), ".mkd".into(), ".mdwn".into(), ".mkdown".into(), ".ron".into()]`.
@@ -189,6 +336,43 @@ pub struct Options {
     pub filepath: Option<String>,
 }
 
+impl Default for Options {
+    /// Use the automatic JSX runtime with React.
+    fn default() -> Self {
+        Self {
+            parse: MdxParseOptions::default(),
+            development: false,
+            provider_import_source: None,
+            jsx: false,
+            jsx_runtime: Some(JsxRuntime::default()),
+            jsx_import_source: None,
+            pragma: None,
+            pragma_frag: None,
+            pragma_import_source: None,
+            filepath: None,
+        }
+    }
+}
+
+impl Options {
+    /// MDX with GFM.
+    ///
+    /// GFM stands for GitHub flavored markdown.
+    /// GFM extends `CommonMark` and adds support for autolink literals,
+    /// footnotes, strikethrough, tables, and tasklists.
+    /// On the compilation side, GFM turns on the GFM tag filter.
+    /// The tagfilter is useless, but it’s included here for consistency.
+    ///
+    /// For more information, see the GFM specification:
+    /// <https://github.github.com/gfm/>
+    pub fn gfm() -> Self {
+        Self {
+            parse: MdxParseOptions::gfm(),
+            ..Self::default()
+        }
+    }
+}
+
 /// Turn MDX into JavaScript.
 ///
 /// ## Examples
@@ -202,10 +386,46 @@ pub struct Options {
 /// To do.
 pub fn compile(value: &str, options: &Options) -> Result<String, String> {
     let parse_options = ParseOptions {
-        constructs: Constructs::mdx(),
+        constructs: Constructs {
+            attention: options.parse.constructs.attention,
+            autolink: false,
+            block_quote: options.parse.constructs.block_quote,
+            character_escape: options.parse.constructs.character_escape,
+            character_reference: options.parse.constructs.character_reference,
+            code_fenced: options.parse.constructs.code_fenced,
+            code_indented: false,
+            code_text: options.parse.constructs.code_text,
+            definition: options.parse.constructs.definition,
+            frontmatter: options.parse.constructs.frontmatter,
+            gfm_autolink_literal: options.parse.constructs.gfm_autolink_literal,
+            gfm_footnote_definition: options.parse.constructs.gfm_footnote_definition,
+            gfm_label_start_footnote: options.parse.constructs.gfm_label_start_footnote,
+            gfm_strikethrough: options.parse.constructs.gfm_strikethrough,
+            gfm_table: options.parse.constructs.gfm_table,
+            gfm_task_list_item: options.parse.constructs.gfm_task_list_item,
+            hard_break_escape: options.parse.constructs.hard_break_escape,
+            hard_break_trailing: options.parse.constructs.hard_break_trailing,
+            html_flow: false,
+            html_text: false,
+            heading_atx: options.parse.constructs.heading_atx,
+            heading_setext: options.parse.constructs.heading_setext,
+            label_start_image: options.parse.constructs.label_start_image,
+            label_start_link: options.parse.constructs.label_start_link,
+            label_end: options.parse.constructs.label_end,
+            list_item: options.parse.constructs.list_item,
+            math_flow: options.parse.constructs.math_flow,
+            math_text: options.parse.constructs.math_text,
+            mdx_esm: true,
+            mdx_expression_flow: true,
+            mdx_expression_text: true,
+            mdx_jsx_flow: true,
+            mdx_jsx_text: true,
+            thematic_break: options.parse.constructs.thematic_break,
+        },
+        gfm_strikethrough_single_tilde: options.parse.gfm_strikethrough_single_tilde,
+        math_text_single_dollar: options.parse.math_text_single_dollar,
         mdx_esm_parse: Some(Box::new(parse_esm)),
         mdx_expression_parse: Some(Box::new(parse_expression)),
-        ..ParseOptions::default()
     };
     let document_options = DocumentOptions {
         pragma: options.pragma.clone(),
