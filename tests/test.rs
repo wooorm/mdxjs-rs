@@ -4,36 +4,48 @@ use pretty_assertions::assert_eq;
 
 #[test]
 fn xxx() -> Result<(), String> {
-    // To do: JSX should be compiled away.
     assert_eq!(
         compile("", &Options::default())?,
-        "function _createMdxContent(props) {
-    return <></>;
+        "import { Fragment as _Fragment, jsx as _jsx } from \"react/jsx-runtime\";
+function _createMdxContent(props) {
+    return _jsx(_Fragment, {});
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
+        children: _jsx(_createMdxContent, props)
+    })) : _createMdxContent(props);
 }
 export default MDXContent;
 ",
         "should work",
     );
 
-    // To do: JSX should be compiled away.
     assert_eq!(
         compile("<A />", &Options {
             development: true,
             filepath: Some("example.mdx".into()),
             ..Default::default()
         })?,
-        "function _createMdxContent(props) {
+        "import { jsxDEV as _jsxDEV } from \"react/jsx-dev-runtime\";
+function _createMdxContent(props) {
     const { A  } = props.components || {};
     if (!A) _missingMdxReference(\"A\", true, \"1:1-1:6\");
-    return <A />;
+    return _jsxDEV(A, {}, undefined, false, {
+        fileName: \"example.mdx\",
+        lineNumber: 1,
+        columnNumber: 1
+    }, this);
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? _jsxDEV(MDXLayout, Object.assign({}, props, {
+        children: _jsxDEV(_createMdxContent, props, undefined, false, {
+            fileName: \"example.mdx\"
+        }, this)
+    }), undefined, false, {
+        fileName: \"example.mdx\"
+    }, this) : _createMdxContent(props);
 }
 export default MDXContent;
 function _missingMdxReference(id, component, place) {
@@ -43,21 +55,23 @@ function _missingMdxReference(id, component, place) {
         "should support `options.development: true`",
     );
 
-    // To do: JSX should be compiled away.
     assert_eq!(
         compile("<A />",  &Options {
             provider_import_source: Some("@mdx-js/react".into()),
             ..Default::default()
         })?,
-        "import { useMDXComponents as _provideComponents } from \"@mdx-js/react\";
+        "import { jsx as _jsx } from \"react/jsx-runtime\";
+import { useMDXComponents as _provideComponents } from \"@mdx-js/react\";
 function _createMdxContent(props) {
     const { A  } = Object.assign({}, _provideComponents(), props.components);
     if (!A) _missingMdxReference(\"A\", true);
-    return <A />;
+    return _jsx(A, {});
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
+        children: _jsx(_createMdxContent, props)
+    })) : _createMdxContent(props);
 }
 export default MDXContent;
 function _missingMdxReference(id, component) {
@@ -84,48 +98,47 @@ export default MDXContent;
         "should support `options.jsx: true`",
     );
 
-    // To do: JSX should be compiled away.
-    // To do: should use calls of `React.createElement` / `React.Fragment`.
     assert_eq!(
         compile("", &Options {
             jsx_runtime: Some(JsxRuntime::Classic),
             ..Default::default()
         })?,
-        "import { React } from \"react\";
+        "import React from \"react\";
 function _createMdxContent(props) {
-    return <></>;
+    return React.createElement(React.Fragment);
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? React.createElement(MDXLayout, props, React.createElement(_createMdxContent, props)) : _createMdxContent(props);
 }
 export default MDXContent;
 ",
         "should support `options.jsx_runtime: JsxRuntime::Classic`",
     );
 
-    // To do: JSX should be compiled away.
-    // To do: should import `_jsx` and such.
-    // To do: should use calls of `_jsx`, etc.
     assert_eq!(
-        compile("", &Options {
-            jsx_import_source: Some("preact".into()),
-            ..Default::default()
-        })?,
-        "function _createMdxContent(props) {
-    return <></>;
+        compile(
+            "",
+            &Options {
+                jsx_import_source: Some("preact".into()),
+                ..Default::default()
+            }
+        )?,
+        "import { Fragment as _Fragment, jsx as _jsx } from \"preact/jsx-runtime\";
+function _createMdxContent(props) {
+    return _jsx(_Fragment, {});
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
+        children: _jsx(_createMdxContent, props)
+    })) : _createMdxContent(props);
 }
 export default MDXContent;
 ",
         "should support `options.jsx_import_source: Some(\"preact\".into())`",
     );
 
-    // To do: JSX should be compiled away.
-    // To do: should use calls of `a.b`, symbol of `a.c`.
     assert_eq!(
         compile("", &Options {
             jsx_runtime: Some(JsxRuntime::Classic),
@@ -134,13 +147,13 @@ export default MDXContent;
             pragma_import_source: Some("d".into()),
             ..Default::default()
         })?,
-        "import { a } from \"d\";
+        "import a from \"d\";
 function _createMdxContent(props) {
-    return <></>;
+    return a.b(a.c);
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? a.b(MDXLayout, props, a.b(_createMdxContent, props)) : _createMdxContent(props);
 }
 export default MDXContent;
 ",

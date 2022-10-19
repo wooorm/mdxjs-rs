@@ -9,6 +9,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::struct_excessive_bools)]
 #![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_precision_loss)]
 
 extern crate markdown;
 mod hast;
@@ -17,6 +18,7 @@ mod mdast_util_to_hast;
 mod mdx_plugin_recma_document;
 mod mdx_plugin_recma_jsx_rewrite;
 mod swc;
+mod swc_util_build_jsx;
 mod swc_utils;
 
 use crate::{
@@ -25,6 +27,7 @@ use crate::{
     mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions},
     mdx_plugin_recma_jsx_rewrite::{mdx_plugin_recma_jsx_rewrite, Options as RewriteOptions},
     swc::{parse_esm, parse_expression, serialize},
+    swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
 };
 use markdown::{to_mdast, Constructs, Location, ParseOptions};
 
@@ -438,6 +441,9 @@ pub fn compile(value: &str, options: &Options) -> Result<String, String> {
         development: options.development,
         provider_import_source: options.provider_import_source.clone(),
     };
+    let build_options = BuildOptions {
+        development: options.development,
+    };
 
     let location = Location::new(value.as_bytes());
     let mdast = to_mdast(value, &parse_options)?;
@@ -446,35 +452,17 @@ pub fn compile(value: &str, options: &Options) -> Result<String, String> {
     mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
     mdx_plugin_recma_jsx_rewrite(&mut program, &rewrite_options, Some(&location));
 
+    if !options.jsx {
+        swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
+    }
+
     // Add our comments.
     let comments = SingleThreadedComments::default();
-
     for c in program.comments {
         comments.add_leading(c.span.lo, c);
     }
 
     println!("comments for swc: {:?}", comments);
-
-    if !options.jsx {
-        // let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        // let build_options = JsxBuildOptions {
-        //     next: Some(true),
-        //     throw_if_namespace: Some(false),
-        //     development: Some(options.development),
-        //     use_spread: Some(true),
-        //     refresh: None,
-        //     runtime: None,
-        //     import_source: None,
-        //     pragma: None,
-        //     pragma_frag: None,
-        //     use_builtins: None,
-        // };
-        // let mark = Mark::fresh(Mark::default());
-        // program
-        //     .module
-        //     .visit_mut_with(&mut jsx(cm, Some(comments), build_options, mark));
-    }
-
     // To do: include comments.
     Ok(serialize(&program.module))
 }

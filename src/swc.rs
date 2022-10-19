@@ -5,8 +5,12 @@ extern crate swc_ecma_ast;
 extern crate swc_ecma_parser;
 use crate::swc_utils::{bytepos_to_point, prefix_error_with_point, RewriteContext};
 use markdown::{mdast::Stop, unist::Point, Location, MdxExpressionKind, MdxSignal};
+use std::rc::Rc;
 use swc_common::{
-    source_map::Pos, sync::Lrc, BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Spanned,
+    comments::{Comment, SingleThreadedComments, SingleThreadedCommentsMap},
+    source_map::Pos,
+    sync::Lrc,
+    BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Spanned,
 };
 use swc_ecma_ast::{EsVersion, Expr, Module};
 use swc_ecma_codegen::{text_writer::JsWriter, Emitter};
@@ -205,6 +209,23 @@ pub fn serialize(module: &Module) -> String {
     }
 
     String::from_utf8_lossy(&buf).into()
+}
+
+// To do: remove this, use above.
+#[allow(dead_code)]
+pub fn flat_comments(single_threaded_comments: SingleThreadedComments) -> Vec<Comment> {
+    let raw_comments = single_threaded_comments.take_all();
+    let take = |list: SingleThreadedCommentsMap| {
+        Rc::try_unwrap(list)
+            .unwrap()
+            .into_inner()
+            .into_values()
+            .flatten()
+            .collect::<Vec<_>>()
+    };
+    let mut list = take(raw_comments.0);
+    list.append(&mut take(raw_comments.1));
+    list
 }
 
 /// Check that the resulting AST of ESM is OK.

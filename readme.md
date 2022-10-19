@@ -58,18 +58,59 @@ cargo add mdxjs
 ```rs
 extern crate mdxjs;
 
-fn main() {
-    To do.
+fn main() -> Result<(), String> {
+    println!("{}", mdxjs::compile(r###"
+import {Chart} from './snowfall.js'
+export const year = 2018
+
+# Last year’s snowfall
+
+In {year}, the snowfall was above average.
+It was followed by a warm spring which caused
+flood conditions in many of the nearby rivers.
+
+<Chart year={year} color="#fcb32c" />
+"###, &Default::default())?);
+
+    Ok(())
 }
 ```
 
-Yields:
+Yields (prettified):
 
 ```javascript
-To do.
-```
+import {Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs} from 'react/jsx-runtime'
+import {Chart} from './snowfall.js'
+export const year = 2018
 
-To do: example with options.
+function _createMdxContent(props) {
+  const _components = Object.assign({h1: 'h1', p: 'p'}, props.components)
+  return _jsxs(_Fragment, {
+    children: [
+      _jsx(_components.h1, {children: 'Last year’s snowfall'}),
+      '\n',
+      _jsxs(_components.p, {
+        children: [
+          'In ',
+          year,
+          ', the snowfall was above average.\nIt was followed by a warm spring which caused\nflood conditions in many of the nearby rivers.'
+        ]
+      }),
+      '\n',
+      _jsx(Chart, {year: year, color: '#fcb32c'})
+    ]
+  })
+}
+
+function MDXContent(props = {}) {
+  const {wrapper: MDXLayout} = props.components || {}
+  return MDXLayout
+    ? _jsx(MDXLayout, Object.assign({}, props, {children: _jsx(_createMdxContent, props)}))
+    : _createMdxContent(props)
+}
+
+export default MDXContent
+```
 
 ## API
 

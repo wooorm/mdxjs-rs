@@ -30,7 +30,7 @@ extern crate swc_common;
 extern crate swc_ecma_ast;
 use crate::hast;
 use crate::swc::{parse_esm_to_tree, parse_expression_to_tree};
-use crate::swc_utils::{create_ident, position_to_span, parse_jsx_name, JsxName};
+use crate::swc_utils::{create_ident, parse_jsx_name, position_to_span, JsxName};
 use core::str;
 use markdown::{Location, MdxExpressionKind};
 

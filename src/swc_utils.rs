@@ -8,7 +8,7 @@ use markdown::{
 };
 
 use swc_common::{BytePos, Span, SyntaxContext, DUMMY_SP};
-use swc_ecma_ast::{BinExpr, BinaryOp, Expr, Ident, MemberExpr, MemberProp};
+use swc_ecma_ast::{BinExpr, BinaryOp, ComputedPropName, Expr, Ident, MemberExpr, MemberProp};
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut};
 
 /// Turn a unist position, into an SWC span, of two byte positions.
@@ -193,38 +193,44 @@ pub fn create_binary_expression(mut exprs: Vec<Expr>, op: BinaryOp) -> Expr {
 /// a
 /// ```
 pub fn create_member_expression(name: &str) -> Expr {
-    let bytes = name.as_bytes();
-    let mut index = 0;
-    let mut start = 0;
-    let mut parts = vec![];
-
-    while index < bytes.len() {
-        if bytes[index] == b'.' {
-            parts.push(&name[start..index]);
-            start = index + 1;
-        }
-
-        index += 1;
-    }
-
-    if parts.len() > 1 {
-        let mut member = MemberExpr {
-            obj: Box::new(create_ident_expression(parts[0])),
-            prop: MemberProp::Ident(create_ident(parts[1])),
-            span: swc_common::DUMMY_SP,
-        };
-        let mut index = 2;
-        while index < parts.len() {
-            member = MemberExpr {
-                obj: Box::new(Expr::Member(member)),
-                prop: MemberProp::Ident(create_ident(parts[1])),
+    match parse_js_name(name) {
+        // `a`
+        JsName::Normal(name) => create_ident_expression(name),
+        // `a.b.c`
+        JsName::Member(parts) => {
+            let mut member = MemberExpr {
+                obj: Box::new(create_ident_expression(parts[0])),
+                prop: create_member_prop(parts[1]),
                 span: swc_common::DUMMY_SP,
             };
-            index += 1;
+            let mut index = 2;
+            while index < parts.len() {
+                member = MemberExpr {
+                    obj: Box::new(Expr::Member(member)),
+                    prop: create_member_prop(parts[index]),
+                    span: swc_common::DUMMY_SP,
+                };
+                index += 1;
+            }
+            Expr::Member(member)
         }
-        Expr::Member(member)
+    }
+}
+
+pub fn create_member_prop(name: &str) -> MemberProp {
+    if is_identifier_name(name) {
+        MemberProp::Ident(create_ident(name))
     } else {
-        create_ident_expression(name)
+        MemberProp::Computed(ComputedPropName {
+            expr: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
+                swc_ecma_ast::Str {
+                    value: name.into(),
+                    span: swc_common::DUMMY_SP,
+                    raw: None,
+                },
+            ))),
+            span: swc_common::DUMMY_SP,
+        })
     }
 }
 

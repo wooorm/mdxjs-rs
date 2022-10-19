@@ -137,16 +137,14 @@ pub fn mdx_plugin_recma_document(
 
         replacements.push(swc_ecma_ast::ModuleItem::ModuleDecl(
             swc_ecma_ast::ModuleDecl::Import(swc_ecma_ast::ImportDecl {
-                specifiers: vec![swc_ecma_ast::ImportSpecifier::Named(
-                    swc_ecma_ast::ImportNamedSpecifier {
+                specifiers: vec![swc_ecma_ast::ImportSpecifier::Default(
+                    swc_ecma_ast::ImportDefaultSpecifier {
                         local: swc_ecma_ast::Ident {
                             sym: sym.into(),
                             optional: false,
                             span: swc_common::DUMMY_SP,
                         },
-                        imported: None,
                         span: swc_common::DUMMY_SP,
-                        is_type_only: false,
                     },
                 )],
                 src: Box::new(swc_ecma_ast::Str {
