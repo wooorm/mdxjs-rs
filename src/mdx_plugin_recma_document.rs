@@ -677,7 +677,7 @@ mod tests {
         let hast = mdast_util_to_hast(&mdast);
         let mut program = hast_util_to_swc(&hast, None, Some(&location))?;
         mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
-        Ok(serialize(&program.module))
+        Ok(serialize(&program.module, Some(&program.comments)))
     }
 
     #[test]

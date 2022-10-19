@@ -7,7 +7,7 @@ use crate::swc_utils::{bytepos_to_point, prefix_error_with_point, RewriteContext
 use markdown::{mdast::Stop, unist::Point, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
 use swc_common::{
-    comments::{Comment, SingleThreadedComments, SingleThreadedCommentsMap},
+    comments::{Comment, Comments, SingleThreadedComments, SingleThreadedCommentsMap},
     source_map::Pos,
     sync::Lrc,
     BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Spanned,
@@ -189,19 +189,22 @@ pub fn parse_expression_to_tree(
 }
 
 /// Serialize an SWC module.
-/// To do: support comments.
-pub fn serialize(module: &Module) -> String {
+pub fn serialize(module: &Module, comments: Option<&Vec<Comment>>) -> String {
+    let single_threaded_comments = SingleThreadedComments::default();
+    if let Some(comments) = comments {
+        for c in comments {
+            single_threaded_comments.add_leading(c.span.lo, c.clone());
+        }
+    }
     let mut buf = vec![];
     let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    // let comm = &program.comments as &dyn swc_common::comments::Comments;
     {
         let mut emitter = Emitter {
             cfg: swc_ecma_codegen::Config {
                 ..Default::default()
             },
             cm: cm.clone(),
-            // To do: figure out how to pass them.
-            comments: None,
+            comments: Some(&single_threaded_comments),
             wr: JsWriter::new(cm, "\n", &mut buf, None),
         };
 
@@ -211,7 +214,7 @@ pub fn serialize(module: &Module) -> String {
     String::from_utf8_lossy(&buf).into()
 }
 
-// To do: remove this, use above.
+// To do: remove this attribute, use it somewhere.
 #[allow(dead_code)]
 pub fn flat_comments(single_threaded_comments: SingleThreadedComments) -> Vec<Comment> {
     let raw_comments = single_threaded_comments.take_all();

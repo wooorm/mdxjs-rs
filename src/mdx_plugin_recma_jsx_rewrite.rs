@@ -1169,7 +1169,7 @@ mod tests {
         let mut program = hast_util_to_swc(&hast, Some("example.mdx".into()), Some(&location))?;
         mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
         mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location));
-        Ok(serialize(&program.module))
+        Ok(serialize(&program.module, Some(&program.comments)))
     }
 
     #[test]

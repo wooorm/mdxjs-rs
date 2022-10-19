@@ -802,7 +802,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&comment_ast.module),
+            serialize(&comment_ast.module, Some(&comment_ast.comments)),
             // To do: comment should be in this.
             "<>{}</>;\n",
             "should support a `Comment` (serialize)",
@@ -884,7 +884,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&element_ast.module),
+            serialize(&element_ast.module, Some(&element_ast.comments)),
             "<a className=\"b\"/>;\n",
             "should support an `Element` (serialize)",
         );
@@ -904,7 +904,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a >{\"a\"}</a>;\n",
             "should support an `Element` w/ children",
@@ -927,7 +928,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a b=\"c\"/>;\n",
             "should support an `Element` w/ a string attribute",
@@ -945,7 +947,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a b/>;\n",
             "should support an `Element` w/ a boolean (true) attribute",
@@ -963,7 +966,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a />;\n",
             "should support an `Element` w/ a boolean (false) attribute",
@@ -984,7 +988,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a b=\"c, d\"/>;\n",
             "should support an `Element` w/ a comma-separated attribute",
@@ -1006,7 +1011,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a data-123 data-foo data-b-a-r/>;\n",
             "should support an `Element` w/ data attributes",
@@ -1028,7 +1034,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a role aria-valuenow aria-describedby/>;\n",
             "should support an `Element` w/ aria attributes",
@@ -1081,7 +1088,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&mdx_element_ast.module),
+            serialize(&mdx_element_ast.module, Some(&mdx_element_ast.comments)),
             "<></>;\n",
             "should support an `MdxElement` (fragment, serialize)",
         );
@@ -1098,7 +1105,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a />;\n",
             "should support an `MdxElement` (element, no children)",
@@ -1118,7 +1126,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a >{\"b\"}</a>;\n",
             "should support an `MdxElement` (element, children)",
@@ -1141,7 +1150,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a:b />;\n",
             "should support an `MdxElement` (element, namespace id)",
@@ -1159,7 +1169,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a.b.c />;\n",
             "should support an `MdxElement` (element, member expression)",
@@ -1185,7 +1196,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a b/>;\n",
             "should support an `MdxElement` (element, boolean attribute)",
@@ -1206,7 +1218,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a b=\"c\"/>;\n",
             "should support an `MdxElement` (element, attribute w/ literal value)",
@@ -1227,7 +1240,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a b={c}/>;\n",
             "should support an `MdxElement` (element, attribute w/ expression value)",
@@ -1245,7 +1259,8 @@ mod tests {
                     None,
                     None
                 )?
-                .module
+                .module,
+                None
             ),
             "<a {...c}/>;\n",
             "should support an `MdxElement` (element, expression attribute)",
@@ -1312,7 +1327,10 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&mdx_expression_ast.module),
+            serialize(
+                &mdx_expression_ast.module,
+                Some(&mdx_expression_ast.comments)
+            ),
             "<>{a}</>;\n",
             "should support an `MdxExpression` (serialize)",
         );
@@ -1368,7 +1386,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&mdxjs_esm_ast.module),
+            serialize(&mdxjs_esm_ast.module, Some(&mdxjs_esm_ast.comments)),
             "import a from 'b';\n",
             "should support an `MdxjsEsm` (serialize)",
         );
@@ -1436,7 +1454,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&root_ast.module),
+            serialize(&root_ast.module, Some(&root_ast.comments)),
             "<>{\"a\"}</>;\n",
             "should support a `Root` (serialize)",
         );
@@ -1501,7 +1519,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&text_ast.module),
+            serialize(&text_ast.module, Some(&text_ast.comments)),
             "<>{\"a\"}</>;\n",
             "should support a `Text` (serialize)",
         );

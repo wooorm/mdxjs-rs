@@ -997,7 +997,7 @@ mod tests {
                     comments: flat_comments(comments),
                 };
                 swc_util_build_jsx(&mut program, options, Some(&location))?;
-                Ok(serialize(&program.module))
+                Ok(serialize(&program.module, Some(&program.comments)))
             }
         }
     }

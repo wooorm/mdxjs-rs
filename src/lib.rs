@@ -31,8 +31,6 @@ use crate::{
 };
 use markdown::{to_mdast, Constructs, Location, ParseOptions};
 
-use swc_common::comments::{Comments, SingleThreadedComments};
-
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
 /// Like `Constructs` from `markdown-rs`.
@@ -380,13 +378,19 @@ impl Options {
 ///
 /// ## Examples
 ///
-/// ```rust ignore
-/// To do.
+/// ```
+/// use mdxjs::compile;
+/// # fn main() -> Result<(), String> {
+///
+/// assert_eq!(compile("# Hi!", &Default::default())?, "import { jsx as _jsx } from \"react/jsx-runtime\";\nfunction _createMdxContent(props) {\n    const _components = Object.assign({\n        h1: \"h1\"\n    }, props.components);\n    return _jsx(_components.h1, {\n        children: \"Hi!\"\n    });\n}\nfunction MDXContent(props = {}) {\n    const { wrapper: MDXLayout  } = props.components || {};\n    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {\n        children: _jsx(_createMdxContent, props)\n    })) : _createMdxContent(props);\n}\nexport default MDXContent;\n");
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// ## Errors
 ///
-/// To do.
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
 pub fn compile(value: &str, options: &Options) -> Result<String, String> {
     let parse_options = ParseOptions {
         constructs: Constructs {
@@ -456,13 +460,5 @@ pub fn compile(value: &str, options: &Options) -> Result<String, String> {
         swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
     }
 
-    // Add our comments.
-    let comments = SingleThreadedComments::default();
-    for c in program.comments {
-        comments.add_leading(c.span.lo, c);
-    }
-
-    println!("comments for swc: {:?}", comments);
-    // To do: include comments.
-    Ok(serialize(&program.module))
+    Ok(serialize(&program.module, Some(&program.comments)))
 }
