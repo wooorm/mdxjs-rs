@@ -520,14 +520,10 @@ impl<'a> State<'a> {
                     })),
                 });
 
-                // File name and positional info.
+                // Context object.
                 //
                 // ```javascript
-                // {
-                //   fileName: "example.jsx",
-                //   lineNumber: 1,
-                //   columnNumber: 3
-                // }
+                // this
                 // ```
                 parameters.push(swc_ecma_ast::ExprOrSpread {
                     spread: None,
@@ -603,7 +599,7 @@ impl<'a> State<'a> {
             callee: swc_ecma_ast::Callee::Expr(Box::new(callee)),
             args: parameters,
             type_args: None,
-            span: swc_common::DUMMY_SP,
+            span: *span,
         }))
     }
 
