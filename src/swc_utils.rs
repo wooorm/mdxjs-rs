@@ -8,7 +8,10 @@ use markdown::{
 };
 
 use swc_common::{BytePos, Span, SyntaxContext, DUMMY_SP};
-use swc_ecma_ast::{BinExpr, BinaryOp, ComputedPropName, Expr, Ident, MemberExpr, MemberProp};
+use swc_ecma_ast::{
+    BinExpr, BinaryOp, Bool, ComputedPropName, Expr, Ident, JSXAttrName, JSXElementName,
+    JSXMemberExpr, JSXObject, Lit, MemberExpr, MemberProp, PropName, Str,
+};
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut};
 
 /// Turn a unist position, into an SWC span, of two byte positions.
@@ -162,6 +165,43 @@ pub fn create_ident_expression(sym: &str) -> Expr {
     Expr::Ident(create_ident(sym))
 }
 
+/// Generate a str.
+pub fn create_str(value: &str) -> Str {
+    Str {
+        value: value.into(),
+        raw: None,
+        span: DUMMY_SP,
+    }
+}
+
+/// Generate a str.
+pub fn create_str_lit(value: &str) -> Lit {
+    Lit::Str(create_str(value))
+}
+
+/// Generate a str.
+pub fn create_str_expression(value: &str) -> Expr {
+    Expr::Lit(create_str_lit(value))
+}
+
+/// Generate a bool.
+pub fn create_bool(value: bool) -> Bool {
+    Bool {
+        value,
+        span: DUMMY_SP,
+    }
+}
+
+/// Generate a bool.
+pub fn create_bool_lit(value: bool) -> Lit {
+    Lit::Bool(create_bool(value))
+}
+
+/// Generate a bool.
+pub fn create_bool_expression(value: bool) -> Expr {
+    Expr::Lit(create_bool_lit(value))
+}
+
 /// Generate a binary expression.
 ///
 /// ```js
@@ -179,7 +219,7 @@ pub fn create_binary_expression(mut exprs: Vec<Expr>, op: BinaryOp) -> Expr {
                 left: Box::new(left_expr),
                 right: Box::new(right_expr),
                 op,
-                span: swc_common::DUMMY_SP,
+                span: DUMMY_SP,
             })
         } else {
             right_expr
@@ -189,30 +229,28 @@ pub fn create_binary_expression(mut exprs: Vec<Expr>, op: BinaryOp) -> Expr {
     left.expect("expected one or more expressions")
 }
 
-/// Generate a member expression.
+/// Generate a member expression from a string.
 ///
 /// ```js
 /// a.b
 /// a
 /// ```
-pub fn create_member_expression(name: &str) -> Expr {
+pub fn create_member_expression_from_str(name: &str) -> Expr {
     match parse_js_name(name) {
         // `a`
         JsName::Normal(name) => create_ident_expression(name),
         // `a.b.c`
         JsName::Member(parts) => {
-            let mut member = MemberExpr {
-                obj: Box::new(create_ident_expression(parts[0])),
-                prop: create_member_prop(parts[1]),
-                span: swc_common::DUMMY_SP,
-            };
+            let mut member = create_member(
+                create_ident_expression(parts[0]),
+                create_member_prop_from_str(parts[1]),
+            );
             let mut index = 2;
             while index < parts.len() {
-                member = MemberExpr {
-                    obj: Box::new(Expr::Member(member)),
-                    prop: create_member_prop(parts[index]),
-                    span: swc_common::DUMMY_SP,
-                };
+                member = create_member(
+                    Expr::Member(member),
+                    create_member_prop_from_str(parts[index]),
+                );
                 index += 1;
             }
             Expr::Member(member)
@@ -220,21 +258,99 @@ pub fn create_member_expression(name: &str) -> Expr {
     }
 }
 
-/// Create a member prop.
-pub fn create_member_prop(name: &str) -> MemberProp {
+/// Generate a member expression from an object and prop.
+pub fn create_member(obj: Expr, prop: MemberProp) -> MemberExpr {
+    MemberExpr {
+        obj: Box::new(obj),
+        prop,
+        span: DUMMY_SP,
+    }
+}
+
+/// Create a member prop from a string.
+pub fn create_member_prop_from_str(name: &str) -> MemberProp {
     if is_identifier_name(name) {
         MemberProp::Ident(create_ident(name))
     } else {
         MemberProp::Computed(ComputedPropName {
-            expr: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                swc_ecma_ast::Str {
-                    value: name.into(),
-                    span: swc_common::DUMMY_SP,
-                    raw: None,
-                },
-            ))),
-            span: swc_common::DUMMY_SP,
+            expr: Box::new(create_str_expression(name)),
+            span: DUMMY_SP,
         })
+    }
+}
+
+/// Turn an JSX element name into an expression.
+pub fn jsx_element_name_to_expression(node: JSXElementName) -> Expr {
+    match node {
+        JSXElementName::JSXMemberExpr(member_expr) => {
+            jsx_member_expression_to_expression(member_expr)
+        }
+        JSXElementName::JSXNamespacedName(namespace_name) => create_str_expression(&format!(
+            "{}:{}",
+            namespace_name.ns.sym, namespace_name.name.sym
+        )),
+        JSXElementName::Ident(ident) => create_ident_or_literal(&ident),
+    }
+}
+
+/// Turn a JSX member expression name into a member expression.
+pub fn jsx_member_expression_to_expression(node: JSXMemberExpr) -> Expr {
+    Expr::Member(create_member(
+        jsx_object_to_expression(node.obj),
+        ident_to_member_prop(&node.prop),
+    ))
+}
+
+/// Turn an ident into a member prop.
+pub fn ident_to_member_prop(node: &Ident) -> MemberProp {
+    if is_identifier_name(node.as_ref()) {
+        MemberProp::Ident(Ident {
+            sym: node.sym.clone(),
+            optional: false,
+            span: node.span,
+        })
+    } else {
+        MemberProp::Computed(ComputedPropName {
+            expr: Box::new(create_str_expression(&node.sym)),
+            span: node.span,
+        })
+    }
+}
+
+/// Turn a JSX attribute name into a prop prop.
+pub fn jsx_attribute_name_to_prop_name(node: JSXAttrName) -> PropName {
+    match node {
+        JSXAttrName::JSXNamespacedName(namespace_name) => create_prop_name(&format!(
+            "{}:{}",
+            namespace_name.ns.sym, namespace_name.name.sym
+        )),
+        JSXAttrName::Ident(ident) => create_prop_name(&ident.sym),
+    }
+}
+
+/// Turn a JSX object into an expression.
+pub fn jsx_object_to_expression(node: JSXObject) -> Expr {
+    match node {
+        JSXObject::Ident(ident) => create_ident_or_literal(&ident),
+        JSXObject::JSXMemberExpr(member_expr) => jsx_member_expression_to_expression(*member_expr),
+    }
+}
+
+/// Create either an ident expression or a literal expression.
+pub fn create_ident_or_literal(node: &Ident) -> Expr {
+    if is_identifier_name(node.as_ref()) {
+        create_ident_expression(node.sym.as_ref())
+    } else {
+        create_str_expression(&node.sym)
+    }
+}
+
+/// Create a prop name.
+pub fn create_prop_name(name: &str) -> PropName {
+    if is_identifier_name(name) {
+        PropName::Ident(create_ident(name))
+    } else {
+        PropName::Str(create_str(name))
     }
 }
 

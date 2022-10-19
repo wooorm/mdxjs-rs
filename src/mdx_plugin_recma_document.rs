@@ -5,7 +5,10 @@
 
 extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
-use crate::swc_utils::{bytepos_to_point, prefix_error_with_point, span_to_position};
+use crate::swc_utils::{
+    bytepos_to_point, create_ident, create_ident_expression, create_str, prefix_error_with_point,
+    span_to_position,
+};
 use markdown::{
     unist::{Point, Position},
     Location,
@@ -140,24 +143,17 @@ pub fn mdx_plugin_recma_document(
             swc_ecma_ast::ModuleDecl::Import(swc_ecma_ast::ImportDecl {
                 specifiers: vec![swc_ecma_ast::ImportSpecifier::Default(
                     swc_ecma_ast::ImportDefaultSpecifier {
-                        local: swc_ecma_ast::Ident {
-                            sym: sym.into(),
-                            optional: false,
-                            span: swc_common::DUMMY_SP,
-                        },
+                        local: create_ident(sym),
                         span: swc_common::DUMMY_SP,
                     },
                 )],
-                src: Box::new(swc_ecma_ast::Str {
-                    value: (if let Some(source) = &options.pragma_import_source {
-                        source.clone()
+                src: Box::new(create_str(
+                    if let Some(source) = &options.pragma_import_source {
+                        source
                     } else {
-                        "react".into()
-                    })
-                    .into(),
-                    span: swc_common::DUMMY_SP,
-                    raw: None,
-                }),
+                        "react"
+                    },
+                )),
                 type_only: false,
                 asserts: None,
                 span: swc_common::DUMMY_SP,
@@ -250,7 +246,7 @@ pub fn mdx_plugin_recma_document(
                     {
                         if let Some(swc_ecma_ast::ModuleExportName::Ident(ident)) = &named.exported
                         {
-                            if ident.sym.as_ref() == "default" {
+                            if &ident.sym == "default" {
                                 // For some reason the AST supports strings
                                 // instead of identifiers.
                                 // Looks like some TC39 proposal. Ignore for now
@@ -295,11 +291,7 @@ pub fn mdx_plugin_recma_document(
                             swc_ecma_ast::ModuleDecl::Import(swc_ecma_ast::ImportDecl {
                                 specifiers: vec![swc_ecma_ast::ImportSpecifier::Named(
                                     swc_ecma_ast::ImportNamedSpecifier {
-                                        local: swc_ecma_ast::Ident {
-                                            sym: "MDXLayout".into(),
-                                            optional: false,
-                                            span: swc_common::DUMMY_SP,
-                                        },
+                                        local: create_ident("MDXLayout"),
                                         imported: Some(swc_ecma_ast::ModuleExportName::Ident(id)),
                                         span: swc_common::DUMMY_SP,
                                         is_type_only: false,
@@ -314,7 +306,7 @@ pub fn mdx_plugin_recma_document(
                     }
                     // It’s an `export {x}`, so generate a variable declaration.
                     else {
-                        replacements.push(create_layout_decl(swc_ecma_ast::Expr::Ident(id)));
+                        replacements.push(create_layout_decl(create_ident_expression(&id.sym)));
                     }
                 } else {
                     // Pass through.
@@ -327,6 +319,7 @@ pub fn mdx_plugin_recma_document(
                 // SWC is currently crashing when generating code, w/o source
                 // map, if an actual location is set on this node.
                 x.span = swc_common::DUMMY_SP;
+
                 // Pass through.
                 replacements.push(swc_ecma_ast::ModuleItem::ModuleDecl(
                     swc_ecma_ast::ModuleDecl::Import(x),
@@ -395,11 +388,7 @@ pub fn mdx_plugin_recma_document(
     // ```
     replacements.push(swc_ecma_ast::ModuleItem::ModuleDecl(
         swc_ecma_ast::ModuleDecl::ExportDefaultExpr(swc_ecma_ast::ExportDefaultExpr {
-            expr: Box::new(swc_ecma_ast::Expr::Ident(swc_ecma_ast::Ident {
-                sym: "MDXContent".into(),
-                optional: false,
-                span: swc_common::DUMMY_SP,
-            })),
+            expr: Box::new(create_ident_expression("MDXContent")),
             span: swc_common::DUMMY_SP,
         }),
     ));
@@ -419,19 +408,11 @@ fn create_mdx_content(
     // ```
     let mut result = swc_ecma_ast::Expr::JSXElement(Box::new(swc_ecma_ast::JSXElement {
         opening: swc_ecma_ast::JSXOpeningElement {
-            name: swc_ecma_ast::JSXElementName::Ident(swc_ecma_ast::Ident {
-                sym: "MDXLayout".into(),
-                optional: false,
-                span: swc_common::DUMMY_SP,
-            }),
+            name: swc_ecma_ast::JSXElementName::Ident(create_ident("MDXLayout")),
             attrs: vec![swc_ecma_ast::JSXAttrOrSpread::SpreadElement(
                 swc_ecma_ast::SpreadElement {
                     dot3_token: swc_common::DUMMY_SP,
-                    expr: Box::new(swc_ecma_ast::Expr::Ident(swc_ecma_ast::Ident {
-                        sym: "props".into(),
-                        optional: false,
-                        span: swc_common::DUMMY_SP,
-                    })),
+                    expr: Box::new(create_ident_expression("props")),
                 },
             )],
             self_closing: false,
@@ -439,11 +420,7 @@ fn create_mdx_content(
             span: swc_common::DUMMY_SP,
         },
         closing: Some(swc_ecma_ast::JSXClosingElement {
-            name: swc_ecma_ast::JSXElementName::Ident(swc_ecma_ast::Ident {
-                sym: "MDXLayout".into(),
-                optional: false,
-                span: swc_common::DUMMY_SP,
-            }),
+            name: swc_ecma_ast::JSXElementName::Ident(create_ident("MDXLayout")),
             span: swc_common::DUMMY_SP,
         }),
         // ```jsx
@@ -452,19 +429,11 @@ fn create_mdx_content(
         children: vec![swc_ecma_ast::JSXElementChild::JSXElement(Box::new(
             swc_ecma_ast::JSXElement {
                 opening: swc_ecma_ast::JSXOpeningElement {
-                    name: swc_ecma_ast::JSXElementName::Ident(swc_ecma_ast::Ident {
-                        sym: "_createMdxContent".into(),
-                        optional: false,
-                        span: swc_common::DUMMY_SP,
-                    }),
+                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("_createMdxContent")),
                     attrs: vec![swc_ecma_ast::JSXAttrOrSpread::SpreadElement(
                         swc_ecma_ast::SpreadElement {
                             dot3_token: swc_common::DUMMY_SP,
-                            expr: Box::new(swc_ecma_ast::Expr::Ident(swc_ecma_ast::Ident {
-                                sym: "props".into(),
-                                optional: false,
-                                span: swc_common::DUMMY_SP,
-                            })),
+                            expr: Box::new(create_ident_expression("props")),
                         },
                     )],
                     self_closing: true,
@@ -484,27 +453,15 @@ fn create_mdx_content(
         // MDXLayout ? <MDXLayout>xxx</MDXLayout> : _createMdxContent(props)
         // ```
         result = swc_ecma_ast::Expr::Cond(swc_ecma_ast::CondExpr {
-            test: Box::new(swc_ecma_ast::Expr::Ident(swc_ecma_ast::Ident {
-                sym: "MDXLayout".into(),
-                optional: false,
-                span: swc_common::DUMMY_SP,
-            })),
+            test: Box::new(create_ident_expression("MDXLayout")),
             cons: Box::new(result),
             alt: Box::new(swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
-                callee: swc_ecma_ast::Callee::Expr(Box::new(swc_ecma_ast::Expr::Ident(
-                    swc_ecma_ast::Ident {
-                        sym: "_createMdxContent".into(),
-                        optional: false,
-                        span: swc_common::DUMMY_SP,
-                    },
+                callee: swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
+                    "_createMdxContent",
                 ))),
                 args: vec![swc_ecma_ast::ExprOrSpread {
                     spread: None,
-                    expr: Box::new(swc_ecma_ast::Expr::Ident(swc_ecma_ast::Ident {
-                        sym: "props".into(),
-                        optional: false,
-                        span: swc_common::DUMMY_SP,
-                    })),
+                    expr: Box::new(create_ident_expression("props")),
                 }],
                 type_args: None,
                 span: swc_common::DUMMY_SP,
@@ -520,20 +477,12 @@ fn create_mdx_content(
     // ```
     let create_mdx_content = swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Decl(
         swc_ecma_ast::Decl::Fn(swc_ecma_ast::FnDecl {
-            ident: swc_ecma_ast::Ident {
-                sym: "_createMdxContent".into(),
-                optional: false,
-                span: swc_common::DUMMY_SP,
-            },
+            ident: create_ident("_createMdxContent"),
             declare: false,
             function: Box::new(swc_ecma_ast::Function {
                 params: vec![swc_ecma_ast::Param {
                     pat: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
-                        id: swc_ecma_ast::Ident {
-                            sym: "props".into(),
-                            optional: false,
-                            span: swc_common::DUMMY_SP,
-                        },
+                        id: create_ident("props"),
                         type_ann: None,
                     }),
                     decorators: vec![],
@@ -567,21 +516,13 @@ fn create_mdx_content(
     // ```
     let mdx_content = swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Decl(
         swc_ecma_ast::Decl::Fn(swc_ecma_ast::FnDecl {
-            ident: swc_ecma_ast::Ident {
-                sym: "MDXContent".into(),
-                optional: false,
-                span: swc_common::DUMMY_SP,
-            },
+            ident: create_ident("MDXContent"),
             declare: false,
             function: Box::new(swc_ecma_ast::Function {
                 params: vec![swc_ecma_ast::Param {
                     pat: swc_ecma_ast::Pat::Assign(swc_ecma_ast::AssignPat {
                         left: Box::new(swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
-                            id: swc_ecma_ast::Ident {
-                                sym: "props".into(),
-                                optional: false,
-                                span: swc_common::DUMMY_SP,
-                            },
+                            id: create_ident("props"),
                             type_ann: None,
                         })),
                         right: Box::new(swc_ecma_ast::Expr::Object(swc_ecma_ast::ObjectLit {
@@ -625,11 +566,7 @@ fn create_layout_decl(expr: swc_ecma_ast::Expr) -> swc_ecma_ast::ModuleItem {
             declare: false,
             decls: vec![swc_ecma_ast::VarDeclarator {
                 name: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
-                    id: swc_ecma_ast::Ident {
-                        sym: "MDXLayout".into(),
-                        optional: false,
-                        span: swc_common::DUMMY_SP,
-                    },
+                    id: create_ident("MDXLayout"),
                     type_ann: None,
                 }),
                 init: Some(Box::new(expr)),

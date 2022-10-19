@@ -5,8 +5,10 @@ extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::mdx_plugin_recma_document::JsxRuntime;
 use crate::swc_utils::{
-    bytepos_to_point, create_ident, create_ident_expression, create_member_expression,
-    is_identifier_name, prefix_error_with_point, span_to_position,
+    bytepos_to_point, create_bool_expression, create_ident, create_ident_expression,
+    create_member_expression_from_str, create_prop_name, create_str, create_str_expression,
+    jsx_attribute_name_to_prop_name, jsx_element_name_to_expression, prefix_error_with_point,
+    span_to_position,
 };
 use core::str;
 use markdown::Location;
@@ -40,12 +42,12 @@ pub fn swc_util_build_jsx(
         import_jsx: false,
         import_jsxs: false,
         import_jsx_dev: false,
-        create_element_expression: create_member_expression(
+        create_element_expression: create_member_expression_from_str(
             &directives
                 .pragma
                 .unwrap_or_else(|| "React.createElement".into()),
         ),
-        fragment_expression: create_member_expression(
+        fragment_expression: create_member_expression_from_str(
             &directives
                 .pragma_frag
                 .unwrap_or_else(|| "React.Fragment".into()),
@@ -116,20 +118,15 @@ pub fn swc_util_build_jsx(
             swc_ecma_ast::ModuleItem::ModuleDecl(swc_ecma_ast::ModuleDecl::Import(
                 swc_ecma_ast::ImportDecl {
                     specifiers,
-                    src: Box::new(swc_ecma_ast::Str {
-                        value: format!(
-                            "{}{}",
-                            directives.import_source.unwrap_or_else(|| "react".into()),
-                            if options.development {
-                                "/jsx-dev-runtime"
-                            } else {
-                                "/jsx-runtime"
-                            }
-                        )
-                        .into(),
-                        span: swc_common::DUMMY_SP,
-                        raw: None,
-                    }),
+                    src: Box::new(create_str(&format!(
+                        "{}{}",
+                        directives.import_source.unwrap_or_else(|| "react".into()),
+                        if options.development {
+                            "/jsx-dev-runtime"
+                        } else {
+                            "/jsx-runtime"
+                        }
+                    ))),
                     type_only: false,
                     asserts: None,
                     span: swc_common::DUMMY_SP,
@@ -191,12 +188,7 @@ impl<'a> State<'a> {
     ) -> Result<swc_ecma_ast::Expr, String> {
         match value {
             // Boolean prop.
-            None => Ok(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Bool(
-                swc_ecma_ast::Bool {
-                    value: true,
-                    span: swc_common::DUMMY_SP,
-                },
-            ))),
+            None => Ok(create_bool_expression(true)),
             Some(swc_ecma_ast::JSXAttrValue::JSXExprContainer(expression_container)) => {
                 match expression_container.expr {
                     swc_ecma_ast::JSXExpr::JSXEmptyExpr(_) => {
@@ -238,13 +230,7 @@ impl<'a> State<'a> {
                 swc_ecma_ast::JSXElementChild::JSXText(text) => {
                     let value = jsx_text_to_value(text.value.as_ref());
                     if !value.is_empty() {
-                        result.push(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                            swc_ecma_ast::Str {
-                                value: value.into(),
-                                span: text.span,
-                                raw: None,
-                            },
-                        )));
+                        result.push(create_str_expression(&value));
                     }
                 }
                 swc_ecma_ast::JSXElementChild::JSXSpreadChild(_) => {
@@ -348,7 +334,7 @@ impl<'a> State<'a> {
             if let Some(value) = value {
                 fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
                     swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                        key: swc_ecma_ast::PropName::Ident(create_ident("children")),
+                        key: create_prop_name("children"),
                         value: Box::new(value),
                     }),
                 )));
@@ -386,9 +372,9 @@ impl<'a> State<'a> {
                 }
 
                 Some(swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
-                    callee: swc_ecma_ast::Callee::Expr(Box::new(create_member_expression(
-                        "Object.assign",
-                    ))),
+                    callee: swc_ecma_ast::Callee::Expr(Box::new(
+                        create_member_expression_from_str("Object.assign"),
+                    )),
                     args,
                     span: swc_common::DUMMY_SP,
                     type_args: None,
@@ -463,35 +449,24 @@ impl<'a> State<'a> {
                 // ```
                 parameters.push(swc_ecma_ast::ExprOrSpread {
                     spread: None,
-                    expr: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Bool(
-                        swc_ecma_ast::Bool {
-                            value: is_static_children,
-                            span: swc_common::DUMMY_SP,
-                        },
-                    ))),
+                    expr: Box::new(create_bool_expression(is_static_children)),
                 });
 
                 let mut meta_fields = vec![swc_ecma_ast::PropOrSpread::Prop(Box::new(
                     swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
                         key: swc_ecma_ast::PropName::Ident(create_ident("fileName")),
-                        value: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                            swc_ecma_ast::Str {
-                                value: self
-                                    .filepath
-                                    .as_ref()
-                                    .map_or_else(|| "<source.js>".into(), Clone::clone)
-                                    .into(),
-                                raw: None,
-                                span: swc_common::DUMMY_SP,
-                            },
-                        ))),
+                        value: Box::new(if let Some(value) = &self.filepath {
+                            create_str_expression(value)
+                        } else {
+                            create_str_expression("<source.js>")
+                        }),
                     }),
                 ))];
 
                 if let Some(position) = span_to_position(span, self.location) {
                     meta_fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
                         swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                            key: swc_ecma_ast::PropName::Ident(create_ident("lineNumber")),
+                            key: create_prop_name("lineNumber"),
                             value: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Num(
                                 swc_ecma_ast::Number {
                                     value: position.start.line as f64,
@@ -504,7 +479,7 @@ impl<'a> State<'a> {
 
                     meta_fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
                         swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                            key: swc_ecma_ast::PropName::Ident(create_ident("columnNumber")),
+                            key: create_prop_name("columnNumber"),
                             value: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Num(
                                 swc_ecma_ast::Number {
                                     value: position.start.column as f64,
@@ -622,18 +597,14 @@ impl<'a> State<'a> {
         element: swc_ecma_ast::JSXElement,
     ) -> Result<swc_ecma_ast::Expr, String> {
         let children = self.jsx_children_to_expressions(element.children)?;
-        let mut name = jsx_element_name_to_identifier(element.opening.name);
+        let mut name = jsx_element_name_to_expression(element.opening.name);
 
         // If the name could be an identifier, but start with a lowercase letter,
         // it’s not a component.
         if let swc_ecma_ast::Expr::Ident(ident) = &name {
             let head = ident.as_ref().as_bytes();
             if matches!(head.first(), Some(b'a'..=b'z')) {
-                name = swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                    value: ident.sym.clone(),
-                    raw: None,
-                    span: ident.span,
-                }));
+                name = create_str_expression(&ident.sym);
             }
         }
 
@@ -803,104 +774,6 @@ fn find_directives(
     }
 
     Ok(directives)
-}
-
-/// Turn an JSX element name into an expression.
-fn jsx_element_name_to_identifier(node: swc_ecma_ast::JSXElementName) -> swc_ecma_ast::Expr {
-    match node {
-        swc_ecma_ast::JSXElementName::JSXMemberExpr(member_expr) => {
-            jsx_member_expression_to_expression(member_expr)
-        }
-        swc_ecma_ast::JSXElementName::JSXNamespacedName(namespace_name) => {
-            swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                value: format!("{}:{}", namespace_name.ns.sym, namespace_name.name.sym).into(),
-                raw: None,
-                span: swc_common::DUMMY_SP,
-            }))
-        }
-        swc_ecma_ast::JSXElementName::Ident(ident) => create_ident_or_literal(&ident),
-    }
-}
-
-/// Turn a JSX member expression name into a member expression.
-fn jsx_member_expression_to_expression(node: swc_ecma_ast::JSXMemberExpr) -> swc_ecma_ast::Expr {
-    swc_ecma_ast::Expr::Member(swc_ecma_ast::MemberExpr {
-        obj: Box::new(jsx_object_to_expression(node.obj)),
-        prop: jsx_ident_to_member_prop(&node.prop),
-        span: swc_common::DUMMY_SP,
-    })
-}
-
-/// Turn an ident into a member prop.
-fn jsx_ident_to_member_prop(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::MemberProp {
-    if is_identifier_name(node.as_ref()) {
-        swc_ecma_ast::MemberProp::Ident(swc_ecma_ast::Ident {
-            sym: node.sym.clone(),
-            optional: false,
-            span: node.span,
-        })
-    } else {
-        swc_ecma_ast::MemberProp::Computed(swc_ecma_ast::ComputedPropName {
-            expr: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                swc_ecma_ast::Str {
-                    value: node.sym.clone(),
-                    span: node.span,
-                    raw: None,
-                },
-            ))),
-            span: node.span,
-        })
-    }
-}
-
-/// Turn a JSX attribute name into a prop prop.
-fn jsx_attribute_name_to_prop_name(node: swc_ecma_ast::JSXAttrName) -> swc_ecma_ast::PropName {
-    match node {
-        swc_ecma_ast::JSXAttrName::JSXNamespacedName(namespace_name) => {
-            swc_ecma_ast::PropName::Str(swc_ecma_ast::Str {
-                value: format!("{}:{}", namespace_name.ns.sym, namespace_name.name.sym).into(),
-                span: swc_common::DUMMY_SP,
-                raw: None,
-            })
-        }
-        swc_ecma_ast::JSXAttrName::Ident(ident) => create_prop_name(&ident),
-    }
-}
-
-/// Turn a JSX object into an expression.
-fn jsx_object_to_expression(node: swc_ecma_ast::JSXObject) -> swc_ecma_ast::Expr {
-    match node {
-        swc_ecma_ast::JSXObject::Ident(ident) => create_ident_or_literal(&ident),
-        swc_ecma_ast::JSXObject::JSXMemberExpr(member_expr) => {
-            jsx_member_expression_to_expression(*member_expr)
-        }
-    }
-}
-
-/// Create either an ident expression or a literal expression.
-fn create_ident_or_literal(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::Expr {
-    if is_identifier_name(node.as_ref()) {
-        create_ident_expression(node.sym.as_ref())
-    } else {
-        swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-            value: node.sym.clone(),
-            span: node.span,
-            raw: None,
-        }))
-    }
-}
-
-/// Create a prop name.
-fn create_prop_name(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::PropName {
-    if is_identifier_name(node.as_ref()) {
-        swc_ecma_ast::PropName::Ident(create_ident(node.sym.as_ref()))
-    } else {
-        swc_ecma_ast::PropName::Str(swc_ecma_ast::Str {
-            value: node.sym.clone(),
-            span: node.span,
-            raw: None,
-        })
-    }
 }
 
 /// Turn JSX text into a string.

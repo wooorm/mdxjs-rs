@@ -7,8 +7,10 @@ extern crate swc_common;
 extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
-    create_binary_expression, create_ident, create_ident_expression, create_member_expression,
-    is_identifier_name, is_literal_name, position_to_string, span_to_position,
+    create_binary_expression, create_bool_expression, create_ident, create_ident_expression,
+    create_member, create_member_expression_from_str, create_member_prop_from_str,
+    create_prop_name, create_str, create_str_expression, is_identifier_name, is_literal_name,
+    position_to_string, span_to_position,
 };
 use markdown::{unist::Position, Location};
 use swc_common::util::take::Take;
@@ -167,22 +169,8 @@ impl<'a> State<'a> {
 
             defaults.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
                 swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                    key: if is_identifier_name(name) {
-                        swc_ecma_ast::PropName::Ident(create_ident(name))
-                    } else {
-                        swc_ecma_ast::PropName::Str(swc_ecma_ast::Str {
-                            value: name.clone().into(),
-                            span: swc_common::DUMMY_SP,
-                            raw: None,
-                        })
-                    },
-                    value: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                        swc_ecma_ast::Str {
-                            value: name.clone().into(),
-                            span: swc_common::DUMMY_SP,
-                            raw: None,
-                        },
-                    ))),
+                    key: create_prop_name(name),
+                    value: Box::new(create_str_expression(name)),
                 }),
             )));
 
@@ -287,13 +275,9 @@ impl<'a> State<'a> {
                     });
                 }
                 swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
-                    callee: swc_ecma_ast::Callee::Expr(Box::new(swc_ecma_ast::Expr::Member(
-                        swc_ecma_ast::MemberExpr {
-                            obj: Box::new(create_ident_expression("Object")),
-                            prop: swc_ecma_ast::MemberProp::Ident(create_ident("assign")),
-                            span: swc_common::DUMMY_SP,
-                        },
-                    ))),
+                    callee: swc_ecma_ast::Callee::Expr(Box::new(
+                        create_member_expression_from_str("Object.assign"),
+                    )),
                     args,
                     type_args: None,
                     span: swc_common::DUMMY_SP,
@@ -338,7 +322,7 @@ impl<'a> State<'a> {
                     if key == "MDXLayout" {
                         props.push(swc_ecma_ast::ObjectPatProp::KeyValue(
                             swc_ecma_ast::KeyValuePatProp {
-                                key: swc_ecma_ast::PropName::Ident(create_ident("wrapper")),
+                                key: create_prop_name("wrapper"),
                                 value: Box::new(swc_ecma_ast::Pat::Ident(
                                     swc_ecma_ast::BindingIdent {
                                         id: create_ident(&key),
@@ -402,24 +386,10 @@ impl<'a> State<'a> {
                             id: create_ident(&name),
                             type_ann: None,
                         }),
-                        init: Some(Box::new(swc_ecma_ast::Expr::Member(
-                            swc_ecma_ast::MemberExpr {
-                                obj: Box::new(create_ident_expression("_components")),
-                                prop: swc_ecma_ast::MemberProp::Computed(
-                                    swc_ecma_ast::ComputedPropName {
-                                        expr: Box::new(swc_ecma_ast::Expr::Lit(
-                                            swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                                                value: id.into(),
-                                                span: swc_common::DUMMY_SP,
-                                                raw: None,
-                                            }),
-                                        )),
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                ),
-                                span: swc_common::DUMMY_SP,
-                            },
-                        ))),
+                        init: Some(Box::new(swc_ecma_ast::Expr::Member(create_member(
+                            create_ident_expression("_components"),
+                            create_member_prop_from_str(&id),
+                        )))),
                         definite: false,
                     });
                 }
@@ -457,22 +427,11 @@ impl<'a> State<'a> {
             let mut args = vec![
                 swc_ecma_ast::ExprOrSpread {
                     spread: None,
-                    expr: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                        swc_ecma_ast::Str {
-                            value: id.clone().into(),
-                            span: swc_common::DUMMY_SP,
-                            raw: None,
-                        },
-                    ))),
+                    expr: Box::new(create_str_expression(&id)),
                 },
                 swc_ecma_ast::ExprOrSpread {
                     spread: None,
-                    expr: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Bool(
-                        swc_ecma_ast::Bool {
-                            value: component,
-                            span: swc_common::DUMMY_SP,
-                        },
-                    ))),
+                    expr: Box::new(create_bool_expression(component)),
                 },
             ];
 
@@ -481,13 +440,7 @@ impl<'a> State<'a> {
                 if self.development {
                     args.push(swc_ecma_ast::ExprOrSpread {
                         spread: None,
-                        expr: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                            swc_ecma_ast::Str {
-                                value: position_to_string(position).into(),
-                                span: swc_common::DUMMY_SP,
-                                raw: None,
-                            },
-                        ))),
+                        expr: Box::new(create_str_expression(&position_to_string(position))),
                     });
                 }
             }
@@ -495,7 +448,7 @@ impl<'a> State<'a> {
             statements.push(swc_ecma_ast::Stmt::If(swc_ecma_ast::IfStmt {
                 test: Box::new(swc_ecma_ast::Expr::Unary(swc_ecma_ast::UnaryExpr {
                     op: swc_ecma_ast::UnaryOp::Bang,
-                    arg: Box::new(create_member_expression(&id)),
+                    arg: Box::new(create_member_expression_from_str(&id)),
                     span: swc_common::DUMMY_SP,
                 })),
                 cons: Box::new(swc_ecma_ast::Stmt::Expr(swc_ecma_ast::ExprStmt {
@@ -971,11 +924,7 @@ fn create_import_provider(source: &str) -> swc_ecma_ast::ModuleItem {
                     is_type_only: false,
                 },
             )],
-            src: Box::new(swc_ecma_ast::Str {
-                value: source.into(),
-                span: swc_common::DUMMY_SP,
-                raw: None,
-            }),
+            src: Box::new(create_str(source)),
             type_only: false,
             asserts: None,
             span: swc_common::DUMMY_SP,
@@ -1023,44 +972,20 @@ fn create_error_helper(development: bool, path: Option<String>) -> swc_ecma_ast:
     }
 
     let mut message = vec![
-        swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-            value: "Expected ".into(),
-            span: swc_common::DUMMY_SP,
-            raw: None,
-        })),
+        create_str_expression("Expected "),
         // `component ? "component" : "object"`
         swc_ecma_ast::Expr::Paren(swc_ecma_ast::ParenExpr {
             expr: Box::new(swc_ecma_ast::Expr::Cond(swc_ecma_ast::CondExpr {
                 test: Box::new(create_ident_expression("component")),
-                cons: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                    swc_ecma_ast::Str {
-                        value: "component".into(),
-                        span: swc_common::DUMMY_SP,
-                        raw: None,
-                    },
-                ))),
-                alt: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                    swc_ecma_ast::Str {
-                        value: "object".into(),
-                        span: swc_common::DUMMY_SP,
-                        raw: None,
-                    },
-                ))),
+                cons: Box::new(create_str_expression("component")),
+                alt: Box::new(create_str_expression("object")),
                 span: swc_common::DUMMY_SP,
             })),
             span: swc_common::DUMMY_SP,
         }),
-        swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-            value: " `".into(),
-            span: swc_common::DUMMY_SP,
-            raw: None,
-        })),
+        create_str_expression(" `"),
         create_ident_expression("id"),
-        swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-            value: "` to be defined: you likely forgot to import, pass, or provide it.".into(),
-            span: swc_common::DUMMY_SP,
-            raw: None,
-        })),
+        create_str_expression("` to be defined: you likely forgot to import, pass, or provide it."),
     ];
 
     // `place ? "\nIt’s referenced in your code at `" + place+ "`" : ""`
@@ -1070,31 +995,17 @@ fn create_error_helper(development: bool, path: Option<String>) -> swc_ecma_ast:
                 test: Box::new(create_ident_expression("place")),
                 cons: Box::new(create_binary_expression(
                     vec![
-                        swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                            value: "\nIt’s referenced in your code at `".into(),
-                            span: swc_common::DUMMY_SP,
-                            raw: None,
-                        })),
+                        create_str_expression("\nIt’s referenced in your code at `"),
                         create_ident_expression("place"),
-                        swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                            value: if let Some(path) = path {
-                                format!("` in `{}`", path).into()
-                            } else {
-                                "`".into()
-                            },
-                            span: swc_common::DUMMY_SP,
-                            raw: None,
-                        })),
+                        if let Some(path) = path {
+                            create_str_expression(&format!("` in `{}`", path))
+                        } else {
+                            create_str_expression("`")
+                        },
                     ],
                     swc_ecma_ast::BinaryOp::Add,
                 )),
-                alt: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(
-                    swc_ecma_ast::Str {
-                        value: "".into(),
-                        span: swc_common::DUMMY_SP,
-                        raw: None,
-                    },
-                ))),
+                alt: Box::new(create_str_expression("")),
                 span: swc_common::DUMMY_SP,
             })),
             span: swc_common::DUMMY_SP,
