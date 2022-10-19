@@ -372,16 +372,6 @@ fn transform_mdxjs_esm(
     esm: &hast::MdxjsEsm,
 ) -> Result<Option<swc_ecma_ast::JSXElementChild>, String> {
     let mut module = parse_esm_to_tree(&esm.value, &esm.stops, context.location)?;
-    let mut index = 0;
-
-    // To do: check that identifiers are not duplicated across esm blocks.
-    while index < module.body.len() {
-        if !matches!(module.body[index], swc_ecma_ast::ModuleItem::ModuleDecl(_)) {
-            return Err("Unexpected `statement` in code: only import/exports are supported".into());
-        }
-        index += 1;
-    }
-
     context.esm.append(&mut module.body);
     Ok(None)
 }
@@ -589,10 +579,10 @@ fn prop_to_attr_name(prop: &str) -> String {
             }
 
             if dash {
-                if start != index {
-                    result.push_str(&prop[start..index]);
+                result.push_str(&prop[start..index]);
+                if byte != b'-' {
+                    result.push('-');
                 }
-                result.push('-');
                 result.push(byte.to_ascii_lowercase().into());
                 start = index + 1;
             }
@@ -916,6 +906,25 @@ mod tests {
             "should support an `Element` w/ children",
         );
 
+        assert_eq!(
+            serialize(
+                &hast_util_to_swc(
+                    &hast::Node::Element(hast::Element {
+                        tag_name: "svg".into(),
+                        properties: vec![],
+                        children: vec![],
+                        position: None,
+                    }),
+                    None,
+                    None
+                )?
+                .module,
+                None
+            ),
+            "<svg />;\n",
+            "should support an `Element` in the SVG space",
+        );
+
         Ok(())
     }
 
@@ -1006,9 +1015,11 @@ mod tests {
                     &hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
                         properties: vec![
-                            ("data123".into(), hast::PropertyValue::Boolean(true),),
-                            ("dataFoo".into(), hast::PropertyValue::Boolean(true),),
-                            ("dataBAR".into(), hast::PropertyValue::Boolean(true),)
+                            ("data123".into(), hast::PropertyValue::Boolean(true)),
+                            ("dataFoo".into(), hast::PropertyValue::Boolean(true)),
+                            ("dataBAR".into(), hast::PropertyValue::Boolean(true)),
+                            ("data+invalid".into(), hast::PropertyValue::Boolean(true)),
+                            ("data--x".into(), hast::PropertyValue::Boolean(true))
                         ],
                         children: vec![],
                         position: None,
@@ -1019,7 +1030,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<a data-123 data-foo data-b-a-r/>;\n",
+            "<a data-123 data-foo data-b-a-r data+invalid data--x/>;\n",
             "should support an `Element` w/ data attributes",
         );
 
@@ -1181,11 +1192,52 @@ mod tests {
             "should support an `MdxElement` (element, member expression)",
         );
 
+        assert_eq!(
+            serialize(
+                &hast_util_to_swc(
+                    &hast::Node::MdxJsxElement(hast::MdxJsxElement {
+                        name: Some("svg".into()),
+                        attributes: vec![],
+                        children: vec![],
+                        position: None,
+                    }),
+                    None,
+                    None
+                )?
+                .module,
+                None
+            ),
+            "<svg />;\n",
+            "should support an `MdxElement` (element, `<svg>`)",
+        );
+
         Ok(())
     }
 
     #[test]
     fn mdx_element_attributes() -> Result<(), String> {
+        assert_eq!(
+            serialize(
+                &hast_util_to_swc(
+                    &hast::Node::MdxJsxElement(hast::MdxJsxElement {
+                        name: Some("a".into()),
+                        attributes: vec![hast::AttributeContent::Property(hast::MdxJsxAttribute {
+                            name: "b:c".into(),
+                            value: None
+                        })],
+                        children: vec![],
+                        position: None,
+                    }),
+                    None,
+                    None
+                )?
+                .module,
+                None
+            ),
+            "<a b:c/>;\n",
+            "should support an `MdxElement` (element, namespace attribute name)",
+        );
+
         assert_eq!(
             serialize(
                 &hast_util_to_swc(
@@ -1527,6 +1579,65 @@ mod tests {
             serialize(&text_ast.module, Some(&text_ast.comments)),
             "<>{\"a\"}</>;\n",
             "should support a `Text` (serialize)",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn text_empty() -> Result<(), String> {
+        let text_ast = hast_util_to_swc(
+            &hast::Node::Text(hast::Text {
+                value: "".into(),
+                position: None,
+            }),
+            None,
+            None,
+        )?;
+
+        assert_eq!(
+            text_ast,
+            Program {
+                path: None,
+                module: swc_ecma_ast::Module {
+                    shebang: None,
+                    body: vec![],
+                    span: swc_common::DUMMY_SP,
+                },
+                comments: vec![],
+            },
+            "should support an empty `Text`",
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn doctype() -> Result<(), String> {
+        let doctype_ast = hast_util_to_swc(
+            &hast::Node::Doctype(hast::Doctype { position: None }),
+            None,
+            None,
+        )?;
+
+        assert_eq!(
+            doctype_ast,
+            Program {
+                path: None,
+                module: swc_ecma_ast::Module {
+                    shebang: None,
+                    body: vec![],
+                    span: swc_common::DUMMY_SP,
+                },
+                comments: vec![],
+            },
+            "should support a `Doctype`",
+        );
+
+        assert_eq!(
+            serialize(&doctype_ast.module, Some(&doctype_ast.comments)),
+            "",
+            "should support a `Doctype` (serialize)",
         );
 
         Ok(())
