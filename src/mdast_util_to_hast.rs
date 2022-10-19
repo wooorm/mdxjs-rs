@@ -27,6 +27,7 @@
 //! SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::hast;
+use crate::swc_utils::inter_element_whitespace;
 use markdown::{mdast, sanitize, unist::Position};
 
 // To do: support these compile options:
@@ -46,6 +47,7 @@ use markdown::{mdast, sanitize, unist::Position};
 // To do:
 // * revert references when undefined?
 //   <https://github.com/syntax-tree/mdast-util-to-hast/blob/c393d0a/lib/revert.js>
+// * when externalizing, move mdx unraveling somewhere else.
 
 /// State needed to turn mdast into hast.
 #[derive(Debug)]
@@ -925,12 +927,41 @@ fn transform_paragraph(
     node: &mdast::Node,
     paragraph: &mdast::Paragraph,
 ) -> Result {
-    Result::Node(hast::Node::Element(hast::Element {
-        tag_name: "p".into(),
-        properties: vec![],
-        children: all(state, node),
-        position: paragraph.position.clone(),
-    }))
+    let children = all(state, node);
+    let mut all = true;
+    let mut one_or_more = false;
+    let mut index = 0;
+
+    while index < children.len() {
+        match &children[index] {
+            hast::Node::MdxJsxElement(_) | hast::Node::MdxExpression(_) => {
+                one_or_more = true;
+                index += 1;
+                continue;
+            }
+            hast::Node::Text(node) => {
+                if inter_element_whitespace(&node.value) {
+                    index += 1;
+                    continue;
+                }
+            }
+            _ => {}
+        }
+
+        all = false;
+        break;
+    }
+
+    if all && one_or_more {
+        Result::Fragment(children)
+    } else {
+        Result::Node(hast::Node::Element(hast::Element {
+            tag_name: "p".into(),
+            properties: vec![],
+            children,
+            position: paragraph.position.clone(),
+        }))
+    }
 }
 
 /// [`Root`][mdast::Root].

@@ -30,7 +30,9 @@ extern crate swc_common;
 extern crate swc_ecma_ast;
 use crate::hast;
 use crate::swc::{parse_esm_to_tree, parse_expression_to_tree};
-use crate::swc_utils::{create_ident, parse_jsx_name, position_to_span, JsxName};
+use crate::swc_utils::{
+    create_ident, inter_element_whitespace, parse_jsx_name, position_to_span, JsxName,
+};
 use core::str;
 use markdown::{Location, MdxExpressionKind};
 
@@ -547,24 +549,6 @@ fn create_jsx_attr_name(name: &str) -> swc_ecma_ast::JSXAttrName {
         // `<a b />`
         JsxName::Normal(name) => swc_ecma_ast::JSXAttrName::Ident(create_ident(name)),
     }
-}
-
-/// Check if a text value is inter-element whitespace.
-///
-/// See: <https://github.com/syntax-tree/hast-util-whitespace>.
-fn inter_element_whitespace(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    let mut index = 0;
-
-    while index < bytes.len() {
-        match bytes[index] {
-            b'\t' | 0x0C | b'\r' | b'\n' | b' ' => {}
-            _ => return false,
-        }
-        index += 1;
-    }
-
-    true
 }
 
 /// Turn a hast property into something that particularly React understands.

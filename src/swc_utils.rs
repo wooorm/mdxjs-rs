@@ -437,3 +437,21 @@ pub fn parse_jsx_name(name: &str) -> JsxName {
         }
     }
 }
+
+/// Check if a text value is inter-element whitespace.
+///
+/// See: <https://github.com/syntax-tree/hast-util-whitespace>.
+pub fn inter_element_whitespace(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    let mut index = 0;
+
+    while index < bytes.len() {
+        match bytes[index] {
+            b'\t' | 0x0C | b'\r' | b'\n' | b' ' => {}
+            _ => return false,
+        }
+        index += 1;
+    }
+
+    true
+}
