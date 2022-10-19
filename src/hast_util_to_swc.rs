@@ -36,6 +36,8 @@ use crate::swc_utils::{
 use core::str;
 use markdown::{Location, MdxExpressionKind};
 
+pub const MAGIC_EXPLICIT_MARKER: u32 = 1337;
+
 /// Result.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Program {
@@ -259,7 +261,7 @@ fn transform_element(
     }
 
     Ok(Some(swc_ecma_ast::JSXElementChild::JSXElement(
-        create_element(&element.tag_name, attrs, children, node),
+        create_element(&element.tag_name, attrs, children, node, false),
     )))
 }
 
@@ -338,7 +340,7 @@ fn transform_mdx_jsx_element(
     }
 
     Ok(Some(if let Some(name) = &element.name {
-        swc_ecma_ast::JSXElementChild::JSXElement(create_element(name, attrs, children, node))
+        swc_ecma_ast::JSXElementChild::JSXElement(create_element(name, attrs, children, node, true))
     } else {
         swc_ecma_ast::JSXElementChild::JSXFragment(create_fragment(children, node))
     }))
@@ -461,7 +463,16 @@ fn create_element(
     attrs: Vec<swc_ecma_ast::JSXAttrOrSpread>,
     children: Vec<swc_ecma_ast::JSXElementChild>,
     node: &hast::Node,
+    explicit: bool,
 ) -> Box<swc_ecma_ast::JSXElement> {
+    let mut span = position_to_span(node.position());
+
+    span.ctxt = if explicit {
+        swc_common::SyntaxContext::from_u32(MAGIC_EXPLICIT_MARKER)
+    } else {
+        swc_common::SyntaxContext::empty()
+    };
+
     Box::new(swc_ecma_ast::JSXElement {
         opening: swc_ecma_ast::JSXOpeningElement {
             name: create_jsx_name(name),
@@ -479,7 +490,7 @@ fn create_element(
             })
         },
         children,
-        span: position_to_span(node.position()),
+        span,
     })
 }
 

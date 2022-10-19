@@ -160,5 +160,80 @@ export default MDXContent;
         "should support `options.pragma`, `options.pragma_frag`, `options.pragma_import_source`",
     );
 
+    assert_eq!(
+        compile(
+            "<x>a</x>
+<x>
+  b
+</x>
+",
+            &Default::default()
+        )?,
+        "import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from \"react/jsx-runtime\";
+function _createMdxContent(props) {
+    const _components = Object.assign({
+        x: \"x\",
+        p: \"p\"
+    }, props.components);
+    return _jsxs(_Fragment, {
+        children: [
+            _jsx(\"x\", {
+                children: \"a\"
+            }),
+            \"\\n\",
+            _jsx(\"x\", {
+                children: _jsx(_components.p, {
+                    children: \"b\"
+                })
+            })
+        ]
+    });
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
+        children: _jsx(_createMdxContent, props)
+    })) : _createMdxContent(props);
+}
+export default MDXContent;
+",
+        "should unravel paragraphs",
+    );
+
+    assert_eq!(
+        compile(
+            "<h1>asd</h1>
+# qwe
+",
+            &Default::default()
+        )?,
+        "import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from \"react/jsx-runtime\";
+function _createMdxContent(props) {
+    const _components = Object.assign({
+        h1: \"h1\"
+    }, props.components);
+    return _jsxs(_Fragment, {
+        children: [
+            _jsx(\"h1\", {
+                children: \"asd\"
+            }),
+            \"\\n\",
+            _jsx(_components.h1, {
+                children: \"qwe\"
+            })
+        ]
+    });
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
+        children: _jsx(_createMdxContent, props)
+    })) : _createMdxContent(props);
+}
+export default MDXContent;
+",
+        "should not support overwriting explicit JSX",
+    );
+
     Ok(())
 }

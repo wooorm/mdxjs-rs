@@ -5,7 +5,7 @@
 
 extern crate swc_common;
 extern crate swc_ecma_ast;
-use crate::hast_util_to_swc::Program;
+use crate::hast_util_to_swc::{Program, MAGIC_EXPLICIT_MARKER};
 use crate::swc_utils::{
     create_binary_expression, create_bool_expression, create_ident, create_ident_expression,
     create_member, create_member_expression_from_str, create_member_prop_from_str,
@@ -675,6 +675,8 @@ impl<'a> VisitMut for State<'a> {
                     }
                     // `<foo>`, `<Foo>`, `<$>`, `<_bar>`, `<a_b>`.
                     swc_ecma_ast::JSXElementName::Ident(d) => {
+                        let explicit_jsx = node.span.ctxt.as_u32() == MAGIC_EXPLICIT_MARKER;
+
                         // If the name is a valid ES identifier, and it doesn’t
                         // start with a lowercase letter, it’s a component.
                         // For example, `$foo`, `_bar`, `Baz` are all component
@@ -683,19 +685,21 @@ impl<'a> VisitMut for State<'a> {
                         let id = d.sym.to_string();
 
                         if is_literal_name(&id) {
-                            // To do: ignore explicit JSX?
-
                             let mut invalid = None;
 
                             let name = if is_identifier_name(&id) {
-                                swc_ecma_ast::JSXElementName::JSXMemberExpr(
-                                    swc_ecma_ast::JSXMemberExpr {
-                                        obj: swc_ecma_ast::JSXObject::Ident(create_ident(
-                                            "_components",
-                                        )),
-                                        prop: create_ident(&id),
-                                    },
-                                )
+                                if explicit_jsx {
+                                    swc_ecma_ast::JSXElementName::Ident(create_ident(&id))
+                                } else {
+                                    swc_ecma_ast::JSXElementName::JSXMemberExpr(
+                                        swc_ecma_ast::JSXMemberExpr {
+                                            obj: swc_ecma_ast::JSXObject::Ident(create_ident(
+                                                "_components",
+                                            )),
+                                            prop: create_ident(&id),
+                                        },
+                                    )
+                                }
                             } else {
                                 let name = if let Some(invalid_ref) =
                                     info.aliases.iter().find(|d| d.0 == id)
