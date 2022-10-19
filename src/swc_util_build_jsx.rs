@@ -990,10 +990,10 @@ mod tests {
     fn directive_jsx_non_identifier() -> Result<(), String> {
         assert_eq!(
             compile(
-                "/* @jsxRuntime classic @jsx a.b-c */\n<x />",
+                "/* @jsxRuntime classic @jsx a.b-c.d! */\n<x />",
                 &Options::default()
             )?,
-            "a[\"b-c\"](\"x\");\n",
+            "a[\"b-c\"][\"d!\"](\"x\");\n",
             "should support an `@jsx` directive set to an invalid identifier"
         );
 

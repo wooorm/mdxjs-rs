@@ -125,12 +125,10 @@ impl<'a> VisitMut for RewriteContext<'a> {
         let hi_rel = span.hi.0 as usize;
 
         if lo_rel > self.prefix_len && hi_rel > self.prefix_len {
-            if let Some(lo_abs) =
-                Location::relative_to_absolute(self.stops, lo_rel - 1 - self.prefix_len)
-            {
-                if let Some(hi_abs) =
-                    Location::relative_to_absolute(self.stops, hi_rel - 1 - self.prefix_len)
-                {
+            let lo_clean = Location::relative_to_absolute(self.stops, lo_rel - 1 - self.prefix_len);
+            let hi_clean = Location::relative_to_absolute(self.stops, hi_rel - 1 - self.prefix_len);
+            if let Some(lo_abs) = lo_clean {
+                if let Some(hi_abs) = hi_clean {
                     result = Span {
                         lo: BytePos(lo_abs as u32 + 1),
                         hi: BytePos(hi_abs as u32 + 1),
@@ -454,4 +452,28 @@ pub fn inter_element_whitespace(value: &str) -> bool {
     }
 
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn bytepos_to_point_test() {
+        assert_eq!(
+            bytepos_to_point(BytePos(123), None),
+            None,
+            "should support no location"
+        );
+    }
+
+    #[test]
+    fn prefix_error_with_point_test() {
+        assert_eq!(
+            prefix_error_with_point("aaa".into(), None),
+            "aaa",
+            "should support no point"
+        );
+    }
 }
