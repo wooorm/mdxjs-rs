@@ -1,4 +1,5 @@
-//! Lots of helpers for dealing with SWC, particularly from unist.
+//! Lots of helpers for dealing with SWC, particularly from unist, and for
+//! building its ES AST.
 
 use markdown::{
     id_cont, id_start,

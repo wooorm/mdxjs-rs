@@ -1,4 +1,4 @@
-//! To do.
+//! Turn JSX into function calls.
 
 extern crate swc_common;
 extern crate swc_ecma_ast;

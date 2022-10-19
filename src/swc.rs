@@ -1,8 +1,10 @@
 //! Bridge between `markdown-rs` and SWC.
+
 extern crate markdown;
 extern crate swc_common;
 extern crate swc_ecma_ast;
 extern crate swc_ecma_parser;
+
 use crate::swc_utils::{bytepos_to_point, prefix_error_with_point, RewriteContext};
 use markdown::{mdast::Stop, unist::Point, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
