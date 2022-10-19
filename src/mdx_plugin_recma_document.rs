@@ -11,7 +11,7 @@ use markdown::{
     Location,
 };
 
-/// JSX runtimes (default: `JsxRuntime: Automatic`).
+/// JSX runtimes (default: `JsxRuntime::Automatic`).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum JsxRuntime {
     /// Automatic runtime.
@@ -68,6 +68,7 @@ impl Default for Options {
     }
 }
 
+/// Wrap the SWC ES AST nodes coming from hast into a whole document.
 pub fn mdx_plugin_recma_document(
     program: &mut Program,
     options: &Options,

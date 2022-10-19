@@ -103,15 +103,18 @@ pub fn point_to_string(point: &Point) -> String {
 /// > are missing or incremented by `1` when valid.
 #[derive(Debug, Default, Clone)]
 pub struct RewriteContext<'a> {
+    /// Size of prefix considered outside this tree.
     pub prefix_len: usize,
+    /// Stops in the original source.
     pub stops: &'a [Stop],
+    /// Location info.
     pub location: Option<&'a Location>,
 }
 
 impl<'a> VisitMut for RewriteContext<'a> {
     noop_visit_mut_type!();
 
-    // Rewrite spans.
+    /// Rewrite spans.
     fn visit_mut_span(&mut self, span: &mut Span) {
         let mut result = DUMMY_SP;
         let lo_rel = span.lo.0 as usize;
@@ -217,6 +220,7 @@ pub fn create_member_expression(name: &str) -> Expr {
     }
 }
 
+/// Create a member prop.
 pub fn create_member_prop(name: &str) -> MemberProp {
     if is_identifier_name(name) {
         MemberProp::Ident(create_ident(name))
@@ -239,7 +243,7 @@ pub fn is_literal_name(name: &str) -> bool {
     matches!(name.as_bytes().first(), Some(b'a'..=b'z')) || !is_identifier_name(name)
 }
 
-// Check if a name is a valid identifier name.
+/// Check if a name is a valid identifier name.
 pub fn is_identifier_name(name: &str) -> bool {
     for (index, char) in name.chars().enumerate() {
         if if index == 0 {
@@ -256,23 +260,23 @@ pub fn is_identifier_name(name: &str) -> bool {
 
 /// Different kinds of JS names.
 pub enum JsName<'a> {
-    // `a.b.c`
+    /// Member: `a.b.c`
     Member(Vec<&'a str>),
-    // `a`
+    /// Name: `a`
     Normal(&'a str),
 }
 
 /// Different kinds of JSX names.
 pub enum JsxName<'a> {
-    // `a.b.c`
+    /// Member: `a.b.c`
     Member(Vec<&'a str>),
-    // `a:b`
+    /// Namespace: `a:b`
     Namespace(&'a str, &'a str),
-    // `a`
+    /// Name: `a`
     Normal(&'a str),
 }
 
-/// To do.
+/// Parse a JavaScript member expression or name.
 pub fn parse_js_name(name: &str) -> JsName {
     let bytes = name.as_bytes();
     let mut index = 0;

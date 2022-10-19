@@ -220,6 +220,7 @@ impl MdxParseOptions {
 pub struct Options {
     /// Configuration that describes how to parse from markdown.
     pub parse: MdxParseOptions,
+
     // /// List of markdown extensions, with dot.
     // ///
     // /// Default: `vec![".md".into(), ".markdown".into(), ".mdown".into(), ".mkdn".into(), ".mkd".into(), ".mdwn".into(), ".mkdown".into(), ".ron".into()]`.
@@ -338,7 +339,8 @@ pub struct Options {
 }
 
 impl Default for Options {
-    /// Use the automatic JSX runtime with React.
+    /// Default options to use the automatic JSX runtime with React
+    /// and handle MDX according to `CommonMark`.
     fn default() -> Self {
         Self {
             parse: MdxParseOptions::default(),

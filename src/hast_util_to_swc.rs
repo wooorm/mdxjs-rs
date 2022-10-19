@@ -37,6 +37,7 @@ use markdown::{Location, MdxExpressionKind};
 /// Result.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Program {
+    /// File path.
     pub path: Option<String>,
     /// JS AST.
     pub module: swc_ecma_ast::Module,
@@ -47,10 +48,13 @@ pub struct Program {
 /// Whether we’re in HTML or SVG.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Space {
+    /// The HTML space.
     Html,
+    /// The SVG space.
     Svg,
 }
 
+/// Context used to compile hast into SWC’s ES AST.
 #[derive(Debug)]
 struct Context<'a> {
     /// Whether we’re in HTML or SVG.
@@ -65,6 +69,7 @@ struct Context<'a> {
     location: Option<&'a Location>,
 }
 
+/// Compile hast into SWC’s ES AST.
 pub fn hast_util_to_swc(
     tree: &hast::Node,
     path: Option<String>,
@@ -544,6 +549,9 @@ fn create_jsx_attr_name(name: &str) -> swc_ecma_ast::JSXAttrName {
     }
 }
 
+/// Check if a text value is inter-element whitespace.
+///
+/// See: <https://github.com/syntax-tree/hast-util-whitespace>.
 fn inter_element_whitespace(value: &str) -> bool {
     let bytes = value.as_bytes();
     let mut index = 0;
@@ -666,6 +674,7 @@ fn prop_to_attr_name(prop: &str) -> String {
 //     .join("\n\n")
 // );
 // ```
+/// hast property names to React property names, if they differ.
 const PROP_TO_REACT_PROP: [(&str, &str); 17] = [
     ("classId", "classID"),
     ("dataType", "datatype"),
@@ -686,6 +695,7 @@ const PROP_TO_REACT_PROP: [(&str, &str); 17] = [
     ("xmlnsXLink", "xmlnsXlink"),
 ];
 
+/// hast property names to HTML attribute names, if they differ.
 const PROP_TO_ATTR_EXCEPTIONS_SHARED: [(&str, &str); 48] = [
     ("ariaActiveDescendant", "aria-activedescendant"),
     ("ariaAtomic", "aria-atomic"),

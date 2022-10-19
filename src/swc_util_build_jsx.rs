@@ -23,6 +23,7 @@ pub struct Options {
     pub development: bool,
 }
 
+/// Compile JSX away to function calls.
 pub fn swc_util_build_jsx(
     program: &mut Program,
     options: &Options,
@@ -140,6 +141,7 @@ pub fn swc_util_build_jsx(
     Ok(())
 }
 
+/// Info gathered from comments.
 #[derive(Debug, Default, Clone)]
 struct Directives {
     /// Inferred JSX runtime.
@@ -157,17 +159,27 @@ struct Directives {
 struct State<'a> {
     /// Location info.
     location: Option<&'a Location>,
+    /// Whether walking the tree produced an error.
+    error: Option<String>,
+    /// Path to file.
+    filepath: Option<String>,
     /// Whether the user is in development mode.
     development: bool,
-    automatic: bool,
+    /// Whether to import `Fragment`.
     import_fragment: bool,
+    /// Whether to import `jsx`.
     import_jsx: bool,
+    /// Whether to import `jsxs`.
     import_jsxs: bool,
+    /// Whether to import `jsxDEV`.
     import_jsx_dev: bool,
-    error: Option<String>,
-    filepath: Option<String>,
-
+    /// Whether we’re building in the automatic or classic runtime.
+    automatic: bool,
+    /// Expression (ident or member) to use for `createElement` calls in
+    /// the classic runtime.
     create_element_expression: swc_ecma_ast::Expr,
+    /// Expression (ident or member) to use as fragment symbol in the classic
+    /// runtime.
     fragment_expression: swc_ecma_ast::Expr,
 }
 
@@ -387,6 +399,7 @@ impl<'a> State<'a> {
         Ok((props, key))
     }
 
+    /// Turn the parsed parts from fragments or elements into a call.
     fn jsx_expressions_to_call(
         &mut self,
         span: &swc_common::Span,
@@ -646,6 +659,7 @@ impl<'a> State<'a> {
 impl<'a> VisitMut for State<'a> {
     noop_visit_mut_type!();
 
+    /// Visit expressions, rewriting JSX, and walking deeper.
     fn visit_mut_expr(&mut self, expr: &mut swc_ecma_ast::Expr) {
         let result = match expr {
             swc_ecma_ast::Expr::JSXElement(element) => {
@@ -671,19 +685,6 @@ impl<'a> VisitMut for State<'a> {
             expr.visit_mut_children_with(self);
         }
     }
-
-    // Exit: Program
-    //      Add import
-
-    // Exit JSX element/fragment
-    //      - compile children
-    //      - compile name
-    //          - attributes
-    //      - `jsxDEV` w/ file path, line, column
-
-    // Replace
-
-    // Refs: https://github.com/swc-project/swc/blob/main/crates/swc_ecma_transforms_react/src/jsx/mod.rs
 }
 
 /// Find directives in comments.
@@ -804,6 +805,7 @@ fn find_directives(
     Ok(directives)
 }
 
+/// Turn an JSX element name into an expression.
 fn jsx_element_name_to_identifier(node: swc_ecma_ast::JSXElementName) -> swc_ecma_ast::Expr {
     match node {
         swc_ecma_ast::JSXElementName::JSXMemberExpr(member_expr) => {
@@ -820,6 +822,7 @@ fn jsx_element_name_to_identifier(node: swc_ecma_ast::JSXElementName) -> swc_ecm
     }
 }
 
+/// Turn a JSX member expression name into a member expression.
 fn jsx_member_expression_to_expression(node: swc_ecma_ast::JSXMemberExpr) -> swc_ecma_ast::Expr {
     swc_ecma_ast::Expr::Member(swc_ecma_ast::MemberExpr {
         obj: Box::new(jsx_object_to_expression(node.obj)),
@@ -828,6 +831,7 @@ fn jsx_member_expression_to_expression(node: swc_ecma_ast::JSXMemberExpr) -> swc
     })
 }
 
+/// Turn an ident into a member prop.
 fn jsx_ident_to_member_prop(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::MemberProp {
     if is_identifier_name(node.as_ref()) {
         swc_ecma_ast::MemberProp::Ident(swc_ecma_ast::Ident {
@@ -849,6 +853,7 @@ fn jsx_ident_to_member_prop(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::MemberP
     }
 }
 
+/// Turn a JSX attribute name into a prop prop.
 fn jsx_attribute_name_to_prop_name(node: swc_ecma_ast::JSXAttrName) -> swc_ecma_ast::PropName {
     match node {
         swc_ecma_ast::JSXAttrName::JSXNamespacedName(namespace_name) => {
@@ -862,6 +867,7 @@ fn jsx_attribute_name_to_prop_name(node: swc_ecma_ast::JSXAttrName) -> swc_ecma_
     }
 }
 
+/// Turn a JSX object into an expression.
 fn jsx_object_to_expression(node: swc_ecma_ast::JSXObject) -> swc_ecma_ast::Expr {
     match node {
         swc_ecma_ast::JSXObject::Ident(ident) => create_ident_or_literal(&ident),
@@ -871,6 +877,7 @@ fn jsx_object_to_expression(node: swc_ecma_ast::JSXObject) -> swc_ecma_ast::Expr
     }
 }
 
+/// Create either an ident expression or a literal expression.
 fn create_ident_or_literal(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::Expr {
     if is_identifier_name(node.as_ref()) {
         create_ident_expression(node.sym.as_ref())
@@ -883,6 +890,7 @@ fn create_ident_or_literal(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::Expr {
     }
 }
 
+/// Create a prop name.
 fn create_prop_name(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::PropName {
     if is_identifier_name(node.as_ref()) {
         swc_ecma_ast::PropName::Ident(create_ident(node.sym.as_ref()))
@@ -895,6 +903,7 @@ fn create_prop_name(node: &swc_ecma_ast::Ident) -> swc_ecma_ast::PropName {
     }
 }
 
+/// Turn JSX text into a string.
 fn jsx_text_to_value(value: &str) -> String {
     let mut result = String::with_capacity(value.len());
     // Replace tabs w/ spaces.

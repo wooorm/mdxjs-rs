@@ -107,7 +107,6 @@ pub fn parse_expression(value: &str, kind: &MdxExpressionKind) -> MdxSignal {
 }
 
 /// Parse ESM in MDX with SWC.
-/// See `drop_span` in `swc_ecma_utils` for inspiration?
 pub fn parse_expression_to_tree(
     value: &str,
     kind: &MdxExpressionKind,
@@ -216,6 +215,7 @@ pub fn serialize(module: &Module, comments: Option<&Vec<Comment>>) -> String {
 
 // To do: remove this attribute, use it somewhere.
 #[allow(dead_code)]
+/// Turn SWC comments into a flat vec.
 pub fn flat_comments(single_threaded_comments: SingleThreadedComments) -> Vec<Comment> {
     let raw_comments = single_threaded_comments.take_all();
     let take = |list: SingleThreadedCommentsMap| {
@@ -300,6 +300,7 @@ fn swc_error_to_signal(
     }
 }
 
+/// Turn an SWC error into a flat error.
 fn swc_error_to_error(error: &SwcError, name: &str, context: &RewriteContext) -> String {
     create_error_message(
         &swc_error_to_string(error),
@@ -316,10 +317,12 @@ fn swc_error_to_error(error: &SwcError, name: &str, context: &RewriteContext) ->
     )
 }
 
+/// Create an error message.
 fn create_error_message(reason: &str, name: &str, point: Option<&Point>) -> String {
     prefix_error_with_point(create_error_reason(name, reason), point)
 }
 
+/// Create an error reason.
 fn create_error_reason(reason: &str, name: &str) -> String {
     format!("Could not parse {} with swc: {}", name, reason)
 }

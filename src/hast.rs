@@ -21,7 +21,6 @@ pub enum Node {
     Comment(Comment),
     /// Text.
     Text(Text),
-
     // MDX being passed through.
     /// MDX: JSX element.
     MdxJsxElement(MdxJsxElement),
@@ -32,7 +31,7 @@ pub enum Node {
 }
 
 impl alloc::fmt::Debug for Node {
-    // Debug the wrapped struct.
+    /// Debug the wrapped struct.
     fn fmt(&self, f: &mut alloc::fmt::Formatter<'_>) -> alloc::fmt::Result {
         match self {
             Node::Root(x) => write!(f, "{:?}", x),
@@ -47,11 +46,13 @@ impl alloc::fmt::Debug for Node {
     }
 }
 
+/// Turn a slice of hast nodes into a string.
 fn children_to_string(children: &[Node]) -> String {
     children.iter().map(ToString::to_string).collect()
 }
 
 impl ToString for Node {
+    /// Turn a hast node into a string.
     fn to_string(&self) -> String {
         match self {
             // Parents.
@@ -70,6 +71,7 @@ impl ToString for Node {
 }
 
 impl Node {
+    /// Get children of a hast node.
     #[must_use]
     pub fn children(&self) -> Option<&Vec<Node>> {
         match self {
@@ -82,6 +84,7 @@ impl Node {
         }
     }
 
+    /// Get children of a hast node, mutably.
     pub fn children_mut(&mut self) -> Option<&mut Vec<Node>> {
         match self {
             // Parent.
@@ -93,6 +96,7 @@ impl Node {
         }
     }
 
+    /// Get the position of a hast node.
     pub fn position(&self) -> Option<&Position> {
         match self {
             Node::Root(x) => x.position.as_ref(),
@@ -106,6 +110,7 @@ impl Node {
         }
     }
 
+    /// Get the position of a hast node, mutably.
     pub fn position_mut(&mut self) -> Option<&mut Position> {
         match self {
             Node::Root(x) => x.position.as_mut(),
@@ -119,6 +124,7 @@ impl Node {
         }
     }
 
+    /// Set the position of a hast node.
     pub fn position_set(&mut self, position: Option<Position>) {
         match self {
             Node::Root(x) => x.position = position,
@@ -156,19 +162,27 @@ pub struct Root {
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Element {
+    /// Tag name.
     pub tag_name: String,
+    /// Properties.
     pub properties: Vec<(String, PropertyValue)>,
     // Parent.
+    /// Children.
     pub children: Vec<Node>,
     /// Positional info.
     pub position: Option<Position>,
 }
 
+/// Property value.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PropertyValue {
+    /// A boolean.
     Boolean(bool),
+    /// A string.
     String(String),
+    /// A comma-separated list of strings.
     CommaSeparated(Vec<String>),
+    /// A space-separated list of strings.
     SpaceSeparated(Vec<String>),
 }
 
@@ -251,7 +265,7 @@ pub struct MdxExpression {
     /// Positional info.
     pub position: Option<Position>,
 
-    // Custom data on where each slice of `value` came from.
+    /// Custom data on where each slice of `value` came from.
     pub stops: Vec<Stop>,
 }
 
@@ -269,7 +283,7 @@ pub struct MdxjsEsm {
     /// Positional info.
     pub position: Option<Position>,
 
-    // Custom data on where each slice of `value` came from.
+    /// Custom data on where each slice of `value` came from.
     pub stops: Vec<Stop>,
 }
 

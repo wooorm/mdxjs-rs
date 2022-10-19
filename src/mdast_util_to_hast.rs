@@ -47,20 +47,36 @@ use markdown::{mdast, sanitize, unist::Position};
 // * revert references when undefined?
 //   <https://github.com/syntax-tree/mdast-util-to-hast/blob/c393d0a/lib/revert.js>
 
+/// State needed to turn mdast into hast.
 #[derive(Debug)]
 struct State {
+    /// List of gathered definitions.
+    ///
+    /// The field at `0` is the identifier, `1` the URL, and `2` the title.
     definitions: Vec<(String, String, Option<String>)>,
+    /// List of gathered GFM footnote definitions.
+    ///
+    /// The field at `0` is the identifier, `1` the node.
     footnote_definitions: Vec<(String, Vec<hast::Node>)>,
+    /// List of gathered GFM footnote calls.
+    ///
+    /// The field at `0` is the identifier, `1` a counter of how many times
+    /// it is used.
     footnote_calls: Vec<(String, usize)>,
 }
 
+/// Result of turning something into hast.
 #[derive(Debug)]
 enum Result {
+    /// Multiple nodes.
     Fragment(Vec<hast::Node>),
+    /// Single nodes.
     Node(hast::Node),
+    /// Nothing.
     None,
 }
 
+/// Turn mdast into hast.
 pub fn mdast_util_to_hast(mdast: &mdast::Node) -> hast::Node {
     let mut definitions = vec![];
 
@@ -294,6 +310,7 @@ pub fn mdast_util_to_hast(mdast: &mdast::Node) -> hast::Node {
     hast::Node::Root(root)
 }
 
+/// Turn one mdast node into hast.
 fn one(state: &mut State, node: &mdast::Node, parent: Option<&mdast::Node>) -> Result {
     match node {
         mdast::Node::BlockQuote(d) => transform_block_quote(state, node, d),
@@ -1092,7 +1109,7 @@ fn transform_thematic_break(
     }))
 }
 
-// Transform children of `parent`.
+/// Transform children of `parent`.
 fn all(state: &mut State, parent: &mdast::Node) -> Vec<hast::Node> {
     let mut nodes = vec![];
     if let Some(children) = parent.children() {
@@ -1174,7 +1191,7 @@ where
 }
 
 // To do: trim arounds breaks: <https://github.com/syntax-tree/mdast-util-to-hast/blob/c393d0a/lib/traverse.js>.
-/// Append an (optional, variadic) result.
+/// Append an optional, variadic result.
 fn append_result(list: &mut Vec<hast::Node>, result: Result) {
     match result {
         Result::Fragment(mut fragment) => list.append(&mut fragment),
