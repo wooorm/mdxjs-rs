@@ -270,6 +270,9 @@ pub struct Options {
     // pub base_url: Option<String>,
     /// Whether to add extra information to error messages in generated code
     /// (default: `false`).
+    ///
+    /// When in the automatic JSX runtime, this also enabled its development
+    /// functionality.
     pub development: bool,
 
     // To do: some alternative to generate source maps.
