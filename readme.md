@@ -10,7 +10,7 @@ Compile MDX to JavaScript in Rust.
 
 ## When should I use this?
 
-You can use this Rust crate when you’re dealing with the Rust language and want
+You can use this crate when you’re dealing with the Rust language and want
 to compile MDX to JavaScript.
 To parse the MDX format to a syntax tree, use [`markdown-rs`][markdown-rs] instead.
 
