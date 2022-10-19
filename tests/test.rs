@@ -3,7 +3,7 @@ use mdxjs::{compile, JsxRuntime, Options};
 use pretty_assertions::assert_eq;
 
 #[test]
-fn xxx() -> Result<(), String> {
+fn mdxjs() -> Result<(), String> {
     assert_eq!(
         compile("", &Options::default())?,
         "import { Fragment as _Fragment, jsx as _jsx } from \"react/jsx-runtime\";
@@ -197,7 +197,32 @@ function MDXContent(props = {}) {
 }
 export default MDXContent;
 ",
-        "should unravel paragraphs",
+        "should unravel paragraphs (1)",
+    );
+
+    assert_eq!(
+        compile("{1} {2}", &Default::default())?,
+        "import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from \"react/jsx-runtime\";
+function _createMdxContent(props) {
+    return _jsxs(_Fragment, {
+        children: [
+            1,
+            \"\\n\",
+            \" \",
+            \"\\n\",
+            2
+        ]
+    });
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
+        children: _jsx(_createMdxContent, props)
+    })) : _createMdxContent(props);
+}
+export default MDXContent;
+",
+        "should unravel paragraphs (2)",
     );
 
     assert_eq!(

@@ -1473,11 +1473,22 @@ mod tests {
                         position: None
                     }),
                     mdast::Node::Paragraph(mdast::Paragraph {
-                        children: vec![mdast::Node::FootnoteReference(mdast::FootnoteReference {
-                            identifier: "a".into(),
-                            label: None,
-                            position: None,
-                        })],
+                        children: vec![
+                            mdast::Node::FootnoteReference(mdast::FootnoteReference {
+                                identifier: "a".into(),
+                                label: None,
+                                position: None,
+                            }),
+                            mdast::Node::Text(mdast::Text {
+                                value: " and ".into(),
+                                position: None,
+                            }),
+                            mdast::Node::FootnoteReference(mdast::FootnoteReference {
+                                identifier: "a".into(),
+                                label: None,
+                                position: None,
+                            })
+                        ],
                         position: None
                     }),
                 ],
@@ -1489,28 +1500,74 @@ mod tests {
                     hast::Node::Element(hast::Element {
                         tag_name: "p".into(),
                         properties: vec![],
-                        children: vec![hast::Node::Element(hast::Element {
-                            tag_name: "sup".into(),
-                            properties: vec![],
-                            children: vec![hast::Node::Element(hast::Element {
-                                tag_name: "a".into(),
-                                properties: vec![
-                                    ("href".into(), hast::PropertyValue::String("#fn-a".into()),),
-                                    ("id".into(), hast::PropertyValue::String("fnref-a".into()),),
-                                    ("dataFootnoteRef".into(), hast::PropertyValue::Boolean(true),),
-                                    (
-                                        "ariaDescribedBy".into(),
-                                        hast::PropertyValue::String("footnote-label".into()),
-                                    )
-                                ],
-                                children: vec![hast::Node::Text(hast::Text {
-                                    value: "1".into(),
+                        children: vec![
+                            hast::Node::Element(hast::Element {
+                                tag_name: "sup".into(),
+                                properties: vec![],
+                                children: vec![hast::Node::Element(hast::Element {
+                                    tag_name: "a".into(),
+                                    properties: vec![
+                                        (
+                                            "href".into(),
+                                            hast::PropertyValue::String("#fn-a".into()),
+                                        ),
+                                        (
+                                            "id".into(),
+                                            hast::PropertyValue::String("fnref-a".into()),
+                                        ),
+                                        (
+                                            "dataFootnoteRef".into(),
+                                            hast::PropertyValue::Boolean(true),
+                                        ),
+                                        (
+                                            "ariaDescribedBy".into(),
+                                            hast::PropertyValue::String("footnote-label".into()),
+                                        )
+                                    ],
+                                    children: vec![hast::Node::Text(hast::Text {
+                                        value: "1".into(),
+                                        position: None
+                                    })],
                                     position: None
-                                })],
+                                }),],
                                 position: None
-                            }),],
-                            position: None
-                        }),],
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: " and ".into(),
+                                position: None
+                            }),
+                            hast::Node::Element(hast::Element {
+                                tag_name: "sup".into(),
+                                properties: vec![],
+                                children: vec![hast::Node::Element(hast::Element {
+                                    tag_name: "a".into(),
+                                    properties: vec![
+                                        (
+                                            "href".into(),
+                                            hast::PropertyValue::String("#fn-a".into()),
+                                        ),
+                                        (
+                                            "id".into(),
+                                            hast::PropertyValue::String("fnref-a-2".into()),
+                                        ),
+                                        (
+                                            "dataFootnoteRef".into(),
+                                            hast::PropertyValue::Boolean(true),
+                                        ),
+                                        (
+                                            "ariaDescribedBy".into(),
+                                            hast::PropertyValue::String("footnote-label".into()),
+                                        )
+                                    ],
+                                    children: vec![hast::Node::Text(hast::Text {
+                                        value: "1".into(),
+                                        position: None
+                                    })],
+                                    position: None
+                                }),],
+                                position: None
+                            }),
+                        ],
                         position: None
                     }),
                     hast::Node::Text(hast::Text {
@@ -1613,7 +1670,57 @@ mod tests {
                                                             }
                                                         ),],
                                                         position: None
-                                                    })
+                                                    }),
+                                                    hast::Node::Text(hast::Text {
+                                                        value: " ".into(),
+                                                        position: None
+                                                    }),
+                                                    hast::Node::Element(hast::Element {
+                                                        tag_name: "a".into(),
+                                                        properties: vec![
+                                                            (
+                                                                "href".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "#fnref-a-2".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "dataFootnoteBackref".into(),
+                                                                hast::PropertyValue::Boolean(true),
+                                                            ),
+                                                            (
+                                                                "ariaLabel".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "Back to content".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "className".into(),
+                                                                hast::PropertyValue::SpaceSeparated(
+                                                                    vec!["data-footnote-backref"
+                                                                        .into()]
+                                                                ),
+                                                            )
+                                                        ],
+                                                        children: vec![
+                                                            hast::Node::Text(hast::Text {
+                                                                value: "↩".into(),
+                                                                position: None
+                                                            }),
+                                                            hast::Node::Element(hast::Element {
+                                                                tag_name: "sup".into(),
+                                                                properties: vec![],
+                                                                children: vec![hast::Node::Text(
+                                                                    hast::Text {
+                                                                        value: "2".into(),
+                                                                        position: None
+                                                                    }
+                                                                ),],
+                                                                position: None
+                                                            }),
+                                                        ],
+                                                        position: None
+                                                    }),
                                                 ],
                                                 position: None
                                             }),
@@ -1984,14 +2091,15 @@ mod tests {
             mdast_util_to_hast(&mdast::Node::Image(mdast::Image {
                 url: "a".into(),
                 alt: "b".into(),
-                title: None,
+                title: Some("c".into()),
                 position: None,
             })),
             hast::Node::Element(hast::Element {
                 tag_name: "img".into(),
                 properties: vec![
-                    ("src".into(), hast::PropertyValue::String("a".into()),),
-                    ("alt".into(), hast::PropertyValue::String("b".into()),)
+                    ("src".into(), hast::PropertyValue::String("a".into())),
+                    ("alt".into(), hast::PropertyValue::String("b".into())),
+                    ("title".into(), hast::PropertyValue::String("c".into()))
                 ],
                 children: vec![],
                 position: None
@@ -2007,7 +2115,7 @@ mod tests {
                 children: vec![
                     mdast::Node::Definition(mdast::Definition {
                         url: "b".into(),
-                        title: None,
+                        title: Some("c".into()),
                         identifier: "a".into(),
                         label: None,
                         position: None
@@ -2016,7 +2124,7 @@ mod tests {
                         children: vec![mdast::Node::ImageReference(mdast::ImageReference {
                             reference_kind: mdast::ReferenceKind::Full,
                             identifier: "a".into(),
-                            alt: "c".into(),
+                            alt: "d".into(),
                             label: None,
                             position: None,
                         })],
@@ -2033,7 +2141,8 @@ mod tests {
                         tag_name: "img".into(),
                         properties: vec![
                             ("src".into(), hast::PropertyValue::String("b".into()),),
-                            ("alt".into(), hast::PropertyValue::String("c".into()),)
+                            ("alt".into(), hast::PropertyValue::String("d".into()),),
+                            ("title".into(), hast::PropertyValue::String("c".into()),)
                         ],
                         children: vec![],
                         position: None
@@ -2097,18 +2206,21 @@ mod tests {
         assert_eq!(
             mdast_util_to_hast(&mdast::Node::Link(mdast::Link {
                 url: "a".into(),
-                title: None,
+                title: Some("b".into()),
                 children: vec![mdast::Node::Text(mdast::Text {
-                    value: "b".into(),
+                    value: "c".into(),
                     position: None
                 })],
                 position: None,
             })),
             hast::Node::Element(hast::Element {
                 tag_name: "a".into(),
-                properties: vec![("href".into(), hast::PropertyValue::String("a".into()),),],
+                properties: vec![
+                    ("href".into(), hast::PropertyValue::String("a".into())),
+                    ("title".into(), hast::PropertyValue::String("b".into())),
+                ],
                 children: vec![hast::Node::Text(hast::Text {
-                    value: "b".into(),
+                    value: "c".into(),
                     position: None
                 })],
                 position: None
@@ -2124,7 +2236,7 @@ mod tests {
                 children: vec![
                     mdast::Node::Definition(mdast::Definition {
                         url: "b".into(),
-                        title: None,
+                        title: Some("c".into()),
                         identifier: "a".into(),
                         label: None,
                         position: None
@@ -2151,7 +2263,10 @@ mod tests {
                     properties: vec![],
                     children: vec![hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
-                        properties: vec![("href".into(), hast::PropertyValue::String("b".into()),),],
+                        properties: vec![
+                            ("href".into(), hast::PropertyValue::String("b".into())),
+                            ("title".into(), hast::PropertyValue::String("c".into())),
+                        ],
                         children: vec![hast::Node::Text(hast::Text {
                             value: "c".into(),
                             position: None
@@ -2752,7 +2867,12 @@ mod tests {
     fn table() {
         assert_eq!(
             mdast_util_to_hast(&mdast::Node::Table(mdast::Table {
-                align: vec![mdast::AlignKind::Left, mdast::AlignKind::None],
+                align: vec![
+                    mdast::AlignKind::None,
+                    mdast::AlignKind::Left,
+                    mdast::AlignKind::Center,
+                    mdast::AlignKind::Right
+                ],
                 children: vec![
                     mdast::Node::TableRow(mdast::TableRow {
                         children: vec![
@@ -2769,12 +2889,7 @@ mod tests {
                                     position: None
                                 })],
                                 position: None,
-                            })
-                        ],
-                        position: None,
-                    }),
-                    mdast::Node::TableRow(mdast::TableRow {
-                        children: vec![
+                            }),
                             mdast::Node::TableCell(mdast::TableCell {
                                 children: vec![mdast::Node::Text(mdast::Text {
                                     value: "c".into(),
@@ -2785,6 +2900,25 @@ mod tests {
                             mdast::Node::TableCell(mdast::TableCell {
                                 children: vec![mdast::Node::Text(mdast::Text {
                                     value: "d".into(),
+                                    position: None
+                                })],
+                                position: None,
+                            })
+                        ],
+                        position: None,
+                    }),
+                    mdast::Node::TableRow(mdast::TableRow {
+                        children: vec![
+                            mdast::Node::TableCell(mdast::TableCell {
+                                children: vec![mdast::Node::Text(mdast::Text {
+                                    value: "e".into(),
+                                    position: None
+                                })],
+                                position: None,
+                            }),
+                            mdast::Node::TableCell(mdast::TableCell {
+                                children: vec![mdast::Node::Text(mdast::Text {
+                                    value: "f".into(),
                                     position: None
                                 })],
                                 position: None,
@@ -2821,10 +2955,7 @@ mod tests {
                                     }),
                                     hast::Node::Element(hast::Element {
                                         tag_name: "th".into(),
-                                        properties: vec![(
-                                            "align".into(),
-                                            hast::PropertyValue::String("left".into()),
-                                        ),],
+                                        properties: vec![],
                                         children: vec![hast::Node::Text(hast::Text {
                                             value: "a".into(),
                                             position: None
@@ -2837,9 +2968,44 @@ mod tests {
                                     }),
                                     hast::Node::Element(hast::Element {
                                         tag_name: "th".into(),
-                                        properties: vec![],
+                                        properties: vec![(
+                                            "align".into(),
+                                            hast::PropertyValue::String("left".into()),
+                                        ),],
                                         children: vec![hast::Node::Text(hast::Text {
                                             value: "b".into(),
+                                            position: None
+                                        })],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "th".into(),
+                                        properties: vec![(
+                                            "align".into(),
+                                            hast::PropertyValue::String("center".into()),
+                                        ),],
+                                        children: vec![hast::Node::Text(hast::Text {
+                                            value: "c".into(),
+                                            position: None
+                                        })],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "th".into(),
+                                        properties: vec![(
+                                            "align".into(),
+                                            hast::PropertyValue::String("right".into()),
+                                        ),],
+                                        children: vec![hast::Node::Text(hast::Text {
+                                            value: "d".into(),
                                             position: None
                                         })],
                                         position: None
@@ -2880,12 +3046,9 @@ mod tests {
                                     }),
                                     hast::Node::Element(hast::Element {
                                         tag_name: "td".into(),
-                                        properties: vec![(
-                                            "align".into(),
-                                            hast::PropertyValue::String("left".into()),
-                                        ),],
+                                        properties: vec![],
                                         children: vec![hast::Node::Text(hast::Text {
-                                            value: "c".into(),
+                                            value: "e".into(),
                                             position: None
                                         })],
                                         position: None
@@ -2896,11 +3059,40 @@ mod tests {
                                     }),
                                     hast::Node::Element(hast::Element {
                                         tag_name: "td".into(),
-                                        properties: vec![],
+                                        properties: vec![(
+                                            "align".into(),
+                                            hast::PropertyValue::String("left".into()),
+                                        )],
                                         children: vec![hast::Node::Text(hast::Text {
-                                            value: "d".into(),
+                                            value: "f".into(),
                                             position: None
                                         })],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "td".into(),
+                                        properties: vec![(
+                                            "align".into(),
+                                            hast::PropertyValue::String("center".into()),
+                                        )],
+                                        children: vec![],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "td".into(),
+                                        properties: vec![(
+                                            "align".into(),
+                                            hast::PropertyValue::String("right".into()),
+                                        )],
+                                        children: vec![],
                                         position: None
                                     }),
                                     hast::Node::Text(hast::Text {
@@ -2986,6 +3178,97 @@ mod tests {
                 position: None
             }),
             "should support a `Toml`",
+        );
+    }
+
+    #[test]
+    fn util_replace_eols_with_spaces() {
+        assert_eq!(
+            replace_eols_with_spaces("a \n b \r c \r\n d"),
+            "a   b   c   d",
+            "should support CR, LF, and CRLF",
+        );
+    }
+
+    #[test]
+    fn util_list_loose() {
+        assert_eq!(
+            list_loose(&mdast::Node::Text(mdast::Text {
+                value: "".into(),
+                position: None
+            })),
+            false,
+            "should mark anything that isn’t a list as not loose",
+        );
+
+        assert_eq!(
+            list_loose(&mdast::Node::List(mdast::List {
+                children: vec![],
+                ordered: false,
+                start: None,
+                spread: false,
+                position: None
+            })),
+            false,
+            "should mark lists w/o children and w/o spread as loose",
+        );
+
+        assert_eq!(
+            list_loose(&mdast::Node::List(mdast::List {
+                children: vec![],
+                ordered: false,
+                start: None,
+                spread: true,
+                position: None
+            })),
+            true,
+            "should mark lists w/ spread as loose",
+        );
+
+        assert_eq!(
+            list_loose(&mdast::Node::List(mdast::List {
+                children: vec![mdast::Node::ListItem(mdast::ListItem {
+                    children: vec![],
+                    checked: None,
+                    spread: true,
+                    position: None
+                })],
+                ordered: false,
+                start: None,
+                spread: false,
+                position: None
+            })),
+            true,
+            "should mark lists w/o spread as loose if an item is loose",
+        );
+
+        assert_eq!(
+            list_loose(&mdast::Node::List(mdast::List {
+                children: vec![mdast::Node::ListItem(mdast::ListItem {
+                    children: vec![],
+                    checked: None,
+                    spread: false,
+                    position: None
+                })],
+                ordered: false,
+                start: None,
+                spread: false,
+                position: None
+            })),
+            false,
+            "should not mark lists w/o spread as loose if there are no loose items",
+        );
+    }
+
+    #[test]
+    fn util_list_item_loose() {
+        assert_eq!(
+            list_item_loose(&mdast::Node::Text(mdast::Text {
+                value: "".into(),
+                position: None
+            })),
+            false,
+            "should mark anything that isn’t a list item as not loose",
         );
     }
 }
