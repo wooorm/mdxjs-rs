@@ -6,10 +6,10 @@ use crate::hast_util_to_swc::Program;
 use crate::mdx_plugin_recma_document::JsxRuntime;
 use crate::swc_utils::{
     bytepos_to_point, create_bool_expression, create_call_expression, create_ident,
-    create_ident_expression, create_member_expression_from_str, create_num_expression,
-    create_object_expression, create_prop_name, create_str, create_str_expression,
-    jsx_attribute_name_to_prop_name, jsx_element_name_to_expression, prefix_error_with_point,
-    span_to_position,
+    create_ident_expression, create_member_expression_from_str, create_null_expression,
+    create_num_expression, create_object_expression, create_prop_name, create_str,
+    create_str_expression, jsx_attribute_name_to_prop_name, jsx_element_name_to_expression,
+    prefix_error_with_point, span_to_position,
 };
 use core::str;
 use markdown::Location;
@@ -224,18 +224,19 @@ impl<'a> State<'a> {
         children.reverse();
         while let Some(child) = children.pop() {
             match child {
-                swc_ecma_ast::JSXElementChild::JSXExprContainer(x) => match x.expr {
-                    swc_ecma_ast::JSXExpr::JSXEmptyExpr(_) => {}
-                    swc_ecma_ast::JSXExpr::Expr(expression) => result.push(*expression),
-                },
+                swc_ecma_ast::JSXElementChild::JSXSpreadChild(_) => {
+                    return Err("Spread children not supported in Babel, SWC, or React".into())
+                }
+                swc_ecma_ast::JSXElementChild::JSXExprContainer(container) => {
+                    if let swc_ecma_ast::JSXExpr::Expr(expression) = container.expr {
+                        result.push(*expression);
+                    }
+                }
                 swc_ecma_ast::JSXElementChild::JSXText(text) => {
                     let value = jsx_text_to_value(text.value.as_ref());
                     if !value.is_empty() {
                         result.push(create_str_expression(&value));
                     }
-                }
-                swc_ecma_ast::JSXElementChild::JSXSpreadChild(_) => {
-                    return Err("Spread children not supported in Babel, SWC, or React".into())
                 }
                 swc_ecma_ast::JSXElementChild::JSXElement(element) => {
                     result.push(self.jsx_element_to_expression(*element)?);
@@ -283,12 +284,13 @@ impl<'a> State<'a> {
                         if let swc_ecma_ast::PropName::Ident(ident) = &name {
                             if self.automatic && ident.sym.as_ref() == "key" {
                                 if spread {
-                                    let start =
-                                        bytepos_to_point(jsx_attribute.span.lo, self.location);
-                                    return Err(prefix_error_with_point(
+                                    let lo = jsx_attribute.span.lo;
+                                    let start = bytepos_to_point(lo, self.location);
+                                    let reason = prefix_error_with_point(
                                         "Expected `key` to come before any spread expressions",
                                         start.as_ref(),
-                                    ));
+                                    );
+                                    return Err(reason);
                                 }
 
                                 key = Some(value);
@@ -309,23 +311,24 @@ impl<'a> State<'a> {
 
         // In the automatic runtime, add children as a prop.
         if let Some(mut children) = children {
-            let value = match children.len() {
-                0 => None,
-                1 => Some(children.pop().unwrap()),
-                _ => {
-                    let mut elements = vec![];
-                    children.reverse();
-                    while let Some(child) = children.pop() {
-                        elements.push(Some(swc_ecma_ast::ExprOrSpread {
-                            spread: None,
-                            expr: Box::new(child),
-                        }));
-                    }
-                    Some(swc_ecma_ast::Expr::Array(swc_ecma_ast::ArrayLit {
-                        elems: elements,
-                        span: swc_common::DUMMY_SP,
-                    }))
+            let value = if children.is_empty() {
+                None
+            } else if children.len() == 1 {
+                Some(children.pop().unwrap())
+            } else {
+                let mut elements = vec![];
+                children.reverse();
+                while let Some(child) = children.pop() {
+                    elements.push(Some(swc_ecma_ast::ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(child),
+                    }));
                 }
+                let lit = swc_ecma_ast::ArrayLit {
+                    elems: elements,
+                    span: swc_common::DUMMY_SP,
+                };
+                Some(swc_ecma_ast::Expr::Array(lit))
             };
 
             if let Some(value) = value {
@@ -343,33 +346,31 @@ impl<'a> State<'a> {
             objects.push(create_object_expression(fields));
         }
 
-        let props = match objects.len() {
-            0 => None,
-            1 => Some(objects.pop().unwrap()),
-            _ => {
-                let mut args = vec![];
-                objects.reverse();
+        let props = if objects.is_empty() {
+            None
+        } else if objects.len() == 1 {
+            Some(objects.pop().unwrap())
+        } else {
+            let mut args = vec![];
+            objects.reverse();
 
-                // Don’t mutate the first object, shallow clone into a new
-                // object instead.
-                if !matches!(objects.last(), Some(swc_ecma_ast::Expr::Object(_))) {
-                    objects.push(create_object_expression(vec![]));
-                }
-
-                while let Some(object) = objects.pop() {
-                    args.push(swc_ecma_ast::ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(object),
-                    });
-                }
-
-                Some(create_call_expression(
-                    swc_ecma_ast::Callee::Expr(Box::new(create_member_expression_from_str(
-                        "Object.assign",
-                    ))),
-                    args,
-                ))
+            // Don’t mutate the first object, shallow clone into a new
+            // object instead.
+            if !matches!(objects.last(), Some(swc_ecma_ast::Expr::Object(_))) {
+                objects.push(create_object_expression(vec![]));
             }
+
+            while let Some(object) = objects.pop() {
+                args.push(swc_ecma_ast::ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(object),
+                });
+            }
+
+            let callee = swc_ecma_ast::Callee::Expr(Box::new(create_member_expression_from_str(
+                "Object.assign",
+            )));
+            Some(create_call_expression(callee, args))
         };
 
         Ok((props, key))
@@ -507,10 +508,7 @@ impl<'a> State<'a> {
         } else {
             // Classic runtime.
             let (props, key) = self.jsx_attributes_to_expressions(attributes, None)?;
-            debug_assert_eq!(
-                key, None,
-                "key should not be extracted in the classic runtime"
-            );
+            debug_assert!(key == None, "key should not be extracted");
             let mut parameters = vec![
                 // Component name.
                 //
@@ -536,11 +534,7 @@ impl<'a> State<'a> {
             } else if !children.is_empty() {
                 parameters.push(swc_ecma_ast::ExprOrSpread {
                     spread: None,
-                    expr: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Null(
-                        swc_ecma_ast::Null {
-                            span: swc_common::DUMMY_SP,
-                        },
-                    ))),
+                    expr: Box::new(create_null_expression()),
                 });
             }
 

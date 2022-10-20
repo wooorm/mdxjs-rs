@@ -7,8 +7,8 @@ extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
     bytepos_to_point, create_call_expression, create_ident, create_ident_expression,
-    create_object_expression, create_str, position_opt_to_string, prefix_error_with_point,
-    span_to_position,
+    create_null_expression, create_object_expression, create_str, position_opt_to_string,
+    prefix_error_with_point, span_to_position,
 };
 use markdown::{
     unist::{Point, Position},
@@ -486,11 +486,7 @@ fn create_mdx_content(
                 decorators: vec![],
                 body: Some(swc_ecma_ast::BlockStmt {
                     stmts: vec![swc_ecma_ast::Stmt::Return(swc_ecma_ast::ReturnStmt {
-                        arg: Some(Box::new(expr.unwrap_or({
-                            swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Null(swc_ecma_ast::Null {
-                                span: swc_common::DUMMY_SP,
-                            }))
-                        }))),
+                        arg: Some(Box::new(expr.unwrap_or_else(create_null_expression))),
                         span: swc_common::DUMMY_SP,
                     })],
                     span: swc_common::DUMMY_SP,

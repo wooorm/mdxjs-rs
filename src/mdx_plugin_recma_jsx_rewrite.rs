@@ -202,12 +202,10 @@ impl<'a> State<'a> {
             // ```
             if self.provider {
                 self.create_provider_import = true;
-                parameters.push(create_call_expression(
-                    swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
-                        "_provideComponents",
-                    ))),
-                    vec![],
-                ));
+                let callee = swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
+                    "_provideComponents",
+                )));
+                parameters.push(create_call_expression(callee, vec![]));
             }
 
             // Accept `components` as a prop if this is the `MDXContent` or
@@ -217,11 +215,12 @@ impl<'a> State<'a> {
             // props.components
             // ```
             if is_props_receiving_fn(&info.name) {
-                parameters.push(swc_ecma_ast::Expr::Member(swc_ecma_ast::MemberExpr {
+                let member = swc_ecma_ast::MemberExpr {
                     obj: Box::new(create_ident_expression("props")),
                     prop: swc_ecma_ast::MemberProp::Ident(create_ident("components")),
                     span: swc_common::DUMMY_SP,
-                }));
+                };
+                parameters.push(swc_ecma_ast::Expr::Member(member));
             }
 
             // Inject an object at the start, when:
@@ -267,12 +266,8 @@ impl<'a> State<'a> {
                         expr: Box::new(param),
                     });
                 }
-                create_call_expression(
-                    swc_ecma_ast::Callee::Expr(Box::new(create_member_expression_from_str(
-                        "Object.assign",
-                    ))),
-                    args,
-                )
+                let callee = create_member_expression_from_str("Object.assign");
+                create_call_expression(swc_ecma_ast::Callee::Expr(Box::new(callee)), args)
             } else {
                 // Always one.
                 let param = parameters.pop().unwrap();
@@ -305,36 +300,34 @@ impl<'a> State<'a> {
                 while let Some(key) = actual.pop() {
                     // `wrapper: MDXLayout`
                     if key == "MDXLayout" {
-                        props.push(swc_ecma_ast::ObjectPatProp::KeyValue(
-                            swc_ecma_ast::KeyValuePatProp {
-                                key: create_prop_name("wrapper"),
-                                value: Box::new(swc_ecma_ast::Pat::Ident(
-                                    swc_ecma_ast::BindingIdent {
-                                        id: create_ident(&key),
-                                        type_ann: None,
-                                    },
-                                )),
-                            },
-                        ));
+                        let pat = swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
+                            id: create_ident(&key),
+                            type_ann: None,
+                        });
+                        let prop = swc_ecma_ast::KeyValuePatProp {
+                            key: create_prop_name("wrapper"),
+                            value: Box::new(pat),
+                        };
+                        props.push(swc_ecma_ast::ObjectPatProp::KeyValue(prop));
                     }
                     // `MyComponent`
                     else {
-                        props.push(swc_ecma_ast::ObjectPatProp::Assign(
-                            swc_ecma_ast::AssignPatProp {
-                                key: create_ident(&key),
-                                value: None,
-                                span: swc_common::DUMMY_SP,
-                            },
-                        ));
+                        let prop = swc_ecma_ast::AssignPatProp {
+                            key: create_ident(&key),
+                            value: None,
+                            span: swc_common::DUMMY_SP,
+                        };
+                        props.push(swc_ecma_ast::ObjectPatProp::Assign(prop));
                     }
                 }
 
-                Some(swc_ecma_ast::ObjectPat {
+                let pat = swc_ecma_ast::ObjectPat {
                     props,
                     optional: false,
                     span: swc_common::DUMMY_SP,
                     type_ann: None,
-                })
+                };
+                Some(pat)
             };
 
             let mut declarators = vec![];
@@ -342,7 +335,7 @@ impl<'a> State<'a> {
             // If there are tags, they take them from `_components`, so we need
             // to make it defined.
             if !info.tags.is_empty() {
-                declarators.push(swc_ecma_ast::VarDeclarator {
+                let declarator = swc_ecma_ast::VarDeclarator {
                     span: swc_common::DUMMY_SP,
                     name: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
                         id: create_ident("_components"),
@@ -350,7 +343,8 @@ impl<'a> State<'a> {
                     }),
                     init: Some(Box::new(components_init)),
                     definite: false,
-                });
+                };
+                declarators.push(declarator);
                 components_init = create_ident_expression("_components");
             }
 
@@ -365,7 +359,7 @@ impl<'a> State<'a> {
                 info.aliases.reverse();
 
                 while let Some((id, name)) = info.aliases.pop() {
-                    declarators.push(swc_ecma_ast::VarDeclarator {
+                    let declarator = swc_ecma_ast::VarDeclarator {
                         span: swc_common::DUMMY_SP,
                         name: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
                             id: create_ident(&name),
@@ -376,28 +370,30 @@ impl<'a> State<'a> {
                             create_member_prop_from_str(&id),
                         )))),
                         definite: false,
-                    });
+                    };
+                    declarators.push(declarator);
                 }
             }
 
             if let Some(pat) = components_pattern {
-                declarators.push(swc_ecma_ast::VarDeclarator {
+                let declarator = swc_ecma_ast::VarDeclarator {
                     name: swc_ecma_ast::Pat::Object(pat),
                     init: Some(Box::new(components_init)),
                     span: swc_common::DUMMY_SP,
                     definite: false,
-                });
+                };
+                declarators.push(declarator);
             }
 
             // Add the variable declaration.
-            statements.push(swc_ecma_ast::Stmt::Decl(swc_ecma_ast::Decl::Var(Box::new(
-                swc_ecma_ast::VarDecl {
-                    kind: swc_ecma_ast::VarDeclKind::Const,
-                    decls: declarators,
-                    span: swc_common::DUMMY_SP,
-                    declare: false,
-                },
-            ))));
+            let decl = swc_ecma_ast::VarDecl {
+                kind: swc_ecma_ast::VarDeclKind::Const,
+                decls: declarators,
+                span: swc_common::DUMMY_SP,
+                declare: false,
+            };
+            let var_decl = swc_ecma_ast::Decl::Var(Box::new(decl));
+            statements.push(swc_ecma_ast::Stmt::Decl(var_decl));
         }
 
         // Add checks at runtime to verify that object/components are passed.
@@ -430,7 +426,7 @@ impl<'a> State<'a> {
                 }
             }
 
-            statements.push(swc_ecma_ast::Stmt::If(swc_ecma_ast::IfStmt {
+            let statement = swc_ecma_ast::Stmt::If(swc_ecma_ast::IfStmt {
                 test: Box::new(swc_ecma_ast::Expr::Unary(swc_ecma_ast::UnaryExpr {
                     op: swc_ecma_ast::UnaryOp::Bang,
                     arg: Box::new(create_member_expression_from_str(&id)),
@@ -447,7 +443,8 @@ impl<'a> State<'a> {
                 })),
                 alt: None,
                 span: swc_common::DUMMY_SP,
-            }));
+            });
+            statements.push(statement);
         }
 
         // Add statements to functions.
@@ -455,32 +452,34 @@ impl<'a> State<'a> {
             let mut body: &mut swc_ecma_ast::BlockStmt = match func {
                 Func::Expr(expr) => {
                     if expr.function.body.is_none() {
-                        expr.function.body = Some(swc_ecma_ast::BlockStmt {
+                        let block = swc_ecma_ast::BlockStmt {
                             stmts: vec![],
                             span: swc_common::DUMMY_SP,
-                        });
+                        };
+                        expr.function.body = Some(block);
                     }
                     expr.function.body.as_mut().unwrap()
                 }
                 Func::Decl(decl) => {
                     if decl.function.body.is_none() {
-                        decl.function.body = Some(swc_ecma_ast::BlockStmt {
+                        let block = swc_ecma_ast::BlockStmt {
                             stmts: vec![],
                             span: swc_common::DUMMY_SP,
-                        });
+                        };
+                        decl.function.body = Some(block);
                     }
                     decl.function.body.as_mut().unwrap()
                 }
                 Func::Arrow(arr) => {
                     if let swc_ecma_ast::BlockStmtOrExpr::Expr(expr) = &mut arr.body {
-                        arr.body =
-                            swc_ecma_ast::BlockStmtOrExpr::BlockStmt(swc_ecma_ast::BlockStmt {
-                                stmts: vec![swc_ecma_ast::Stmt::Return(swc_ecma_ast::ReturnStmt {
-                                    arg: Some(expr.take()),
-                                    span: swc_common::DUMMY_SP,
-                                })],
+                        let block = swc_ecma_ast::BlockStmt {
+                            stmts: vec![swc_ecma_ast::Stmt::Return(swc_ecma_ast::ReturnStmt {
+                                arg: Some(expr.take()),
                                 span: swc_common::DUMMY_SP,
-                            });
+                            })],
+                            span: swc_common::DUMMY_SP,
+                        };
+                        arr.body = swc_ecma_ast::BlockStmtOrExpr::BlockStmt(block);
                     }
                     arr.body.as_mut_block_stmt().unwrap()
                 }
@@ -635,9 +634,9 @@ impl<'a> VisitMut for State<'a> {
                             while index <= ids.len() {
                                 let full_id = ids[0..index].join(".");
                                 let component = index == ids.len();
-                                if let Some(reference) =
-                                    info_mut.references.iter_mut().find(|d| d.0 == full_id)
-                                {
+                                let reference =
+                                    info_mut.references.iter_mut().find(|d| d.0 == full_id);
+                                if let Some(reference) = reference {
                                     if component {
                                         reference.1 = true;
                                     }
@@ -674,20 +673,18 @@ impl<'a> VisitMut for State<'a> {
                                 if explicit_jsx {
                                     swc_ecma_ast::JSXElementName::Ident(create_ident(&id))
                                 } else {
-                                    swc_ecma_ast::JSXElementName::JSXMemberExpr(
-                                        swc_ecma_ast::JSXMemberExpr {
-                                            obj: swc_ecma_ast::JSXObject::Ident(create_ident(
-                                                "_components",
-                                            )),
-                                            prop: create_ident(&id),
-                                        },
-                                    )
+                                    let member = swc_ecma_ast::JSXMemberExpr {
+                                        obj: swc_ecma_ast::JSXObject::Ident(create_ident(
+                                            "_components",
+                                        )),
+                                        prop: create_ident(&id),
+                                    };
+                                    swc_ecma_ast::JSXElementName::JSXMemberExpr(member)
                                 }
                             } else {
-                                let name = if let Some(invalid_ref) =
-                                    info.aliases.iter().find(|d| d.0 == id)
-                                {
-                                    invalid_ref.1.clone()
+                                let reference = info.aliases.iter().find(|d| d.0 == id);
+                                let name = if let Some(reference) = reference {
+                                    reference.1.clone()
                                 } else {
                                     let name = format!("_component{}", info.aliases.len());
                                     invalid = Some((id.clone(), name.clone()));
@@ -726,9 +723,9 @@ impl<'a> VisitMut for State<'a> {
                                 let info_mut = self.current_top_level_info_mut().unwrap();
 
                                 if !is_layout {
-                                    if let Some(reference) =
-                                        info_mut.references.iter_mut().find(|d| d.0 == id)
-                                    {
+                                    let reference =
+                                        info_mut.references.iter_mut().find(|d| d.0 == id);
+                                    if let Some(reference) = reference {
                                         reference.1 = true;
                                     } else {
                                         info_mut.references.push((id.clone(), true, position));

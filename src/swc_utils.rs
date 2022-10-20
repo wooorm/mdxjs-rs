@@ -11,8 +11,8 @@ use markdown::{
 use swc_common::{BytePos, Span, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::{
     BinExpr, BinaryOp, Bool, CallExpr, Callee, ComputedPropName, Expr, ExprOrSpread, Ident,
-    JSXAttrName, JSXElementName, JSXMemberExpr, JSXObject, Lit, MemberExpr, MemberProp, Number,
-    ObjectLit, PropName, PropOrSpread, Str,
+    JSXAttrName, JSXElementName, JSXMemberExpr, JSXObject, Lit, MemberExpr, MemberProp, Null,
+    Number, ObjectLit, PropName, PropOrSpread, Str,
 };
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut};
 
@@ -179,7 +179,24 @@ pub fn create_ident_expression(sym: &str) -> Expr {
     Expr::Ident(create_ident(sym))
 }
 
-/// Generate a str.
+/// Generate a null.
+pub fn create_null() -> Null {
+    Null {
+        span: swc_common::DUMMY_SP,
+    }
+}
+
+/// Generate a null.
+pub fn create_null_lit() -> Lit {
+    Lit::Null(create_null())
+}
+
+/// Generate a null.
+pub fn create_null_expression() -> Expr {
+    Expr::Lit(create_null_lit())
+}
+
+/// Generate a null.
 pub fn create_str(value: &str) -> Str {
     value.into()
 }
