@@ -1025,4 +1025,61 @@ export default MDXContent;
 
         Ok(())
     }
+
+    #[test]
+    fn element() -> Result<(), String> {
+        let mut program = Program {
+            path: None,
+            comments: vec![],
+            module: swc_ecma_ast::Module {
+                span: swc_common::DUMMY_SP,
+                shebang: None,
+                body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
+                    swc_ecma_ast::ExprStmt {
+                        span: swc_common::DUMMY_SP,
+                        expr: Box::new(swc_ecma_ast::Expr::JSXElement(Box::new(
+                            swc_ecma_ast::JSXElement {
+                                span: swc_common::DUMMY_SP,
+                                opening: swc_ecma_ast::JSXOpeningElement {
+                                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("a")),
+                                    attrs: vec![],
+                                    self_closing: false,
+                                    type_args: None,
+                                    span: swc_common::DUMMY_SP,
+                                },
+                                closing: Some(swc_ecma_ast::JSXClosingElement {
+                                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("a")),
+                                    span: swc_common::DUMMY_SP,
+                                }),
+                                children: vec![swc_ecma_ast::JSXElementChild::JSXText(
+                                    swc_ecma_ast::JSXText {
+                                        value: "b".into(),
+                                        span: swc_common::DUMMY_SP,
+                                        raw: "b".into(),
+                                    },
+                                )],
+                            },
+                        ))),
+                    },
+                ))],
+            },
+        };
+
+        mdx_plugin_recma_document(&mut program, &Options::default(), None)?;
+
+        assert_eq!(
+            serialize(&program.module, None),
+            "function _createMdxContent(props) {
+    return <a >b</a>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should pass an element through"
+        );
+
+        Ok(())
+    }
 }
