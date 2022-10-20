@@ -288,8 +288,7 @@ impl<'a> State<'a> {
                                     let start =
                                         bytepos_to_point(jsx_attribute.span.lo, self.location);
                                     return Err(prefix_error_with_point(
-                                        "Expected `key` to come before any spread expressions"
-                                            .into(),
+                                        "Expected `key` to come before any spread expressions",
                                         start.as_ref(),
                                     ));
                                 }
@@ -731,7 +730,7 @@ fn find_directives(
                         value => {
                             let start = bytepos_to_point(comment.span.lo, location);
                             return Err(prefix_error_with_point(
-                                format!(
+                                &format!(
                                     "Runtime must be either `automatic` or `classic`, not {}",
                                     value
                                 ),

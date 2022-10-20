@@ -321,7 +321,7 @@ fn swc_error_to_error(error: &SwcError, name: &str, context: &RewriteContext) ->
 
 /// Create an error message.
 fn create_error_message(reason: &str, name: &str, point: Option<&Point>) -> String {
-    prefix_error_with_point(create_error_reason(name, reason), point)
+    prefix_error_with_point(&create_error_reason(name, reason), point)
 }
 
 /// Create an error reason.

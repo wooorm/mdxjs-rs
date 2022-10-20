@@ -77,11 +77,16 @@ pub fn bytepos_to_point(bytepos: BytePos, location: Option<&Location>) -> Option
 }
 
 /// Prefix an error message with an optional point.
-pub fn prefix_error_with_point(reason: String, point: Option<&Point>) -> String {
-    if let Some(point) = point {
-        format!("{}: {}", point_to_string(point), reason)
+pub fn prefix_error_with_point(reason: &str, point: Option<&Point>) -> String {
+    format!("{}: {}", point_opt_to_string(point), reason)
+}
+
+/// Serialize a unist position for humans.
+pub fn position_opt_to_string(position: Option<&Position>) -> String {
+    if let Some(position) = position {
+        position_to_string(position)
     } else {
-        reason
+        "0:0".into()
     }
 }
 
@@ -92,6 +97,15 @@ pub fn position_to_string(position: &Position) -> String {
         point_to_string(&position.start),
         point_to_string(&position.end)
     )
+}
+
+/// Serialize a unist point for humans.
+pub fn point_opt_to_string(point: Option<&Point>) -> String {
+    if let Some(point) = point {
+        point_to_string(point)
+    } else {
+        "0:0".into()
+    }
 }
 
 /// Serialize a unist point for humans.
@@ -471,8 +485,8 @@ mod tests {
     #[test]
     fn prefix_error_with_point_test() {
         assert_eq!(
-            prefix_error_with_point("aaa".into(), None),
-            "aaa",
+            prefix_error_with_point("aaa", None),
+            "0:0: aaa",
             "should support no point"
         );
     }

@@ -6,8 +6,8 @@
 extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
-    bytepos_to_point, create_ident, create_ident_expression, create_str, prefix_error_with_point,
-    span_to_position,
+    bytepos_to_point, create_ident, create_ident_expression, create_str, position_opt_to_string,
+    prefix_error_with_point, span_to_position,
 };
 use markdown::{
     unist::{Point, Position},
@@ -167,7 +167,7 @@ pub fn mdx_plugin_recma_document(
     input.reverse();
     let mut layout = false;
     let mut layout_position = None;
-    let content = true;
+    let mut content = false;
 
     while let Some(module_item) = input.pop() {
         match module_item {
@@ -181,13 +181,11 @@ pub fn mdx_plugin_recma_document(
             swc_ecma_ast::ModuleItem::ModuleDecl(swc_ecma_ast::ModuleDecl::ExportDefaultDecl(
                 decl,
             )) => {
-                if layout {
-                    return Err(create_double_layout_message(
-                        bytepos_to_point(decl.span.lo, location).as_ref(),
-                        layout_position.as_ref(),
-                    ));
-                }
-
+                err_for_double_layout(
+                    layout,
+                    layout_position.as_ref(),
+                    bytepos_to_point(decl.span.lo, location).as_ref(),
+                )?;
                 layout = true;
                 layout_position = span_to_position(&decl.span, location);
                 match decl.decl {
@@ -200,7 +198,7 @@ pub fn mdx_plugin_recma_document(
                     swc_ecma_ast::DefaultDecl::TsInterfaceDecl(_) => {
                         return Err(
                             prefix_error_with_point(
-                                "Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component".into(),
+                                "Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component",
                                 bytepos_to_point(decl.span.lo, location).as_ref()
                             )
                         );
@@ -210,13 +208,11 @@ pub fn mdx_plugin_recma_document(
             swc_ecma_ast::ModuleItem::ModuleDecl(swc_ecma_ast::ModuleDecl::ExportDefaultExpr(
                 expr,
             )) => {
-                if layout {
-                    return Err(create_double_layout_message(
-                        bytepos_to_point(expr.span.lo, location).as_ref(),
-                        layout_position.as_ref(),
-                    ));
-                }
-
+                err_for_double_layout(
+                    layout,
+                    layout_position.as_ref(),
+                    bytepos_to_point(expr.span.lo, location).as_ref(),
+                )?;
                 layout = true;
                 layout_position = span_to_position(&expr.span, location);
                 replacements.push(create_layout_decl(*expr.expr));
@@ -252,12 +248,11 @@ pub fn mdx_plugin_recma_document(
                                 // Looks like some TC39 proposal. Ignore for now
                                 // and only do things if this is an ID.
                                 if let swc_ecma_ast::ModuleExportName::Ident(ident) = &named.orig {
-                                    if layout {
-                                        return Err(create_double_layout_message(
-                                            bytepos_to_point(ident.span.lo, location).as_ref(),
-                                            layout_position.as_ref(),
-                                        ));
-                                    }
+                                    err_for_double_layout(
+                                        layout,
+                                        layout_position.as_ref(),
+                                        bytepos_to_point(ident.span.lo, location).as_ref(),
+                                    )?;
                                     layout = true;
                                     layout_position = span_to_position(&ident.span, location);
                                     take = true;
@@ -338,6 +333,7 @@ pub fn mdx_plugin_recma_document(
             swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(expr_stmt)) => {
                 match *expr_stmt.expr {
                     swc_ecma_ast::Expr::JSXElement(elem) => {
+                        content = true;
                         replacements.append(&mut create_mdx_content(
                             Some(swc_ecma_ast::Expr::JSXElement(elem)),
                             layout,
@@ -349,6 +345,7 @@ pub fn mdx_plugin_recma_document(
                             let item = frag.children.pop().unwrap();
 
                             if let swc_ecma_ast::JSXElementChild::JSXElement(elem) = item {
+                                content = true;
                                 replacements.append(&mut create_mdx_content(
                                     Some(swc_ecma_ast::Expr::JSXElement(elem)),
                                     layout,
@@ -359,6 +356,7 @@ pub fn mdx_plugin_recma_document(
                             frag.children.push(item);
                         }
 
+                        content = true;
                         replacements.append(&mut create_mdx_content(
                             Some(swc_ecma_ast::Expr::JSXFragment(frag)),
                             layout,
@@ -578,20 +576,25 @@ fn create_layout_decl(expr: swc_ecma_ast::Expr) -> swc_ecma_ast::ModuleItem {
     ))))
 }
 
-/// Create an error message about multiple layouts.
-fn create_double_layout_message(at: Option<&Point>, previous: Option<&Position>) -> String {
-    prefix_error_with_point(
-        format!(
-            "Cannot specify multiple layouts{}",
-            if let Some(previous) = previous {
-                format!(" (previous: {:?})", previous)
-            } else {
-                "".into()
-            }
-        ),
-        at,
-    )
+/// Create an error about multiple layouts.
+fn err_for_double_layout(
+    layout: bool,
+    previous: Option<&Position>,
+    at: Option<&Point>,
+) -> Result<(), String> {
+    if layout {
+        Err(prefix_error_with_point(
+            &format!(
+                "Cannot specify multiple layouts (previous: {})",
+                position_opt_to_string(previous)
+            ),
+            at,
+        ))
+    } else {
+        Ok(())
+    }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -599,6 +602,7 @@ mod tests {
     use crate::mdast_util_to_hast::mdast_util_to_hast;
     use crate::mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions};
     use crate::swc::{parse_esm, parse_expression, serialize};
+    use crate::swc_utils::create_bool_expression;
     use markdown::{to_mdast, ParseOptions};
     use pretty_assertions::assert_eq;
 
@@ -685,6 +689,21 @@ export default MDXContent;
             "should support an export declaration",
         );
 
+        assert_eq!(
+            compile("export class A {}")?,
+            "export class A {
+}
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should support an export class",
+        );
+
         Ok(())
     }
 
@@ -717,6 +736,22 @@ export default MDXContent;
 ",
             "should support an export default declaration",
         );
+
+        assert_eq!(
+            compile("export default class A {}")?,
+            "const MDXLayout = class A {
+};
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    return <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout>;
+}
+export default MDXContent;
+",
+            "should support an export default class",
+        );
+
         Ok(())
     }
 
@@ -817,8 +852,177 @@ export default MDXContent;
             compile("export default a = 1\n\nexport default b = 2")
                 .err()
                 .unwrap(),
-            "3:1: Cannot specify multiple layouts (previous: 1:1-1:21 (0-20))",
+            "3:1: Cannot specify multiple layouts (previous: 1:1-1:21)",
             "should crash on multiple layouts"
         );
+    }
+
+    #[test]
+    fn ts_default_interface_declaration() {
+        assert_eq!(
+            mdx_plugin_recma_document(
+                &mut Program {
+                    path: None,
+                    comments: vec![],
+                    module: swc_ecma_ast::Module {
+                        span: swc_common::DUMMY_SP,
+                        shebang: None,
+                        body: vec![swc_ecma_ast::ModuleItem::ModuleDecl(
+                            swc_ecma_ast::ModuleDecl::ExportDefaultDecl(
+                                swc_ecma_ast::ExportDefaultDecl {
+                                    span: swc_common::DUMMY_SP,
+                                    decl: swc_ecma_ast::DefaultDecl::TsInterfaceDecl(Box::new(
+                                        swc_ecma_ast::TsInterfaceDecl {
+                                            span: swc_common::DUMMY_SP,
+                                            id: create_ident("a"),
+                                            declare: true,
+                                            type_params: None,
+                                            extends: vec![],
+                                            body: swc_ecma_ast::TsInterfaceBody {
+                                                span: swc_common::DUMMY_SP,
+                                                body: vec![]
+                                            }
+                                        }
+                                    ))
+                                }
+                            )
+                        )]
+                    }
+                },
+                &Options::default(),
+                None
+            )
+            .err()
+            .unwrap(),
+            "0:0: Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component",
+            "should crash on a TypeScript default interface declaration"
+        );
+    }
+
+    #[test]
+    fn statement_pass_through() -> Result<(), String> {
+        let mut program = Program {
+            path: None,
+            comments: vec![],
+            module: swc_ecma_ast::Module {
+                span: swc_common::DUMMY_SP,
+                shebang: None,
+                body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::While(
+                    swc_ecma_ast::WhileStmt {
+                        span: swc_common::DUMMY_SP,
+                        test: Box::new(create_bool_expression(true)),
+                        body: Box::new(swc_ecma_ast::Stmt::Empty(swc_ecma_ast::EmptyStmt {
+                            span: swc_common::DUMMY_SP,
+                        })),
+                    },
+                ))],
+            },
+        };
+
+        mdx_plugin_recma_document(&mut program, &Options::default(), None)?;
+
+        assert_eq!(
+            serialize(&program.module, None),
+            "while(true);
+function _createMdxContent(props) {
+    return null;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should pass statements through"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn expression_pass_through() -> Result<(), String> {
+        let mut program = Program {
+            path: None,
+            comments: vec![],
+            module: swc_ecma_ast::Module {
+                span: swc_common::DUMMY_SP,
+                shebang: None,
+                body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
+                    swc_ecma_ast::ExprStmt {
+                        span: swc_common::DUMMY_SP,
+                        expr: Box::new(create_bool_expression(true)),
+                    },
+                ))],
+            },
+        };
+
+        mdx_plugin_recma_document(&mut program, &Options::default(), None)?;
+
+        assert_eq!(
+            serialize(&program.module, None),
+            "true;
+function _createMdxContent(props) {
+    return null;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should pass expressions through"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn fragment_non_element_single_child() -> Result<(), String> {
+        let mut program = Program {
+            path: None,
+            comments: vec![],
+            module: swc_ecma_ast::Module {
+                span: swc_common::DUMMY_SP,
+                shebang: None,
+                body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
+                    swc_ecma_ast::ExprStmt {
+                        span: swc_common::DUMMY_SP,
+                        expr: Box::new(swc_ecma_ast::Expr::JSXFragment(
+                            swc_ecma_ast::JSXFragment {
+                                span: swc_common::DUMMY_SP,
+                                opening: swc_ecma_ast::JSXOpeningFragment {
+                                    span: swc_common::DUMMY_SP,
+                                },
+                                closing: swc_ecma_ast::JSXClosingFragment {
+                                    span: swc_common::DUMMY_SP,
+                                },
+                                children: vec![swc_ecma_ast::JSXElementChild::JSXText(
+                                    swc_ecma_ast::JSXText {
+                                        value: "a".into(),
+                                        span: swc_common::DUMMY_SP,
+                                        raw: "a".into(),
+                                    },
+                                )],
+                            },
+                        )),
+                    },
+                ))],
+            },
+        };
+
+        mdx_plugin_recma_document(&mut program, &Options::default(), None)?;
+
+        assert_eq!(
+            serialize(&program.module, None),
+            "function _createMdxContent(props) {
+    return <>a</>;
+}
+function MDXContent(props = {}) {
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should pass a fragment with a single child that isn’t an element through"
+        );
+
+        Ok(())
     }
 }
