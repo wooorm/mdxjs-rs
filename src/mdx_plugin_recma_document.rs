@@ -6,8 +6,9 @@
 extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
-    bytepos_to_point, create_ident, create_ident_expression, create_str, position_opt_to_string,
-    prefix_error_with_point, span_to_position,
+    bytepos_to_point, create_call_expression, create_ident, create_ident_expression,
+    create_object_expression, create_str, position_opt_to_string, prefix_error_with_point,
+    span_to_position,
 };
 use markdown::{
     unist::{Point, Position},
@@ -453,17 +454,13 @@ fn create_mdx_content(
         result = swc_ecma_ast::Expr::Cond(swc_ecma_ast::CondExpr {
             test: Box::new(create_ident_expression("MDXLayout")),
             cons: Box::new(result),
-            alt: Box::new(swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
-                callee: swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
-                    "_createMdxContent",
-                ))),
-                args: vec![swc_ecma_ast::ExprOrSpread {
+            alt: Box::new(create_call_expression(
+                swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression("_createMdxContent"))),
+                vec![swc_ecma_ast::ExprOrSpread {
                     spread: None,
                     expr: Box::new(create_ident_expression("props")),
                 }],
-                type_args: None,
-                span: swc_common::DUMMY_SP,
-            })),
+            )),
             span: swc_common::DUMMY_SP,
         });
     }
@@ -523,10 +520,7 @@ fn create_mdx_content(
                             id: create_ident("props"),
                             type_ann: None,
                         })),
-                        right: Box::new(swc_ecma_ast::Expr::Object(swc_ecma_ast::ObjectLit {
-                            props: vec![],
-                            span: swc_common::DUMMY_SP,
-                        })),
+                        right: Box::new(create_object_expression(vec![])),
                         span: swc_common::DUMMY_SP,
                         type_ann: None,
                     }),

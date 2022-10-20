@@ -7,10 +7,11 @@ extern crate swc_common;
 extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::{Program, MAGIC_EXPLICIT_MARKER};
 use crate::swc_utils::{
-    create_binary_expression, create_bool_expression, create_ident, create_ident_expression,
-    create_member, create_member_expression_from_str, create_member_prop_from_str,
-    create_prop_name, create_str, create_str_expression, is_identifier_name, is_literal_name,
-    position_to_string, span_to_position,
+    create_binary_expression, create_bool_expression, create_call_expression, create_ident,
+    create_ident_expression, create_member, create_member_expression_from_str,
+    create_member_prop_from_str, create_object_expression, create_prop_name, create_str,
+    create_str_expression, is_identifier_name, is_literal_name, position_to_string,
+    span_to_position,
 };
 use markdown::{unist::Position, Location};
 use swc_common::util::take::Take;
@@ -201,14 +202,12 @@ impl<'a> State<'a> {
             // ```
             if self.provider {
                 self.create_provider_import = true;
-                parameters.push(swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
-                    callee: swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
+                parameters.push(create_call_expression(
+                    swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
                         "_provideComponents",
                     ))),
-                    args: vec![],
-                    type_args: None,
-                    span: swc_common::DUMMY_SP,
-                }));
+                    vec![],
+                ));
             }
 
             // Accept `components` as a prop if this is the `MDXContent` or
@@ -241,13 +240,7 @@ impl<'a> State<'a> {
             // ({h1: 'h1'})
             // ```
             if !defaults.is_empty() || parameters.len() > 1 {
-                parameters.insert(
-                    0,
-                    swc_ecma_ast::Expr::Object(swc_ecma_ast::ObjectLit {
-                        props: defaults,
-                        span: swc_common::DUMMY_SP,
-                    }),
-                );
+                parameters.insert(0, create_object_expression(defaults));
             }
 
             // Merge things and prevent errors.
@@ -274,27 +267,19 @@ impl<'a> State<'a> {
                         expr: Box::new(param),
                     });
                 }
-                swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
-                    callee: swc_ecma_ast::Callee::Expr(Box::new(
-                        create_member_expression_from_str("Object.assign"),
-                    )),
+                create_call_expression(
+                    swc_ecma_ast::Callee::Expr(Box::new(create_member_expression_from_str(
+                        "Object.assign",
+                    ))),
                     args,
-                    type_args: None,
-                    span: swc_common::DUMMY_SP,
-                })
+                )
             } else {
                 // Always one.
                 let param = parameters.pop().unwrap();
 
                 if let swc_ecma_ast::Expr::Member(_) = param {
                     create_binary_expression(
-                        vec![
-                            param,
-                            swc_ecma_ast::Expr::Object(swc_ecma_ast::ObjectLit {
-                                props: vec![],
-                                span: swc_common::DUMMY_SP,
-                            }),
-                        ],
+                        vec![param, create_object_expression(vec![])],
                         swc_ecma_ast::BinaryOp::LogicalOr,
                     )
                 } else {
@@ -453,14 +438,12 @@ impl<'a> State<'a> {
                 })),
                 cons: Box::new(swc_ecma_ast::Stmt::Expr(swc_ecma_ast::ExprStmt {
                     span: swc_common::DUMMY_SP,
-                    expr: Box::new(swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
-                        callee: swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
+                    expr: Box::new(create_call_expression(
+                        swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
                             "_missingMdxReference",
                         ))),
                         args,
-                        type_args: None,
-                        span: swc_common::DUMMY_SP,
-                    })),
+                    )),
                 })),
                 alt: None,
                 span: swc_common::DUMMY_SP,

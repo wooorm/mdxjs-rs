@@ -5,8 +5,9 @@ extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::mdx_plugin_recma_document::JsxRuntime;
 use crate::swc_utils::{
-    bytepos_to_point, create_bool_expression, create_ident, create_ident_expression,
-    create_member_expression_from_str, create_prop_name, create_str, create_str_expression,
+    bytepos_to_point, create_bool_expression, create_call_expression, create_ident,
+    create_ident_expression, create_member_expression_from_str, create_num_expression,
+    create_object_expression, create_prop_name, create_str, create_str_expression,
     jsx_attribute_name_to_prop_name, jsx_element_name_to_expression, prefix_error_with_point,
     span_to_position,
 };
@@ -234,7 +235,7 @@ impl<'a> State<'a> {
                     }
                 }
                 swc_ecma_ast::JSXElementChild::JSXSpreadChild(_) => {
-                    panic!("Spread children not supported in Babel, SWC, or React");
+                    return Err("Spread children not supported in Babel, SWC, or React".into())
                 }
                 swc_ecma_ast::JSXElementChild::JSXElement(element) => {
                     result.push(self.jsx_element_to_expression(*element)?);
@@ -268,10 +269,7 @@ impl<'a> State<'a> {
                 match attribute {
                     swc_ecma_ast::JSXAttrOrSpread::SpreadElement(spread_element) => {
                         if !fields.is_empty() {
-                            objects.push(swc_ecma_ast::Expr::Object(swc_ecma_ast::ObjectLit {
-                                props: fields,
-                                span: swc_common::DUMMY_SP,
-                            }));
+                            objects.push(create_object_expression(fields));
                             fields = vec![];
                         }
 
@@ -342,10 +340,7 @@ impl<'a> State<'a> {
 
         // Add remaining fields.
         if !fields.is_empty() {
-            objects.push(swc_ecma_ast::Expr::Object(swc_ecma_ast::ObjectLit {
-                props: fields,
-                span: swc_common::DUMMY_SP,
-            }));
+            objects.push(create_object_expression(fields));
         }
 
         let props = match objects.len() {
@@ -355,12 +350,10 @@ impl<'a> State<'a> {
                 let mut args = vec![];
                 objects.reverse();
 
-                // Don’t mutate the first object, shallow clone instead.
+                // Don’t mutate the first object, shallow clone into a new
+                // object instead.
                 if !matches!(objects.last(), Some(swc_ecma_ast::Expr::Object(_))) {
-                    objects.push(swc_ecma_ast::Expr::Object(swc_ecma_ast::ObjectLit {
-                        props: vec![],
-                        span: swc_common::DUMMY_SP,
-                    }));
+                    objects.push(create_object_expression(vec![]));
                 }
 
                 while let Some(object) = objects.pop() {
@@ -370,14 +363,12 @@ impl<'a> State<'a> {
                     });
                 }
 
-                Some(swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
-                    callee: swc_ecma_ast::Callee::Expr(Box::new(
-                        create_member_expression_from_str("Object.assign"),
-                    )),
+                Some(create_call_expression(
+                    swc_ecma_ast::Callee::Expr(Box::new(create_member_expression_from_str(
+                        "Object.assign",
+                    ))),
                     args,
-                    span: swc_common::DUMMY_SP,
-                    type_args: None,
-                }))
+                ))
             }
         };
 
@@ -414,12 +405,7 @@ impl<'a> State<'a> {
                 // ```
                 swc_ecma_ast::ExprOrSpread {
                     spread: None,
-                    expr: Box::new(props.unwrap_or(swc_ecma_ast::Expr::Object(
-                        swc_ecma_ast::ObjectLit {
-                            props: vec![],
-                            span: swc_common::DUMMY_SP,
-                        },
-                    ))),
+                    expr: Box::new(props.unwrap_or_else(|| create_object_expression(vec![]))),
                 },
             ];
 
@@ -466,26 +452,14 @@ impl<'a> State<'a> {
                     meta_fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
                         swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
                             key: create_prop_name("lineNumber"),
-                            value: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Num(
-                                swc_ecma_ast::Number {
-                                    value: position.start.line as f64,
-                                    raw: None,
-                                    span: swc_common::DUMMY_SP,
-                                },
-                            ))),
+                            value: Box::new(create_num_expression(position.start.line as f64)),
                         }),
                     )));
 
                     meta_fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
                         swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
                             key: create_prop_name("columnNumber"),
-                            value: Box::new(swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Num(
-                                swc_ecma_ast::Number {
-                                    value: position.start.column as f64,
-                                    raw: None,
-                                    span: swc_common::DUMMY_SP,
-                                },
-                            ))),
+                            value: Box::new(create_num_expression(position.start.column as f64)),
                         }),
                     )));
                 }
@@ -501,10 +475,7 @@ impl<'a> State<'a> {
                 // ```
                 parameters.push(swc_ecma_ast::ExprOrSpread {
                     spread: None,
-                    expr: Box::new(swc_ecma_ast::Expr::Object(swc_ecma_ast::ObjectLit {
-                        props: meta_fields,
-                        span: swc_common::DUMMY_SP,
-                    })),
+                    expr: Box::new(create_object_expression(meta_fields)),
                 });
 
                 // Context object.
@@ -512,11 +483,12 @@ impl<'a> State<'a> {
                 // ```javascript
                 // this
                 // ```
+                let this_expression = swc_ecma_ast::ThisExpr {
+                    span: swc_common::DUMMY_SP,
+                };
                 parameters.push(swc_ecma_ast::ExprOrSpread {
                     spread: None,
-                    expr: Box::new(swc_ecma_ast::Expr::This(swc_ecma_ast::ThisExpr {
-                        span: swc_common::DUMMY_SP,
-                    })),
+                    expr: Box::new(swc_ecma_ast::Expr::This(this_expression)),
                 });
             }
 
@@ -532,11 +504,13 @@ impl<'a> State<'a> {
             };
 
             (create_ident_expression(callee), parameters)
-        }
-        // Classic runtime.
-        else {
-            // Key is only extracted in the automatic runtime.
-            let (props, _) = self.jsx_attributes_to_expressions(attributes, None)?;
+        } else {
+            // Classic runtime.
+            let (props, key) = self.jsx_attributes_to_expressions(attributes, None)?;
+            debug_assert_eq!(
+                key, None,
+                "key should not be extracted in the classic runtime"
+            );
             let mut parameters = vec![
                 // Component name.
                 //
@@ -582,12 +556,14 @@ impl<'a> State<'a> {
             (self.create_element_expression.clone(), parameters)
         };
 
-        Ok(swc_ecma_ast::Expr::Call(swc_ecma_ast::CallExpr {
+        let call_expression = swc_ecma_ast::CallExpr {
             callee: swc_ecma_ast::Callee::Expr(Box::new(callee)),
             args: parameters,
             type_args: None,
             span: *span,
-        }))
+        };
+
+        Ok(swc_ecma_ast::Expr::Call(call_expression))
     }
 
     /// Turn a JSX element into an expression.
@@ -699,7 +675,7 @@ fn find_directives(
                 && bytes[index + 3] == b'x')
             {
                 // Exit if not.
-                break;
+                continue;
             }
 
             loop {
@@ -1028,11 +1004,50 @@ mod tests {
     }
 
     #[test]
+    fn directive_non_first_line() -> Result<(), String> {
+        assert_eq!(
+            compile(
+                "/*\n first line\n @jsxRuntime classic\n */\n<b />",
+                &Options::default()
+            )?,
+            "React.createElement(\"b\");\n",
+            "should support a directive on a non-first line"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn directive_asterisked_line() -> Result<(), String> {
+        assert_eq!(
+            compile(
+                "/*\n * first line\n * @jsxRuntime classic\n */\n<b />",
+                &Options::default()
+            )?,
+            "React.createElement(\"b\");\n",
+            "should support a directive on an asterisk’ed line"
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn jsx_element_self_closing() -> Result<(), String> {
         assert_eq!(
             compile("<a />", &Options::default())?,
             "import { jsx as _jsx } from \"react/jsx-runtime\";\n_jsx(\"a\", {});\n",
             "should support a self-closing element"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn jsx_element_self_closing_classic() -> Result<(), String> {
+        assert_eq!(
+            compile("/* @jsxRuntime classic */\n<a />", &Options::default())?,
+            "React.createElement(\"a\");\n",
+            "should support a self-closing element (classic)"
         );
 
         Ok(())
@@ -1123,6 +1138,17 @@ mod tests {
             compile("<a b />", &Options::default())?,
             "import { jsx as _jsx } from \"react/jsx-runtime\";\n_jsx(\"a\", {\n    b: true\n});\n",
             "should support an element with a boolean attribute"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn jsx_element_attribute_boolean_classic() -> Result<(), String> {
+        assert_eq!(
+            compile("/* @jsxRuntime classic */\n<a b />", &Options::default())?,
+            "React.createElement(\"a\", {\n    b: true\n});\n",
+            "should support an element with a boolean attribute (classic"
         );
 
         Ok(())
@@ -1271,6 +1297,17 @@ _jsx(\"a\", {
     }
 
     #[test]
+    fn jsx_element_child_expression_classic() -> Result<(), String> {
+        assert_eq!(
+            compile("/* @jsxRuntime classic */\n<a>{1}</a>", &Options::default())?,
+            "React.createElement(\"a\", null, 1);\n",
+            "should support a child expression (classic)"
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn jsx_element_child_expression_empty() -> Result<(), String> {
         assert_eq!(
             compile("<a>{}</a>", &Options::default())?,
@@ -1281,6 +1318,81 @@ _jsx(\"a\", {});
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn jsx_element_child_expression_empty_classic() -> Result<(), String> {
+        assert_eq!(
+            compile("/* @jsxRuntime classic */\n<a>{}</a>", &Options::default())?,
+            "React.createElement(\"a\");\n",
+            "should support an empty child expression (classic)"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn jsx_element_child_fragment() -> Result<(), String> {
+        assert_eq!(
+            compile("<a><>b</></a>", &Options::default())?,
+            "import { Fragment as _Fragment, jsx as _jsx } from \"react/jsx-runtime\";
+_jsx(\"a\", {
+    children: _jsx(_Fragment, {
+        children: \"b\"
+    })
+});
+",
+            "should support a fragment as a child"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn jsx_element_child_spread() {
+        let mut program = Program {
+            path: None,
+            comments: vec![],
+            module: swc_ecma_ast::Module {
+                span: swc_common::DUMMY_SP,
+                shebang: None,
+                body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
+                    swc_ecma_ast::ExprStmt {
+                        span: swc_common::DUMMY_SP,
+                        expr: Box::new(swc_ecma_ast::Expr::JSXElement(Box::new(
+                            swc_ecma_ast::JSXElement {
+                                span: swc_common::DUMMY_SP,
+                                opening: swc_ecma_ast::JSXOpeningElement {
+                                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("a")),
+                                    attrs: vec![],
+                                    self_closing: false,
+                                    type_args: None,
+                                    span: swc_common::DUMMY_SP,
+                                },
+                                closing: Some(swc_ecma_ast::JSXClosingElement {
+                                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("a")),
+                                    span: swc_common::DUMMY_SP,
+                                }),
+                                children: vec![swc_ecma_ast::JSXElementChild::JSXSpreadChild(
+                                    swc_ecma_ast::JSXSpreadChild {
+                                        expr: Box::new(create_ident_expression("a")),
+                                        span: swc_common::DUMMY_SP,
+                                    },
+                                )],
+                            },
+                        ))),
+                    },
+                ))],
+            },
+        };
+
+        assert_eq!(
+            swc_util_build_jsx(&mut program, &Options::default(), None)
+                .err()
+                .unwrap(),
+            "Spread children not supported in Babel, SWC, or React",
+            "should not support a spread child"
+        );
     }
 
     #[test]
@@ -1388,6 +1500,24 @@ _jsx(\"a\", {
     }
 
     #[test]
+    fn jsx_element_key_classic() -> Result<(), String> {
+        assert_eq!(
+            compile(
+                "/* @jsxRuntime classic */\n<a b key='c' d />",
+                &Options::default()
+            )?,
+            "React.createElement(\"a\", {
+    b: true,
+    key: \"c\",
+    d: true
+});
+",
+            "should support a key in the classic runtime"
+        );
+
+        Ok(())
+    }
+    #[test]
     fn jsx_element_key_after_spread_automatic() {
         assert_eq!(
             compile("<a {...b} key='c' />", &Options::default())
@@ -1429,6 +1559,51 @@ _jsxDEV(_Fragment, {
 }, this);
 ",
             "should support the automatic development runtime if `development` is on"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn jsx_element_development_no_filepath() -> Result<(), String> {
+        let mut program = Program {
+            path: None,
+            comments: vec![],
+            module: swc_ecma_ast::Module {
+                span: swc_common::DUMMY_SP,
+                shebang: None,
+                body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
+                    swc_ecma_ast::ExprStmt {
+                        span: swc_common::DUMMY_SP,
+                        expr: Box::new(swc_ecma_ast::Expr::JSXElement(Box::new(
+                            swc_ecma_ast::JSXElement {
+                                span: swc_common::DUMMY_SP,
+                                opening: swc_ecma_ast::JSXOpeningElement {
+                                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("a")),
+                                    attrs: vec![],
+                                    self_closing: true,
+                                    type_args: None,
+                                    span: swc_common::DUMMY_SP,
+                                },
+                                closing: None,
+                                children: vec![],
+                            },
+                        ))),
+                    },
+                ))],
+            },
+        };
+
+        swc_util_build_jsx(&mut program, &Options { development: true }, None)?;
+
+        assert_eq!(
+            serialize(&program.module, Some(&program.comments)),
+            "import { jsxDEV as _jsxDEV } from \"react/jsx-dev-runtime\";
+_jsxDEV(\"a\", {}, undefined, false, {
+    fileName: \"<source.js>\"
+}, this);
+",
+            "should support the automatic development runtime without a file path"
         );
 
         Ok(())

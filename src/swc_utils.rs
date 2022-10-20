@@ -10,8 +10,9 @@ use markdown::{
 
 use swc_common::{BytePos, Span, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::{
-    BinExpr, BinaryOp, Bool, ComputedPropName, Expr, Ident, JSXAttrName, JSXElementName,
-    JSXMemberExpr, JSXObject, Lit, MemberExpr, MemberProp, PropName, Str,
+    BinExpr, BinaryOp, Bool, CallExpr, Callee, ComputedPropName, Expr, ExprOrSpread, Ident,
+    JSXAttrName, JSXElementName, JSXMemberExpr, JSXObject, Lit, MemberExpr, MemberProp, Number,
+    ObjectLit, PropName, PropOrSpread, Str,
 };
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut};
 
@@ -180,11 +181,7 @@ pub fn create_ident_expression(sym: &str) -> Expr {
 
 /// Generate a str.
 pub fn create_str(value: &str) -> Str {
-    Str {
-        value: value.into(),
-        raw: None,
-        span: DUMMY_SP,
-    }
+    value.into()
 }
 
 /// Generate a str.
@@ -199,10 +196,7 @@ pub fn create_str_expression(value: &str) -> Expr {
 
 /// Generate a bool.
 pub fn create_bool(value: bool) -> Bool {
-    Bool {
-        value,
-        span: DUMMY_SP,
-    }
+    value.into()
 }
 
 /// Generate a bool.
@@ -213,6 +207,49 @@ pub fn create_bool_lit(value: bool) -> Lit {
 /// Generate a bool.
 pub fn create_bool_expression(value: bool) -> Expr {
     Expr::Lit(create_bool_lit(value))
+}
+
+/// Generate a number.
+pub fn create_num(value: f64) -> Number {
+    value.into()
+}
+
+/// Generate a num.
+pub fn create_num_lit(value: f64) -> Lit {
+    Lit::Num(create_num(value))
+}
+
+/// Generate a num.
+pub fn create_num_expression(value: f64) -> Expr {
+    Expr::Lit(create_num_lit(value))
+}
+
+/// Generate an object.
+pub fn create_object_lit(value: Vec<PropOrSpread>) -> ObjectLit {
+    ObjectLit {
+        props: value,
+        span: DUMMY_SP,
+    }
+}
+
+/// Generate an object.
+pub fn create_object_expression(value: Vec<PropOrSpread>) -> Expr {
+    Expr::Object(create_object_lit(value))
+}
+
+/// Generate a call.
+pub fn create_call(callee: Callee, args: Vec<ExprOrSpread>) -> CallExpr {
+    swc_ecma_ast::CallExpr {
+        callee,
+        args,
+        span: DUMMY_SP,
+        type_args: None,
+    }
+}
+
+/// Generate a call.
+pub fn create_call_expression(callee: Callee, args: Vec<ExprOrSpread>) -> Expr {
+    Expr::Call(create_call(callee, args))
 }
 
 /// Generate a binary expression.
