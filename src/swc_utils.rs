@@ -504,6 +504,30 @@ pub fn parse_jsx_name(name: &str) -> JsxName {
     }
 }
 
+/// Get the identifiers used in a JSX member expression.
+///
+/// `Foo.Bar` -> `vec!["Foo", "Bar"]`
+pub fn jsx_member_to_parts(node: &JSXMemberExpr) -> Vec<&str> {
+    let mut parts = vec![];
+    let mut member_opt = Some(node);
+
+    while let Some(member) = member_opt {
+        parts.push(member.prop.sym.as_ref());
+        match &member.obj {
+            JSXObject::Ident(d) => {
+                parts.push(d.sym.as_ref());
+                member_opt = None;
+            }
+            JSXObject::JSXMemberExpr(node) => {
+                member_opt = Some(node);
+            }
+        }
+    }
+
+    parts.reverse();
+    parts
+}
+
 /// Check if a text value is inter-element whitespace.
 ///
 /// See: <https://github.com/syntax-tree/hast-util-whitespace>.
@@ -557,5 +581,32 @@ mod tests {
     #[test]
     fn point_opt_to_string_test() {
         assert_eq!(point_opt_to_string(None), "0:0", "should support no point");
+    }
+
+    #[test]
+    fn jsx_member_to_parts_test() {
+        assert_eq!(
+            jsx_member_to_parts(&JSXMemberExpr {
+                prop: create_ident("a"),
+                obj: JSXObject::Ident(create_ident("b"))
+            }),
+            vec!["b", "a"],
+            "should support a member with 2 items"
+        );
+
+        assert_eq!(
+            jsx_member_to_parts(&JSXMemberExpr {
+                prop: create_ident("a"),
+                obj: JSXObject::JSXMemberExpr(Box::new(JSXMemberExpr {
+                    prop: create_ident("b"),
+                    obj: JSXObject::JSXMemberExpr(Box::new(JSXMemberExpr {
+                        prop: create_ident("c"),
+                        obj: JSXObject::Ident(create_ident("d"))
+                    }))
+                }))
+            }),
+            vec!["d", "c", "b", "a"],
+            "should support a member with 4 items"
+        );
     }
 }

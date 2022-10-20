@@ -10,8 +10,8 @@ use crate::swc_utils::{
     create_binary_expression, create_bool_expression, create_call_expression, create_ident,
     create_ident_expression, create_member, create_member_expression_from_str,
     create_member_prop_from_str, create_object_expression, create_prop_name, create_str,
-    create_str_expression, is_identifier_name, is_literal_name, position_to_string,
-    span_to_position,
+    create_str_expression, is_identifier_name, is_literal_name, jsx_member_to_parts,
+    position_to_string, span_to_position,
 };
 use markdown::{unist::Position, Location};
 use swc_common::util::take::Take;
@@ -87,6 +87,31 @@ enum Func<'a> {
     Arrow(&'a mut ArrowExpr),
 }
 
+/// Non-literal reference.
+#[derive(Debug, Default, Clone)]
+struct Reference {
+    /// Name.
+    ///
+    /// ```jsx
+    /// "a.b.c"
+    /// "A"
+    /// ```
+    name: String,
+    /// Component or not.
+    component: bool,
+    /// Positional info
+    position: Option<Position>,
+}
+
+/// Alias.
+#[derive(Debug, Default, Clone)]
+struct Alias {
+    /// Unsafe.
+    original: String,
+    /// Safe.
+    safe: String,
+}
+
 /// Info for a function scope.
 #[derive(Debug, Default, Clone)]
 struct Info {
@@ -99,22 +124,10 @@ struct Info {
     /// Used literals (`<a />`).
     tags: Vec<String>,
     /// List of JSX identifiers of literal tags that are not valid JS
-    /// identifiers in the shape of `Vec<(invalid, valid)>`.
-    ///
-    /// Example:
-    ///
-    /// ```rust ignore
-    /// vec![("a-b".into(), "_component0".into())]
-    /// ```
-    aliases: Vec<(String, String)>,
-    /// Non-literal references in the shape of `Vec<(name, is_component)>`.
-    ///
-    /// Example:
-    ///
-    /// ```rust ignore
-    /// vec![("a".into(), false), ("a.b".into(), true)]
-    /// ```
-    references: Vec<(String, bool, Option<Position>)>,
+    /// identifiers.
+    aliases: Vec<Alias>,
+    /// Non-literal references (components and objects).
+    references: Vec<Reference>,
 }
 
 /// Scope (block or function/global).
@@ -306,18 +319,17 @@ impl<'a> State<'a> {
                 while let Some(key) = actual.pop() {
                     // `wrapper: MDXLayout`
                     if key == "MDXLayout" {
-                        let pat = Pat::Ident(BindingIdent {
+                        let binding = BindingIdent {
                             id: create_ident(&key),
                             type_ann: None,
-                        });
+                        };
                         let prop = KeyValuePatProp {
                             key: create_prop_name("wrapper"),
-                            value: Box::new(pat),
+                            value: Box::new(Pat::Ident(binding)),
                         };
                         props.push(ObjectPatProp::KeyValue(prop));
-                    }
-                    // `MyComponent`
-                    else {
+                    } else {
+                        // `MyComponent`
                         let prop = AssignPatProp {
                             key: create_ident(&key),
                             value: None,
@@ -364,16 +376,16 @@ impl<'a> State<'a> {
             if !info.aliases.is_empty() {
                 info.aliases.reverse();
 
-                while let Some((id, name)) = info.aliases.pop() {
+                while let Some(alias) = info.aliases.pop() {
                     let declarator = VarDeclarator {
                         span: swc_common::DUMMY_SP,
                         name: Pat::Ident(BindingIdent {
-                            id: create_ident(&name),
+                            id: create_ident(&alias.safe),
                             type_ann: None,
                         }),
                         init: Some(Box::new(Expr::Member(create_member(
                             create_ident_expression("_components"),
-                            create_member_prop_from_str(&id),
+                            create_member_prop_from_str(&alias.original),
                         )))),
                         definite: false,
                     };
@@ -408,22 +420,22 @@ impl<'a> State<'a> {
         // if (!a) _missingMdxReference("a", false);
         // if (!a.b) _missingMdxReference("a.b", true);
         // ```
-        for (id, component, position) in info.references {
+        for reference in info.references {
             self.create_error_helper = true;
 
             let mut args = vec![
                 ExprOrSpread {
                     spread: None,
-                    expr: Box::new(create_str_expression(&id)),
+                    expr: Box::new(create_str_expression(&reference.name)),
                 },
                 ExprOrSpread {
                     spread: None,
-                    expr: Box::new(create_bool_expression(component)),
+                    expr: Box::new(create_bool_expression(reference.component)),
                 },
             ];
 
             // Add the source location if it exists and if `development` is on.
-            if let Some(position) = position.as_ref() {
+            if let Some(position) = reference.position.as_ref() {
                 if self.development {
                     args.push(ExprOrSpread {
                         spread: None,
@@ -432,19 +444,21 @@ impl<'a> State<'a> {
                 }
             }
 
+            let test = Expr::Unary(UnaryExpr {
+                op: UnaryOp::Bang,
+                arg: Box::new(create_member_expression_from_str(&reference.name)),
+                span: swc_common::DUMMY_SP,
+            });
+            let cons = Stmt::Expr(ExprStmt {
+                span: swc_common::DUMMY_SP,
+                expr: Box::new(create_call_expression(
+                    Callee::Expr(Box::new(create_ident_expression("_missingMdxReference"))),
+                    args,
+                )),
+            });
             let statement = Stmt::If(IfStmt {
-                test: Box::new(Expr::Unary(UnaryExpr {
-                    op: UnaryOp::Bang,
-                    arg: Box::new(create_member_expression_from_str(&id)),
-                    span: swc_common::DUMMY_SP,
-                })),
-                cons: Box::new(Stmt::Expr(ExprStmt {
-                    span: swc_common::DUMMY_SP,
-                    expr: Box::new(create_call_expression(
-                        Callee::Expr(Box::new(create_ident_expression("_missingMdxReference"))),
-                        args,
-                    )),
-                })),
+                test: Box::new(test),
+                cons: Box::new(cons),
                 alt: None,
                 span: swc_common::DUMMY_SP,
             });
@@ -455,23 +469,11 @@ impl<'a> State<'a> {
         if !statements.is_empty() {
             let mut body: &mut BlockStmt = match func {
                 Func::Expr(expr) => {
-                    if expr.function.body.is_none() {
-                        let block = BlockStmt {
-                            stmts: vec![],
-                            span: swc_common::DUMMY_SP,
-                        };
-                        expr.function.body = Some(block);
-                    }
+                    // Always exists if we have components in it.
                     expr.function.body.as_mut().unwrap()
                 }
                 Func::Decl(decl) => {
-                    if decl.function.body.is_none() {
-                        let block = BlockStmt {
-                            stmts: vec![],
-                            span: swc_common::DUMMY_SP,
-                        };
-                        decl.function.body = Some(block);
-                    }
+                    // Always exists if we have components in it.
                     decl.function.body.as_mut().unwrap()
                 }
                 Func::Arrow(arr) => {
@@ -588,7 +590,7 @@ impl<'a> State<'a> {
                         }
                         // `{key}` or `{key = value}`
                         ObjectPatProp::Assign(d) => {
-                            self.add_id(d.key.to_string(), block);
+                            self.add_id(d.key.sym.to_string(), block);
                         }
                     }
                     index += 1;
@@ -613,47 +615,35 @@ impl<'a> VisitMut for State<'a> {
                 match &node.opening.name {
                     // `<x.y>`, `<Foo.Bar>`, `<x.y.z>`.
                     JSXElementName::JSXMemberExpr(d) => {
-                        let mut ids = vec![];
-                        let mut mem = d;
-                        loop {
-                            ids.push(mem.prop.sym.to_string());
-                            match &mem.obj {
-                                JSXObject::Ident(d) => {
-                                    ids.push(d.sym.to_string());
-                                    break;
-                                }
-                                JSXObject::JSXMemberExpr(d) => {
-                                    mem = d;
-                                }
-                            }
-                        }
-                        ids.reverse();
-                        let primary_id = ids.first().unwrap().clone();
-                        let in_scope = self.in_scope(&primary_id);
+                        let ids = jsx_member_to_parts(d);
+                        let primary_id = (*ids[0]).to_string();
 
-                        if !in_scope {
+                        if !self.in_scope(&primary_id) {
                             let info_mut = self.current_top_level_info_mut().unwrap();
 
                             let mut index = 1;
                             while index <= ids.len() {
-                                let full_id = ids[0..index].join(".");
+                                let name = ids[0..index].join(".");
                                 let component = index == ids.len();
                                 let reference =
-                                    info_mut.references.iter_mut().find(|d| d.0 == full_id);
+                                    info_mut.references.iter_mut().find(|d| d.name == name);
+
                                 if let Some(reference) = reference {
                                     if component {
-                                        reference.1 = true;
+                                        reference.component = true;
                                     }
                                 } else {
-                                    info_mut.references.push((
-                                        full_id,
+                                    let reference = Reference {
+                                        name,
                                         component,
-                                        position.clone(),
-                                    ));
+                                        position: position.clone(),
+                                    };
+                                    info_mut.references.push(reference);
                                 }
                                 index += 1;
                             }
 
+                            // We only need to get the first ID.
                             if !info_mut.objects.contains(&primary_id) {
                                 info_mut.objects.push(primary_id);
                             }
@@ -684,12 +674,15 @@ impl<'a> VisitMut for State<'a> {
                                     JSXElementName::JSXMemberExpr(member)
                                 }
                             } else {
-                                let reference = info.aliases.iter().find(|d| d.0 == id);
-                                let name = if let Some(reference) = reference {
-                                    reference.1.clone()
+                                let alias = info.aliases.iter().find(|d| d.original == id);
+                                let name = if let Some(alias) = alias {
+                                    alias.safe.clone()
                                 } else {
                                     let name = format!("_component{}", info.aliases.len());
-                                    invalid = Some((id.clone(), name.clone()));
+                                    invalid = Some(Alias {
+                                        original: id.clone(),
+                                        safe: name.clone(),
+                                    });
                                     name
                                 };
 
@@ -712,9 +705,9 @@ impl<'a> VisitMut for State<'a> {
 
                             node.opening.name = name;
                         } else {
+                            // A component.
                             let mut is_layout = false;
 
-                            // The MDXLayout is wrapped in a
                             if let Some(name) = &info.name {
                                 if name == "MDXContent" && id == "MDXLayout" {
                                     is_layout = true;
@@ -726,11 +719,17 @@ impl<'a> VisitMut for State<'a> {
 
                                 if !is_layout {
                                     let reference =
-                                        info_mut.references.iter_mut().find(|d| d.0 == id);
+                                        info_mut.references.iter_mut().find(|d| d.name == id);
+
                                     if let Some(reference) = reference {
-                                        reference.1 = true;
+                                        reference.component = true;
                                     } else {
-                                        info_mut.references.push((id.clone(), true, position));
+                                        let reference = Reference {
+                                            name: id.clone(),
+                                            component: true,
+                                            position,
+                                        };
+                                        info_mut.references.push(reference);
                                     }
                                 }
 
@@ -1138,16 +1137,20 @@ function _missingMdxReference(id, component) {
         );
 
         assert_eq!(
-            compile("<X />, <X.y />, <Y.Z />", &Options::default())?,
+            compile("<X />, <X.y />, <Y.Z />, <a.b.c.d />, <a.b />", &Options::default())?,
           "function _createMdxContent(props) {
     const _components = Object.assign({
         p: \"p\"
-    }, props.components), { X , Y  } = _components;
+    }, props.components), { X , Y , a  } = _components;
     if (!X) _missingMdxReference(\"X\", true);
     if (!X.y) _missingMdxReference(\"X.y\", true);
     if (!Y) _missingMdxReference(\"Y\", false);
     if (!Y.Z) _missingMdxReference(\"Y.Z\", true);
-    return <_components.p ><X />{\", \"}<X.y />{\", \"}<Y.Z /></_components.p>;
+    if (!a) _missingMdxReference(\"a\", false);
+    if (!a.b) _missingMdxReference(\"a.b\", true);
+    if (!a.b.c) _missingMdxReference(\"a.b.c\", false);
+    if (!a.b.c.d) _missingMdxReference(\"a.b.c.d\", true);
+    return <_components.p ><X />{\", \"}<X.y />{\", \"}<Y.Z />{\", \"}<a.b.c.d />{\", \"}<a.b /></_components.p>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1180,13 +1183,32 @@ export default MDXContent;
         );
 
         assert_eq!(
-            compile("# <a-b />", &Options::default())?,
+            compile(
+                "import * as X from './a.js'\n\n<X />",
+                &Options::default()
+            )?,
+            "import * as X from './a.js';
+function _createMdxContent(props) {
+    return <X />;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should not support passing in a component if one is defined locally (namespace import)",
+        );
+
+        assert_eq!(
+            compile("# <a-b />, <qwe-rty />, <a-b />", &Options::default())?,
             "function _createMdxContent(props) {
     const _components = Object.assign({
         h1: \"h1\",
-        \"a-b\": \"a-b\"
-    }, props.components), _component0 = _components[\"a-b\"];
-    return <_components.h1 ><_component0 /></_components.h1>;
+        \"a-b\": \"a-b\",
+        \"qwe-rty\": \"qwe-rty\"
+    }, props.components), _component0 = _components[\"a-b\"], _component1 = _components[\"qwe-rty\"];
+    return <_components.h1 ><_component0 />{\", \"}<_component1 />{\", \"}<_component0 /></_components.h1>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1309,6 +1331,28 @@ export default MDXContent;
 
         assert_eq!(
             compile(
+                "export class A {}
+
+<A />
+",
+            &Options::default()
+        )?,
+            "export class A {
+}
+function _createMdxContent(props) {
+    return <A />;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = props.components || {};
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+",
+            "should be aware of classes",
+        );
+
+        assert_eq!(
+            compile(
                 "export function A() {
     return <B />
 }
@@ -1339,6 +1383,207 @@ function _missingMdxReference(id, component) {
 }
 ",
             "should support providing components in locally defined components",
+        );
+
+        assert_eq!(
+            compile(
+                "export const A = () => <B />",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+export const A = ()=>{
+    const { B  } = _provideComponents();
+    if (!B) _missingMdxReference(\"B\", true);
+    return <B />;
+};
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support providing components in locally defined arrow functions",
+        );
+
+        assert_eq!(
+            compile(
+                "export function X(x) {
+    let [A] = x
+    let [...B] = x
+    let {C} = x
+    // let {...D} = x - this currently crashes SWC.
+    let {_: E} = x
+    let {F = _} = x;
+    return <><A /><B /><C /><D /><E /><F /><G /></>
+}",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+export function X(x) {
+    const { D , G  } = _provideComponents();
+    if (!D) _missingMdxReference(\"D\", true);
+    if (!G) _missingMdxReference(\"G\", true);
+    let [A] = x;
+    let [...B] = x;
+    let { C  } = x;
+    let { _: E  } = x;
+    let { F =_  } = x;
+    return <><A /><B /><C /><D /><E /><F /><G /></>;
+}
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support providing components in top-level components, aware of scopes",
+        );
+
+        assert_eq!(
+            compile(
+                "export function A() {
+    while (true) {
+        let B = true;
+        break;
+    }
+
+    do {
+        let B = true;
+        break;
+    } while (true)
+
+    for (;;) {
+        let B = true;
+        break;
+    }
+
+    for (a in b) {
+        let B = true;
+        break;
+    }
+
+    for (a of b) {
+        let B = true;
+        break;
+    }
+
+    try {
+        let B = true;
+    } catch (B) {
+        let B = true;
+    }
+
+    (function () {
+        let B = true;
+    })()
+
+    (() => {
+        let B = true;
+    })()
+
+    return <B/>
+}",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+export function A() {
+    const { B  } = _provideComponents();
+    if (!B) _missingMdxReference(\"B\", true);
+    while(true){
+        let B = true;
+        break;
+    }
+    do {
+        let B = true;
+        break;
+    }while (true)
+    for(;;){
+        let B = true;
+        break;
+    }
+    for(a in b){
+        let B = true;
+        break;
+    }
+    for (a of b){
+        let B = true;
+        break;
+    }
+    try {
+        let B = true;
+    } catch (B) {
+        let B = true;
+    }
+    (function() {
+        let B = true;
+    })()(()=>{
+        let B = true;
+    })();
+    return <B />;
+}
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support providing components in top-level components, aware of scopes",
+        );
+
+        assert_eq!(
+            compile(
+                "export const A = function B() { return <C /> }",
+                &Options {
+                    provider_import_source: Some("x".into()),
+                    ..Options::default()
+                }
+            )?,
+            "import { useMDXComponents as _provideComponents } from \"x\";
+export const A = function B() {
+    const { C  } = _provideComponents();
+    if (!C) _missingMdxReference(\"C\", true);
+    return <C />;
+};
+function _createMdxContent(props) {
+    return <></>;
+}
+function MDXContent(props = {}) {
+    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+}
+export default MDXContent;
+function _missingMdxReference(id, component) {
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+}
+",
+            "should support providing components in locally defined function expressions",
         );
 
         assert_eq!(

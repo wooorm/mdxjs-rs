@@ -20,8 +20,8 @@ use swc_common::{
 use swc_ecma_ast::{
     ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, ImportDecl, ImportNamedSpecifier,
     ImportSpecifier, JSXAttrOrSpread, JSXAttrValue, JSXElement, JSXElementChild, JSXExpr,
-    JSXExprContainer, JSXFragment, KeyValueProp, Lit, ModuleDecl, ModuleExportName, ModuleItem,
-    Prop, PropName, PropOrSpread, ThisExpr,
+    JSXFragment, KeyValueProp, Lit, ModuleDecl, ModuleExportName, ModuleItem, Prop, PropName,
+    PropOrSpread, ThisExpr,
 };
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
@@ -211,16 +211,14 @@ impl<'a> State<'a> {
         let mut result = vec![];
         children.reverse();
         while let Some(child) = children.pop() {
-            if let JSXElementChild::JSXSpreadChild(_) = child {
-                return Err("Spread children not supported in Babel, SWC, or React".into());
-            }
-
             match child {
-                JSXElementChild::JSXExprContainer(JSXExprContainer {
-                    expr: JSXExpr::Expr(expression),
-                    ..
-                }) => {
-                    result.push(*expression);
+                JSXElementChild::JSXSpreadChild(_) => {
+                    return Err("Spread children not supported in Babel, SWC, or React".into());
+                }
+                JSXElementChild::JSXExprContainer(container) => {
+                    if let JSXExpr::Expr(expression) = container.expr {
+                        result.push(*expression);
+                    }
                 }
                 JSXElementChild::JSXText(text) => {
                     let value = jsx_text_to_value(text.value.as_ref());
@@ -234,7 +232,6 @@ impl<'a> State<'a> {
                 JSXElementChild::JSXFragment(fragment) => {
                     result.push(self.jsx_fragment_to_expression(fragment)?);
                 }
-                _ => {}
             }
         }
 
