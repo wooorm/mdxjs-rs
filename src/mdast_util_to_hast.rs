@@ -1473,22 +1473,11 @@ mod tests {
                         position: None
                     }),
                     mdast::Node::Paragraph(mdast::Paragraph {
-                        children: vec![
-                            mdast::Node::FootnoteReference(mdast::FootnoteReference {
-                                identifier: "a".into(),
-                                label: None,
-                                position: None,
-                            }),
-                            mdast::Node::Text(mdast::Text {
-                                value: " and ".into(),
-                                position: None,
-                            }),
-                            mdast::Node::FootnoteReference(mdast::FootnoteReference {
-                                identifier: "a".into(),
-                                label: None,
-                                position: None,
-                            })
-                        ],
+                        children: vec![mdast::Node::FootnoteReference(mdast::FootnoteReference {
+                            identifier: "a".into(),
+                            label: None,
+                            position: None,
+                        })],
                         position: None
                     }),
                 ],
@@ -1500,74 +1489,28 @@ mod tests {
                     hast::Node::Element(hast::Element {
                         tag_name: "p".into(),
                         properties: vec![],
-                        children: vec![
-                            hast::Node::Element(hast::Element {
-                                tag_name: "sup".into(),
-                                properties: vec![],
-                                children: vec![hast::Node::Element(hast::Element {
-                                    tag_name: "a".into(),
-                                    properties: vec![
-                                        (
-                                            "href".into(),
-                                            hast::PropertyValue::String("#fn-a".into()),
-                                        ),
-                                        (
-                                            "id".into(),
-                                            hast::PropertyValue::String("fnref-a".into()),
-                                        ),
-                                        (
-                                            "dataFootnoteRef".into(),
-                                            hast::PropertyValue::Boolean(true),
-                                        ),
-                                        (
-                                            "ariaDescribedBy".into(),
-                                            hast::PropertyValue::String("footnote-label".into()),
-                                        )
-                                    ],
-                                    children: vec![hast::Node::Text(hast::Text {
-                                        value: "1".into(),
-                                        position: None
-                                    })],
+                        children: vec![hast::Node::Element(hast::Element {
+                            tag_name: "sup".into(),
+                            properties: vec![],
+                            children: vec![hast::Node::Element(hast::Element {
+                                tag_name: "a".into(),
+                                properties: vec![
+                                    ("href".into(), hast::PropertyValue::String("#fn-a".into()),),
+                                    ("id".into(), hast::PropertyValue::String("fnref-a".into()),),
+                                    ("dataFootnoteRef".into(), hast::PropertyValue::Boolean(true),),
+                                    (
+                                        "ariaDescribedBy".into(),
+                                        hast::PropertyValue::String("footnote-label".into()),
+                                    )
+                                ],
+                                children: vec![hast::Node::Text(hast::Text {
+                                    value: "1".into(),
                                     position: None
-                                }),],
+                                })],
                                 position: None
-                            }),
-                            hast::Node::Text(hast::Text {
-                                value: " and ".into(),
-                                position: None
-                            }),
-                            hast::Node::Element(hast::Element {
-                                tag_name: "sup".into(),
-                                properties: vec![],
-                                children: vec![hast::Node::Element(hast::Element {
-                                    tag_name: "a".into(),
-                                    properties: vec![
-                                        (
-                                            "href".into(),
-                                            hast::PropertyValue::String("#fn-a".into()),
-                                        ),
-                                        (
-                                            "id".into(),
-                                            hast::PropertyValue::String("fnref-a-2".into()),
-                                        ),
-                                        (
-                                            "dataFootnoteRef".into(),
-                                            hast::PropertyValue::Boolean(true),
-                                        ),
-                                        (
-                                            "ariaDescribedBy".into(),
-                                            hast::PropertyValue::String("footnote-label".into()),
-                                        )
-                                    ],
-                                    children: vec![hast::Node::Text(hast::Text {
-                                        value: "1".into(),
-                                        position: None
-                                    })],
-                                    position: None
-                                }),],
-                                position: None
-                            }),
-                        ],
+                            }),],
+                            position: None
+                        }),],
                         position: None
                     }),
                     hast::Node::Text(hast::Text {
@@ -1670,57 +1613,7 @@ mod tests {
                                                             }
                                                         ),],
                                                         position: None
-                                                    }),
-                                                    hast::Node::Text(hast::Text {
-                                                        value: " ".into(),
-                                                        position: None
-                                                    }),
-                                                    hast::Node::Element(hast::Element {
-                                                        tag_name: "a".into(),
-                                                        properties: vec![
-                                                            (
-                                                                "href".into(),
-                                                                hast::PropertyValue::String(
-                                                                    "#fnref-a-2".into()
-                                                                ),
-                                                            ),
-                                                            (
-                                                                "dataFootnoteBackref".into(),
-                                                                hast::PropertyValue::Boolean(true),
-                                                            ),
-                                                            (
-                                                                "ariaLabel".into(),
-                                                                hast::PropertyValue::String(
-                                                                    "Back to content".into()
-                                                                ),
-                                                            ),
-                                                            (
-                                                                "className".into(),
-                                                                hast::PropertyValue::SpaceSeparated(
-                                                                    vec!["data-footnote-backref"
-                                                                        .into()]
-                                                                ),
-                                                            )
-                                                        ],
-                                                        children: vec![
-                                                            hast::Node::Text(hast::Text {
-                                                                value: "↩".into(),
-                                                                position: None
-                                                            }),
-                                                            hast::Node::Element(hast::Element {
-                                                                tag_name: "sup".into(),
-                                                                properties: vec![],
-                                                                children: vec![hast::Node::Text(
-                                                                    hast::Text {
-                                                                        value: "2".into(),
-                                                                        position: None
-                                                                    }
-                                                                ),],
-                                                                position: None
-                                                            }),
-                                                        ],
-                                                        position: None
-                                                    }),
+                                                    })
                                                 ],
                                                 position: None
                                             }),
@@ -1752,7 +1645,7 @@ mod tests {
                 ],
                 position: None
             }),
-            "should support an `FootnoteReference`",
+            "should support a `FootnoteReference`",
         );
 
         assert_eq!(
@@ -2042,7 +1935,956 @@ mod tests {
                 ],
                 position: None
             }),
-            "should support an `FootnoteReference` (multiple calls to same definition)",
+            "should support a `FootnoteReference` (multiple calls to the same definition)",
+        );
+
+        assert_eq!(
+            mdast_util_to_hast(&mdast::Node::Root(mdast::Root {
+                children: vec![
+                    mdast::Node::FootnoteDefinition(mdast::FootnoteDefinition {
+                        children: vec![mdast::Node::Paragraph(mdast::Paragraph {
+                            children: vec![mdast::Node::Text(mdast::Text {
+                                value: "b".into(),
+                                position: None
+                            })],
+                            position: None
+                        }),],
+                        identifier: "a".into(),
+                        label: None,
+                        position: None
+                    }),
+                    mdast::Node::FootnoteDefinition(mdast::FootnoteDefinition {
+                        children: vec![mdast::Node::Paragraph(mdast::Paragraph {
+                            children: vec![mdast::Node::Text(mdast::Text {
+                                value: "d".into(),
+                                position: None
+                            })],
+                            position: None
+                        }),],
+                        identifier: "c".into(),
+                        label: None,
+                        position: None
+                    }),
+                    mdast::Node::Paragraph(mdast::Paragraph {
+                        children: vec![
+                            mdast::Node::FootnoteReference(mdast::FootnoteReference {
+                                identifier: "a".into(),
+                                label: None,
+                                position: None,
+                            }),
+                            mdast::Node::Text(mdast::Text {
+                                value: " and ".into(),
+                                position: None,
+                            }),
+                            mdast::Node::FootnoteReference(mdast::FootnoteReference {
+                                identifier: "c".into(),
+                                label: None,
+                                position: None,
+                            })
+                        ],
+                        position: None
+                    }),
+                ],
+                position: None,
+            })),
+            hast::Node::Root(hast::Root {
+                children: vec![
+                    // Main.
+                    hast::Node::Element(hast::Element {
+                        tag_name: "p".into(),
+                        properties: vec![],
+                        children: vec![
+                            hast::Node::Element(hast::Element {
+                                tag_name: "sup".into(),
+                                properties: vec![],
+                                children: vec![hast::Node::Element(hast::Element {
+                                    tag_name: "a".into(),
+                                    properties: vec![
+                                        (
+                                            "href".into(),
+                                            hast::PropertyValue::String("#fn-a".into()),
+                                        ),
+                                        (
+                                            "id".into(),
+                                            hast::PropertyValue::String("fnref-a".into()),
+                                        ),
+                                        (
+                                            "dataFootnoteRef".into(),
+                                            hast::PropertyValue::Boolean(true),
+                                        ),
+                                        (
+                                            "ariaDescribedBy".into(),
+                                            hast::PropertyValue::String("footnote-label".into()),
+                                        )
+                                    ],
+                                    children: vec![hast::Node::Text(hast::Text {
+                                        value: "1".into(),
+                                        position: None
+                                    })],
+                                    position: None
+                                }),],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: " and ".into(),
+                                position: None,
+                            }),
+                            hast::Node::Element(hast::Element {
+                                tag_name: "sup".into(),
+                                properties: vec![],
+                                children: vec![hast::Node::Element(hast::Element {
+                                    tag_name: "a".into(),
+                                    properties: vec![
+                                        (
+                                            "href".into(),
+                                            hast::PropertyValue::String("#fn-c".into()),
+                                        ),
+                                        (
+                                            "id".into(),
+                                            hast::PropertyValue::String("fnref-c".into()),
+                                        ),
+                                        (
+                                            "dataFootnoteRef".into(),
+                                            hast::PropertyValue::Boolean(true),
+                                        ),
+                                        (
+                                            "ariaDescribedBy".into(),
+                                            hast::PropertyValue::String("footnote-label".into()),
+                                        )
+                                    ],
+                                    children: vec![hast::Node::Text(hast::Text {
+                                        value: "2".into(),
+                                        position: None
+                                    })],
+                                    position: None
+                                }),],
+                                position: None
+                            }),
+                        ],
+                        position: None
+                    }),
+                    hast::Node::Text(hast::Text {
+                        value: "\n".into(),
+                        position: None
+                    }),
+                    // Footer.
+                    hast::Node::Element(hast::Element {
+                        tag_name: "section".into(),
+                        properties: vec![
+                            ("dataFootnotes".into(), hast::PropertyValue::Boolean(true),),
+                            (
+                                "className".into(),
+                                hast::PropertyValue::SpaceSeparated(vec!["footnotes".into()]),
+                            ),
+                        ],
+                        children: vec![
+                            hast::Node::Element(hast::Element {
+                                tag_name: "h2".into(),
+                                properties: vec![
+                                    (
+                                        "id".into(),
+                                        hast::PropertyValue::String("footnote-label".into()),
+                                    ),
+                                    (
+                                        "className".into(),
+                                        hast::PropertyValue::SpaceSeparated(
+                                            vec!["sr-only".into(),]
+                                        ),
+                                    ),
+                                ],
+                                children: vec![hast::Node::Text(hast::Text {
+                                    value: "Footnotes".into(),
+                                    position: None
+                                }),],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                            hast::Node::Element(hast::Element {
+                                tag_name: "ol".into(),
+                                properties: vec![],
+                                children: vec![
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "li".into(),
+                                        properties: vec![(
+                                            "id".into(),
+                                            hast::PropertyValue::String("#fn-a".into()),
+                                        )],
+                                        children: vec![
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                            hast::Node::Element(hast::Element {
+                                                tag_name: "p".into(),
+                                                properties: vec![],
+                                                children: vec![
+                                                    hast::Node::Text(hast::Text {
+                                                        value: "b ".into(),
+                                                        position: None
+                                                    }),
+                                                    hast::Node::Element(hast::Element {
+                                                        tag_name: "a".into(),
+                                                        properties: vec![
+                                                            (
+                                                                "href".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "#fnref-a".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "dataFootnoteBackref".into(),
+                                                                hast::PropertyValue::Boolean(true),
+                                                            ),
+                                                            (
+                                                                "ariaLabel".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "Back to content".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "className".into(),
+                                                                hast::PropertyValue::SpaceSeparated(
+                                                                    vec!["data-footnote-backref"
+                                                                        .into()]
+                                                                ),
+                                                            )
+                                                        ],
+                                                        children: vec![hast::Node::Text(
+                                                            hast::Text {
+                                                                value: "↩".into(),
+                                                                position: None
+                                                            }
+                                                        ),],
+                                                        position: None
+                                                    })
+                                                ],
+                                                position: None
+                                            }),
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                        ],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "li".into(),
+                                        properties: vec![(
+                                            "id".into(),
+                                            hast::PropertyValue::String("#fn-c".into()),
+                                        )],
+                                        children: vec![
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                            hast::Node::Element(hast::Element {
+                                                tag_name: "p".into(),
+                                                properties: vec![],
+                                                children: vec![
+                                                    hast::Node::Text(hast::Text {
+                                                        value: "d ".into(),
+                                                        position: None
+                                                    }),
+                                                    hast::Node::Element(hast::Element {
+                                                        tag_name: "a".into(),
+                                                        properties: vec![
+                                                            (
+                                                                "href".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "#fnref-c".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "dataFootnoteBackref".into(),
+                                                                hast::PropertyValue::Boolean(true),
+                                                            ),
+                                                            (
+                                                                "ariaLabel".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "Back to content".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "className".into(),
+                                                                hast::PropertyValue::SpaceSeparated(
+                                                                    vec!["data-footnote-backref"
+                                                                        .into()]
+                                                                ),
+                                                            )
+                                                        ],
+                                                        children: vec![hast::Node::Text(
+                                                            hast::Text {
+                                                                value: "↩".into(),
+                                                                position: None
+                                                            }
+                                                        ),],
+                                                        position: None
+                                                    })
+                                                ],
+                                                position: None
+                                            }),
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                        ],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                ],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                        ],
+                        position: None
+                    }),
+                    hast::Node::Text(hast::Text {
+                        value: "\n".into(),
+                        position: None
+                    }),
+                ],
+                position: None
+            }),
+            "should support a `FootnoteReference` (different definitions)",
+        );
+
+        assert_eq!(
+            mdast_util_to_hast(&mdast::Node::Root(mdast::Root {
+                children: vec![
+                    mdast::Node::FootnoteDefinition(mdast::FootnoteDefinition {
+                        children: vec![mdast::Node::Heading(mdast::Heading {
+                            depth: 1,
+                            children: vec![mdast::Node::Text(mdast::Text {
+                                value: "b".into(),
+                                position: None
+                            })],
+                            position: None
+                        }),],
+                        identifier: "a".into(),
+                        label: None,
+                        position: None
+                    }),
+                    mdast::Node::Paragraph(mdast::Paragraph {
+                        children: vec![mdast::Node::FootnoteReference(mdast::FootnoteReference {
+                            identifier: "a".into(),
+                            label: None,
+                            position: None,
+                        })],
+                        position: None
+                    }),
+                ],
+                position: None,
+            })),
+            hast::Node::Root(hast::Root {
+                children: vec![
+                    // Main.
+                    hast::Node::Element(hast::Element {
+                        tag_name: "p".into(),
+                        properties: vec![],
+                        children: vec![hast::Node::Element(hast::Element {
+                            tag_name: "sup".into(),
+                            properties: vec![],
+                            children: vec![hast::Node::Element(hast::Element {
+                                tag_name: "a".into(),
+                                properties: vec![
+                                    ("href".into(), hast::PropertyValue::String("#fn-a".into()),),
+                                    ("id".into(), hast::PropertyValue::String("fnref-a".into()),),
+                                    ("dataFootnoteRef".into(), hast::PropertyValue::Boolean(true),),
+                                    (
+                                        "ariaDescribedBy".into(),
+                                        hast::PropertyValue::String("footnote-label".into()),
+                                    )
+                                ],
+                                children: vec![hast::Node::Text(hast::Text {
+                                    value: "1".into(),
+                                    position: None
+                                })],
+                                position: None
+                            }),],
+                            position: None
+                        }),],
+                        position: None
+                    }),
+                    hast::Node::Text(hast::Text {
+                        value: "\n".into(),
+                        position: None
+                    }),
+                    // Footer.
+                    hast::Node::Element(hast::Element {
+                        tag_name: "section".into(),
+                        properties: vec![
+                            ("dataFootnotes".into(), hast::PropertyValue::Boolean(true),),
+                            (
+                                "className".into(),
+                                hast::PropertyValue::SpaceSeparated(vec!["footnotes".into()]),
+                            ),
+                        ],
+                        children: vec![
+                            hast::Node::Element(hast::Element {
+                                tag_name: "h2".into(),
+                                properties: vec![
+                                    (
+                                        "id".into(),
+                                        hast::PropertyValue::String("footnote-label".into()),
+                                    ),
+                                    (
+                                        "className".into(),
+                                        hast::PropertyValue::SpaceSeparated(
+                                            vec!["sr-only".into(),]
+                                        ),
+                                    ),
+                                ],
+                                children: vec![hast::Node::Text(hast::Text {
+                                    value: "Footnotes".into(),
+                                    position: None
+                                }),],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                            hast::Node::Element(hast::Element {
+                                tag_name: "ol".into(),
+                                properties: vec![],
+                                children: vec![
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "li".into(),
+                                        properties: vec![(
+                                            "id".into(),
+                                            hast::PropertyValue::String("#fn-a".into()),
+                                        )],
+                                        children: vec![
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                            hast::Node::Element(hast::Element {
+                                                tag_name: "h1".into(),
+                                                properties: vec![],
+                                                children: vec![hast::Node::Text(hast::Text {
+                                                    value: "b".into(),
+                                                    position: None
+                                                }),],
+                                                position: None,
+                                            }),
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                            hast::Node::Element(hast::Element {
+                                                tag_name: "a".into(),
+                                                properties: vec![
+                                                    (
+                                                        "href".into(),
+                                                        hast::PropertyValue::String(
+                                                            "#fnref-a".into()
+                                                        ),
+                                                    ),
+                                                    (
+                                                        "dataFootnoteBackref".into(),
+                                                        hast::PropertyValue::Boolean(true),
+                                                    ),
+                                                    (
+                                                        "ariaLabel".into(),
+                                                        hast::PropertyValue::String(
+                                                            "Back to content".into()
+                                                        ),
+                                                    ),
+                                                    (
+                                                        "className".into(),
+                                                        hast::PropertyValue::SpaceSeparated(vec![
+                                                            "data-footnote-backref".into()
+                                                        ]),
+                                                    )
+                                                ],
+                                                children: vec![hast::Node::Text(hast::Text {
+                                                    value: "↩".into(),
+                                                    position: None
+                                                }),],
+                                                position: None
+                                            }),
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                        ],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                ],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                        ],
+                        position: None
+                    }),
+                    hast::Node::Text(hast::Text {
+                        value: "\n".into(),
+                        position: None
+                    }),
+                ],
+                position: None
+            }),
+            "should support a `FootnoteReference` (no paragraph in definition)",
+        );
+
+        assert_eq!(
+            mdast_util_to_hast(&mdast::Node::Root(mdast::Root {
+                children: vec![
+                    mdast::Node::FootnoteDefinition(mdast::FootnoteDefinition {
+                        children: vec![mdast::Node::Paragraph(mdast::Paragraph {
+                            children: vec![mdast::Node::InlineCode(mdast::InlineCode {
+                                value: "b".into(),
+                                position: None
+                            })],
+                            position: None
+                        }),],
+                        identifier: "a".into(),
+                        label: None,
+                        position: None
+                    }),
+                    mdast::Node::Paragraph(mdast::Paragraph {
+                        children: vec![mdast::Node::FootnoteReference(mdast::FootnoteReference {
+                            identifier: "a".into(),
+                            label: None,
+                            position: None,
+                        })],
+                        position: None
+                    }),
+                ],
+                position: None,
+            })),
+            hast::Node::Root(hast::Root {
+                children: vec![
+                    // Main.
+                    hast::Node::Element(hast::Element {
+                        tag_name: "p".into(),
+                        properties: vec![],
+                        children: vec![hast::Node::Element(hast::Element {
+                            tag_name: "sup".into(),
+                            properties: vec![],
+                            children: vec![hast::Node::Element(hast::Element {
+                                tag_name: "a".into(),
+                                properties: vec![
+                                    ("href".into(), hast::PropertyValue::String("#fn-a".into()),),
+                                    ("id".into(), hast::PropertyValue::String("fnref-a".into()),),
+                                    ("dataFootnoteRef".into(), hast::PropertyValue::Boolean(true),),
+                                    (
+                                        "ariaDescribedBy".into(),
+                                        hast::PropertyValue::String("footnote-label".into()),
+                                    )
+                                ],
+                                children: vec![hast::Node::Text(hast::Text {
+                                    value: "1".into(),
+                                    position: None
+                                })],
+                                position: None
+                            }),],
+                            position: None
+                        }),],
+                        position: None
+                    }),
+                    hast::Node::Text(hast::Text {
+                        value: "\n".into(),
+                        position: None
+                    }),
+                    // Footer.
+                    hast::Node::Element(hast::Element {
+                        tag_name: "section".into(),
+                        properties: vec![
+                            ("dataFootnotes".into(), hast::PropertyValue::Boolean(true),),
+                            (
+                                "className".into(),
+                                hast::PropertyValue::SpaceSeparated(vec!["footnotes".into()]),
+                            ),
+                        ],
+                        children: vec![
+                            hast::Node::Element(hast::Element {
+                                tag_name: "h2".into(),
+                                properties: vec![
+                                    (
+                                        "id".into(),
+                                        hast::PropertyValue::String("footnote-label".into()),
+                                    ),
+                                    (
+                                        "className".into(),
+                                        hast::PropertyValue::SpaceSeparated(
+                                            vec!["sr-only".into(),]
+                                        ),
+                                    ),
+                                ],
+                                children: vec![hast::Node::Text(hast::Text {
+                                    value: "Footnotes".into(),
+                                    position: None
+                                }),],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                            hast::Node::Element(hast::Element {
+                                tag_name: "ol".into(),
+                                properties: vec![],
+                                children: vec![
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "li".into(),
+                                        properties: vec![(
+                                            "id".into(),
+                                            hast::PropertyValue::String("#fn-a".into()),
+                                        )],
+                                        children: vec![
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                            hast::Node::Element(hast::Element {
+                                                tag_name: "p".into(),
+                                                properties: vec![],
+                                                children: vec![
+                                                    hast::Node::Element(hast::Element {
+                                                        tag_name: "code".into(),
+                                                        properties: vec![],
+                                                        children: vec![hast::Node::Text(
+                                                            hast::Text {
+                                                                value: "b".into(),
+                                                                position: None
+                                                            }
+                                                        ),],
+                                                        position: None
+                                                    }),
+                                                    hast::Node::Text(hast::Text {
+                                                        value: " ".into(),
+                                                        position: None
+                                                    }),
+                                                    hast::Node::Element(hast::Element {
+                                                        tag_name: "a".into(),
+                                                        properties: vec![
+                                                            (
+                                                                "href".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "#fnref-a".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "dataFootnoteBackref".into(),
+                                                                hast::PropertyValue::Boolean(true),
+                                                            ),
+                                                            (
+                                                                "ariaLabel".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "Back to content".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "className".into(),
+                                                                hast::PropertyValue::SpaceSeparated(
+                                                                    vec!["data-footnote-backref"
+                                                                        .into()]
+                                                                ),
+                                                            )
+                                                        ],
+                                                        children: vec![hast::Node::Text(
+                                                            hast::Text {
+                                                                value: "↩".into(),
+                                                                position: None
+                                                            }
+                                                        ),],
+                                                        position: None
+                                                    })
+                                                ],
+                                                position: None
+                                            }),
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                        ],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                ],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                        ],
+                        position: None
+                    }),
+                    hast::Node::Text(hast::Text {
+                        value: "\n".into(),
+                        position: None
+                    }),
+                ],
+                position: None
+            }),
+            "should support a `FootnoteReference` (no final text in definition content)",
+        );
+
+        assert_eq!(
+            mdast_util_to_hast(&mdast::Node::BlockQuote(mdast::BlockQuote {
+                children: vec![
+                    mdast::Node::FootnoteDefinition(mdast::FootnoteDefinition {
+                        children: vec![mdast::Node::Paragraph(mdast::Paragraph {
+                            children: vec![mdast::Node::InlineCode(mdast::InlineCode {
+                                value: "b".into(),
+                                position: None
+                            })],
+                            position: None
+                        }),],
+                        identifier: "a".into(),
+                        label: None,
+                        position: None
+                    }),
+                    mdast::Node::Paragraph(mdast::Paragraph {
+                        children: vec![mdast::Node::FootnoteReference(mdast::FootnoteReference {
+                            identifier: "a".into(),
+                            label: None,
+                            position: None,
+                        })],
+                        position: None
+                    }),
+                ],
+                position: None,
+            })),
+            hast::Node::Root(hast::Root {
+                children: vec![
+                    // Main.
+                    hast::Node::Element(hast::Element {
+                        tag_name: "blockquote".into(),
+                        properties: vec![],
+                        children: vec![
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                            hast::Node::Element(hast::Element {
+                                tag_name: "p".into(),
+                                properties: vec![],
+                                children: vec![hast::Node::Element(hast::Element {
+                                    tag_name: "sup".into(),
+                                    properties: vec![],
+                                    children: vec![hast::Node::Element(hast::Element {
+                                        tag_name: "a".into(),
+                                        properties: vec![
+                                            (
+                                                "href".into(),
+                                                hast::PropertyValue::String("#fn-a".into()),
+                                            ),
+                                            (
+                                                "id".into(),
+                                                hast::PropertyValue::String("fnref-a".into()),
+                                            ),
+                                            (
+                                                "dataFootnoteRef".into(),
+                                                hast::PropertyValue::Boolean(true),
+                                            ),
+                                            (
+                                                "ariaDescribedBy".into(),
+                                                hast::PropertyValue::String(
+                                                    "footnote-label".into()
+                                                ),
+                                            )
+                                        ],
+                                        children: vec![hast::Node::Text(hast::Text {
+                                            value: "1".into(),
+                                            position: None
+                                        })],
+                                        position: None
+                                    }),],
+                                    position: None
+                                }),],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                        ],
+                        position: None
+                    }),
+                    hast::Node::Text(hast::Text {
+                        value: "\n".into(),
+                        position: None
+                    }),
+                    // Footer.
+                    hast::Node::Element(hast::Element {
+                        tag_name: "section".into(),
+                        properties: vec![
+                            ("dataFootnotes".into(), hast::PropertyValue::Boolean(true),),
+                            (
+                                "className".into(),
+                                hast::PropertyValue::SpaceSeparated(vec!["footnotes".into()]),
+                            ),
+                        ],
+                        children: vec![
+                            hast::Node::Element(hast::Element {
+                                tag_name: "h2".into(),
+                                properties: vec![
+                                    (
+                                        "id".into(),
+                                        hast::PropertyValue::String("footnote-label".into()),
+                                    ),
+                                    (
+                                        "className".into(),
+                                        hast::PropertyValue::SpaceSeparated(
+                                            vec!["sr-only".into(),]
+                                        ),
+                                    ),
+                                ],
+                                children: vec![hast::Node::Text(hast::Text {
+                                    value: "Footnotes".into(),
+                                    position: None
+                                }),],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                            hast::Node::Element(hast::Element {
+                                tag_name: "ol".into(),
+                                properties: vec![],
+                                children: vec![
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                    hast::Node::Element(hast::Element {
+                                        tag_name: "li".into(),
+                                        properties: vec![(
+                                            "id".into(),
+                                            hast::PropertyValue::String("#fn-a".into()),
+                                        )],
+                                        children: vec![
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                            hast::Node::Element(hast::Element {
+                                                tag_name: "p".into(),
+                                                properties: vec![],
+                                                children: vec![
+                                                    hast::Node::Element(hast::Element {
+                                                        tag_name: "code".into(),
+                                                        properties: vec![],
+                                                        children: vec![hast::Node::Text(
+                                                            hast::Text {
+                                                                value: "b".into(),
+                                                                position: None
+                                                            }
+                                                        ),],
+                                                        position: None
+                                                    }),
+                                                    hast::Node::Text(hast::Text {
+                                                        value: " ".into(),
+                                                        position: None
+                                                    }),
+                                                    hast::Node::Element(hast::Element {
+                                                        tag_name: "a".into(),
+                                                        properties: vec![
+                                                            (
+                                                                "href".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "#fnref-a".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "dataFootnoteBackref".into(),
+                                                                hast::PropertyValue::Boolean(true),
+                                                            ),
+                                                            (
+                                                                "ariaLabel".into(),
+                                                                hast::PropertyValue::String(
+                                                                    "Back to content".into()
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "className".into(),
+                                                                hast::PropertyValue::SpaceSeparated(
+                                                                    vec!["data-footnote-backref"
+                                                                        .into()]
+                                                                ),
+                                                            )
+                                                        ],
+                                                        children: vec![hast::Node::Text(
+                                                            hast::Text {
+                                                                value: "↩".into(),
+                                                                position: None
+                                                            }
+                                                        ),],
+                                                        position: None
+                                                    })
+                                                ],
+                                                position: None
+                                            }),
+                                            hast::Node::Text(hast::Text {
+                                                value: "\n".into(),
+                                                position: None
+                                            }),
+                                        ],
+                                        position: None
+                                    }),
+                                    hast::Node::Text(hast::Text {
+                                        value: "\n".into(),
+                                        position: None
+                                    }),
+                                ],
+                                position: None
+                            }),
+                            hast::Node::Text(hast::Text {
+                                value: "\n".into(),
+                                position: None
+                            }),
+                        ],
+                        position: None
+                    }),
+                    hast::Node::Text(hast::Text {
+                        value: "\n".into(),
+                        position: None
+                    }),
+                ],
+                position: None
+            }),
+            "should support a `FootnoteReference` (not in a root)",
         );
     }
 
