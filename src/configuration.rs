@@ -108,6 +108,7 @@ impl MdxConstructs {
     }
 }
 
+// To do: link all docs when `markdown-rs` is stable.
 /// Like `ParseOptions` from `markdown-rs`.
 ///
 /// The constructs you can pass are limited.
@@ -116,7 +117,6 @@ impl MdxConstructs {
 ///
 /// *   `mdx_expression_parse`
 /// *   `mdx_esm_parse`
-// To do: link all docs when `markdown-rs` is stable.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MdxParseOptions {
     pub constructs: MdxConstructs,
@@ -345,5 +345,94 @@ impl Options {
             parse: MdxParseOptions::gfm(),
             ..Self::default()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_constructs() {
+        let constructs = MdxConstructs::default();
+        assert!(constructs.attention, "should default to `CommonMark` (1)");
+        assert!(
+            !constructs.gfm_autolink_literal,
+            "should default to `CommonMark` (2)"
+        );
+        assert!(
+            !constructs.frontmatter,
+            "should default to `CommonMark` (3)"
+        );
+
+        let constructs = MdxConstructs::gfm();
+        assert!(constructs.attention, "should support `gfm` shortcut (1)");
+        assert!(
+            constructs.gfm_autolink_literal,
+            "should support `gfm` shortcut (2)"
+        );
+        assert!(!constructs.frontmatter, "should support `gfm` shortcut (3)");
+    }
+
+    #[test]
+    fn test_parse_options() {
+        let options = MdxParseOptions::default();
+        assert!(
+            options.constructs.attention,
+            "should default to `CommonMark` (1)"
+        );
+        assert!(
+            !options.constructs.gfm_autolink_literal,
+            "should default to `CommonMark` (2)"
+        );
+        assert!(
+            !options.constructs.frontmatter,
+            "should default to `CommonMark` (3)"
+        );
+
+        let options = MdxParseOptions::gfm();
+        assert!(
+            options.constructs.attention,
+            "should support `gfm` shortcut (1)"
+        );
+        assert!(
+            options.constructs.gfm_autolink_literal,
+            "should support `gfm` shortcut (2)"
+        );
+        assert!(
+            !options.constructs.frontmatter,
+            "should support `gfm` shortcut (3)"
+        );
+    }
+
+    #[test]
+    fn test_options() {
+        let options = Options::default();
+        assert!(
+            options.parse.constructs.attention,
+            "should default to `CommonMark` (1)"
+        );
+        assert!(
+            !options.parse.constructs.gfm_autolink_literal,
+            "should default to `CommonMark` (2)"
+        );
+        assert!(
+            !options.parse.constructs.frontmatter,
+            "should default to `CommonMark` (3)"
+        );
+
+        let options = Options::gfm();
+        assert!(
+            options.parse.constructs.attention,
+            "should support `gfm` shortcut (1)"
+        );
+        assert!(
+            options.parse.constructs.gfm_autolink_literal,
+            "should support `gfm` shortcut (2)"
+        );
+        assert!(
+            !options.parse.constructs.frontmatter,
+            "should support `gfm` shortcut (3)"
+        );
     }
 }
