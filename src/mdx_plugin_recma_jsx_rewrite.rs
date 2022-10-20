@@ -15,6 +15,15 @@ use crate::swc_utils::{
 };
 use markdown::{unist::Position, Location};
 use swc_common::util::take::Take;
+use swc_ecma_ast::{
+    ArrowExpr, AssignPatProp, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Callee,
+    CatchClause, ClassDecl, CondExpr, Decl, DoWhileStmt, Expr, ExprOrSpread, ExprStmt, FnDecl,
+    FnExpr, ForInStmt, ForOfStmt, ForStmt, Function, IfStmt, ImportDecl, ImportNamedSpecifier,
+    ImportSpecifier, JSXElement, JSXElementName, JSXMemberExpr, JSXObject, KeyValuePatProp,
+    KeyValueProp, MemberExpr, MemberProp, ModuleDecl, ModuleExportName, ModuleItem, NewExpr,
+    ObjectPat, ObjectPatProp, Param, ParenExpr, Pat, Prop, PropOrSpread, ReturnStmt, Stmt,
+    ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
+};
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
 /// Configuration.
@@ -71,11 +80,11 @@ pub fn mdx_plugin_recma_jsx_rewrite(
 #[derive(Debug)]
 enum Func<'a> {
     /// Function declaration.
-    Decl(&'a mut swc_ecma_ast::FnDecl),
+    Decl(&'a mut FnDecl),
     /// Function expression.
-    Expr(&'a mut swc_ecma_ast::FnExpr),
+    Expr(&'a mut FnExpr),
     /// Arrow function.
-    Arrow(&'a mut swc_ecma_ast::ArrowExpr),
+    Arrow(&'a mut ArrowExpr),
 }
 
 /// Info for a function scope.
@@ -168,12 +177,10 @@ impl<'a> State<'a> {
         while index < info.tags.len() {
             let name = &info.tags[index];
 
-            defaults.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
-                swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                    key: create_prop_name(name),
-                    value: Box::new(create_str_expression(name)),
-                }),
-            )));
+            defaults.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                key: create_prop_name(name),
+                value: Box::new(create_str_expression(name)),
+            }))));
 
             index += 1;
         }
@@ -202,9 +209,8 @@ impl<'a> State<'a> {
             // ```
             if self.provider {
                 self.create_provider_import = true;
-                let callee = swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
-                    "_provideComponents",
-                )));
+                let call = create_ident_expression("_provideComponents");
+                let callee = Callee::Expr(Box::new(call));
                 parameters.push(create_call_expression(callee, vec![]));
             }
 
@@ -215,12 +221,12 @@ impl<'a> State<'a> {
             // props.components
             // ```
             if is_props_receiving_fn(&info.name) {
-                let member = swc_ecma_ast::MemberExpr {
+                let member = MemberExpr {
                     obj: Box::new(create_ident_expression("props")),
-                    prop: swc_ecma_ast::MemberProp::Ident(create_ident("components")),
+                    prop: MemberProp::Ident(create_ident("components")),
                     span: swc_common::DUMMY_SP,
                 };
-                parameters.push(swc_ecma_ast::Expr::Member(member));
+                parameters.push(Expr::Member(member));
             }
 
             // Inject an object at the start, when:
@@ -261,21 +267,21 @@ impl<'a> State<'a> {
                 let mut args = vec![];
                 parameters.reverse();
                 while let Some(param) = parameters.pop() {
-                    args.push(swc_ecma_ast::ExprOrSpread {
+                    args.push(ExprOrSpread {
                         spread: None,
                         expr: Box::new(param),
                     });
                 }
                 let callee = create_member_expression_from_str("Object.assign");
-                create_call_expression(swc_ecma_ast::Callee::Expr(Box::new(callee)), args)
+                create_call_expression(Callee::Expr(Box::new(callee)), args)
             } else {
                 // Always one.
                 let param = parameters.pop().unwrap();
 
-                if let swc_ecma_ast::Expr::Member(_) = param {
+                if let Expr::Member(_) = param {
                     create_binary_expression(
                         vec![param, create_object_expression(vec![])],
-                        swc_ecma_ast::BinaryOp::LogicalOr,
+                        BinaryOp::LogicalOr,
                     )
                 } else {
                     param
@@ -300,28 +306,28 @@ impl<'a> State<'a> {
                 while let Some(key) = actual.pop() {
                     // `wrapper: MDXLayout`
                     if key == "MDXLayout" {
-                        let pat = swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
+                        let pat = Pat::Ident(BindingIdent {
                             id: create_ident(&key),
                             type_ann: None,
                         });
-                        let prop = swc_ecma_ast::KeyValuePatProp {
+                        let prop = KeyValuePatProp {
                             key: create_prop_name("wrapper"),
                             value: Box::new(pat),
                         };
-                        props.push(swc_ecma_ast::ObjectPatProp::KeyValue(prop));
+                        props.push(ObjectPatProp::KeyValue(prop));
                     }
                     // `MyComponent`
                     else {
-                        let prop = swc_ecma_ast::AssignPatProp {
+                        let prop = AssignPatProp {
                             key: create_ident(&key),
                             value: None,
                             span: swc_common::DUMMY_SP,
                         };
-                        props.push(swc_ecma_ast::ObjectPatProp::Assign(prop));
+                        props.push(ObjectPatProp::Assign(prop));
                     }
                 }
 
-                let pat = swc_ecma_ast::ObjectPat {
+                let pat = ObjectPat {
                     props,
                     optional: false,
                     span: swc_common::DUMMY_SP,
@@ -335,9 +341,9 @@ impl<'a> State<'a> {
             // If there are tags, they take them from `_components`, so we need
             // to make it defined.
             if !info.tags.is_empty() {
-                let declarator = swc_ecma_ast::VarDeclarator {
+                let declarator = VarDeclarator {
                     span: swc_common::DUMMY_SP,
-                    name: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
+                    name: Pat::Ident(BindingIdent {
                         id: create_ident("_components"),
                         type_ann: None,
                     }),
@@ -359,13 +365,13 @@ impl<'a> State<'a> {
                 info.aliases.reverse();
 
                 while let Some((id, name)) = info.aliases.pop() {
-                    let declarator = swc_ecma_ast::VarDeclarator {
+                    let declarator = VarDeclarator {
                         span: swc_common::DUMMY_SP,
-                        name: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
+                        name: Pat::Ident(BindingIdent {
                             id: create_ident(&name),
                             type_ann: None,
                         }),
-                        init: Some(Box::new(swc_ecma_ast::Expr::Member(create_member(
+                        init: Some(Box::new(Expr::Member(create_member(
                             create_ident_expression("_components"),
                             create_member_prop_from_str(&id),
                         )))),
@@ -376,8 +382,8 @@ impl<'a> State<'a> {
             }
 
             if let Some(pat) = components_pattern {
-                let declarator = swc_ecma_ast::VarDeclarator {
-                    name: swc_ecma_ast::Pat::Object(pat),
+                let declarator = VarDeclarator {
+                    name: Pat::Object(pat),
                     init: Some(Box::new(components_init)),
                     span: swc_common::DUMMY_SP,
                     definite: false,
@@ -386,14 +392,14 @@ impl<'a> State<'a> {
             }
 
             // Add the variable declaration.
-            let decl = swc_ecma_ast::VarDecl {
-                kind: swc_ecma_ast::VarDeclKind::Const,
+            let decl = VarDecl {
+                kind: VarDeclKind::Const,
                 decls: declarators,
                 span: swc_common::DUMMY_SP,
                 declare: false,
             };
-            let var_decl = swc_ecma_ast::Decl::Var(Box::new(decl));
-            statements.push(swc_ecma_ast::Stmt::Decl(var_decl));
+            let var_decl = Decl::Var(Box::new(decl));
+            statements.push(Stmt::Decl(var_decl));
         }
 
         // Add checks at runtime to verify that object/components are passed.
@@ -406,11 +412,11 @@ impl<'a> State<'a> {
             self.create_error_helper = true;
 
             let mut args = vec![
-                swc_ecma_ast::ExprOrSpread {
+                ExprOrSpread {
                     spread: None,
                     expr: Box::new(create_str_expression(&id)),
                 },
-                swc_ecma_ast::ExprOrSpread {
+                ExprOrSpread {
                     spread: None,
                     expr: Box::new(create_bool_expression(component)),
                 },
@@ -419,25 +425,23 @@ impl<'a> State<'a> {
             // Add the source location if it exists and if `development` is on.
             if let Some(position) = position.as_ref() {
                 if self.development {
-                    args.push(swc_ecma_ast::ExprOrSpread {
+                    args.push(ExprOrSpread {
                         spread: None,
                         expr: Box::new(create_str_expression(&position_to_string(position))),
                     });
                 }
             }
 
-            let statement = swc_ecma_ast::Stmt::If(swc_ecma_ast::IfStmt {
-                test: Box::new(swc_ecma_ast::Expr::Unary(swc_ecma_ast::UnaryExpr {
-                    op: swc_ecma_ast::UnaryOp::Bang,
+            let statement = Stmt::If(IfStmt {
+                test: Box::new(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Bang,
                     arg: Box::new(create_member_expression_from_str(&id)),
                     span: swc_common::DUMMY_SP,
                 })),
-                cons: Box::new(swc_ecma_ast::Stmt::Expr(swc_ecma_ast::ExprStmt {
+                cons: Box::new(Stmt::Expr(ExprStmt {
                     span: swc_common::DUMMY_SP,
                     expr: Box::new(create_call_expression(
-                        swc_ecma_ast::Callee::Expr(Box::new(create_ident_expression(
-                            "_missingMdxReference",
-                        ))),
+                        Callee::Expr(Box::new(create_ident_expression("_missingMdxReference"))),
                         args,
                     )),
                 })),
@@ -449,10 +453,10 @@ impl<'a> State<'a> {
 
         // Add statements to functions.
         if !statements.is_empty() {
-            let mut body: &mut swc_ecma_ast::BlockStmt = match func {
+            let mut body: &mut BlockStmt = match func {
                 Func::Expr(expr) => {
                     if expr.function.body.is_none() {
-                        let block = swc_ecma_ast::BlockStmt {
+                        let block = BlockStmt {
                             stmts: vec![],
                             span: swc_common::DUMMY_SP,
                         };
@@ -462,7 +466,7 @@ impl<'a> State<'a> {
                 }
                 Func::Decl(decl) => {
                     if decl.function.body.is_none() {
-                        let block = swc_ecma_ast::BlockStmt {
+                        let block = BlockStmt {
                             stmts: vec![],
                             span: swc_common::DUMMY_SP,
                         };
@@ -471,15 +475,15 @@ impl<'a> State<'a> {
                     decl.function.body.as_mut().unwrap()
                 }
                 Func::Arrow(arr) => {
-                    if let swc_ecma_ast::BlockStmtOrExpr::Expr(expr) = &mut arr.body {
-                        let block = swc_ecma_ast::BlockStmt {
-                            stmts: vec![swc_ecma_ast::Stmt::Return(swc_ecma_ast::ReturnStmt {
+                    if let BlockStmtOrExpr::Expr(expr) = &mut arr.body {
+                        let block = BlockStmt {
+                            stmts: vec![Stmt::Return(ReturnStmt {
                                 arg: Some(expr.take()),
                                 span: swc_common::DUMMY_SP,
                             })],
                             span: swc_common::DUMMY_SP,
                         };
-                        arr.body = swc_ecma_ast::BlockStmtOrExpr::BlockStmt(block);
+                        arr.body = BlockStmtOrExpr::BlockStmt(block);
                     }
                     arr.body.as_mut_block_stmt().unwrap()
                 }
@@ -552,12 +556,12 @@ impl<'a> State<'a> {
     }
 
     // Add a pattern to a scope.
-    fn add_pat(&mut self, pat: &swc_ecma_ast::Pat, block: bool) {
+    fn add_pat(&mut self, pat: &Pat, block: bool) {
         match pat {
             // `x`
-            swc_ecma_ast::Pat::Ident(d) => self.add_id(d.id.sym.to_string(), block),
+            Pat::Ident(d) => self.add_id(d.id.sym.to_string(), block),
             // `...x`
-            swc_ecma_ast::Pat::Array(d) => {
+            Pat::Array(d) => {
                 let mut index = 0;
                 while index < d.elems.len() {
                     if let Some(d) = &d.elems[index] {
@@ -567,23 +571,23 @@ impl<'a> State<'a> {
                 }
             }
             // `...x`
-            swc_ecma_ast::Pat::Rest(d) => self.add_pat(&d.arg, block),
+            Pat::Rest(d) => self.add_pat(&d.arg, block),
             // `{x=y}`
-            swc_ecma_ast::Pat::Assign(d) => self.add_pat(&d.left, block),
-            swc_ecma_ast::Pat::Object(d) => {
+            Pat::Assign(d) => self.add_pat(&d.left, block),
+            Pat::Object(d) => {
                 let mut index = 0;
                 while index < d.props.len() {
                     match &d.props[index] {
                         // `{...x}`
-                        swc_ecma_ast::ObjectPatProp::Rest(d) => {
+                        ObjectPatProp::Rest(d) => {
                             self.add_pat(&d.arg, block);
                         }
                         // `{key: value}`
-                        swc_ecma_ast::ObjectPatProp::KeyValue(d) => {
+                        ObjectPatProp::KeyValue(d) => {
                             self.add_pat(&d.value, block);
                         }
                         // `{key}` or `{key = value}`
-                        swc_ecma_ast::ObjectPatProp::Assign(d) => {
+                        ObjectPatProp::Assign(d) => {
                             self.add_id(d.key.to_string(), block);
                         }
                     }
@@ -600,7 +604,7 @@ impl<'a> VisitMut for State<'a> {
     noop_visit_mut_type!();
 
     /// Rewrite JSX identifiers.
-    fn visit_mut_jsx_element(&mut self, node: &mut swc_ecma_ast::JSXElement) {
+    fn visit_mut_jsx_element(&mut self, node: &mut JSXElement) {
         // If there is a top-level, non-global, scope which is a function.
         if let Some(info) = self.current_top_level_info() {
             // Rewrite only if we can rewrite.
@@ -608,17 +612,17 @@ impl<'a> VisitMut for State<'a> {
                 let position = span_to_position(&node.span, self.location);
                 match &node.opening.name {
                     // `<x.y>`, `<Foo.Bar>`, `<x.y.z>`.
-                    swc_ecma_ast::JSXElementName::JSXMemberExpr(d) => {
+                    JSXElementName::JSXMemberExpr(d) => {
                         let mut ids = vec![];
                         let mut mem = d;
                         loop {
                             ids.push(mem.prop.sym.to_string());
                             match &mem.obj {
-                                swc_ecma_ast::JSXObject::Ident(d) => {
+                                JSXObject::Ident(d) => {
                                     ids.push(d.sym.to_string());
                                     break;
                                 }
-                                swc_ecma_ast::JSXObject::JSXMemberExpr(d) => {
+                                JSXObject::JSXMemberExpr(d) => {
                                     mem = d;
                                 }
                             }
@@ -656,7 +660,7 @@ impl<'a> VisitMut for State<'a> {
                         }
                     }
                     // `<foo>`, `<Foo>`, `<$>`, `<_bar>`, `<a_b>`.
-                    swc_ecma_ast::JSXElementName::Ident(d) => {
+                    JSXElementName::Ident(d) => {
                         let explicit_jsx = node.span.ctxt.as_u32() == MAGIC_EXPLICIT_MARKER;
 
                         // If the name is a valid ES identifier, and it doesn’t
@@ -671,15 +675,13 @@ impl<'a> VisitMut for State<'a> {
 
                             let name = if is_identifier_name(&id) {
                                 if explicit_jsx {
-                                    swc_ecma_ast::JSXElementName::Ident(create_ident(&id))
+                                    JSXElementName::Ident(create_ident(&id))
                                 } else {
-                                    let member = swc_ecma_ast::JSXMemberExpr {
-                                        obj: swc_ecma_ast::JSXObject::Ident(create_ident(
-                                            "_components",
-                                        )),
+                                    let member = JSXMemberExpr {
+                                        obj: JSXObject::Ident(create_ident("_components")),
                                         prop: create_ident(&id),
                                     };
-                                    swc_ecma_ast::JSXElementName::JSXMemberExpr(member)
+                                    JSXElementName::JSXMemberExpr(member)
                                 }
                             } else {
                                 let reference = info.aliases.iter().find(|d| d.0 == id);
@@ -691,7 +693,7 @@ impl<'a> VisitMut for State<'a> {
                                     name
                                 };
 
-                                swc_ecma_ast::JSXElementName::Ident(create_ident(&name))
+                                JSXElementName::Ident(create_ident(&name))
                             };
 
                             let info_mut = self.current_top_level_info_mut().unwrap();
@@ -739,7 +741,7 @@ impl<'a> VisitMut for State<'a> {
                         }
                     }
                     // `<xml:thing>`.
-                    swc_ecma_ast::JSXElementName::JSXNamespacedName(_) => {
+                    JSXElementName::JSXNamespacedName(_) => {
                         // Ignore.
                     }
                 }
@@ -750,13 +752,13 @@ impl<'a> VisitMut for State<'a> {
     }
 
     /// Add specifiers of import declarations.
-    fn visit_mut_import_decl(&mut self, node: &mut swc_ecma_ast::ImportDecl) {
+    fn visit_mut_import_decl(&mut self, node: &mut ImportDecl) {
         let mut index = 0;
         while index < node.specifiers.len() {
             let ident = match &node.specifiers[index] {
-                swc_ecma_ast::ImportSpecifier::Default(x) => &x.local.sym,
-                swc_ecma_ast::ImportSpecifier::Namespace(x) => &x.local.sym,
-                swc_ecma_ast::ImportSpecifier::Named(x) => &x.local.sym,
+                ImportSpecifier::Default(x) => &x.local.sym,
+                ImportSpecifier::Namespace(x) => &x.local.sym,
+                ImportSpecifier::Named(x) => &x.local.sym,
             };
             self.add_id(ident.to_string(), false);
             index += 1;
@@ -766,8 +768,8 @@ impl<'a> VisitMut for State<'a> {
     }
 
     /// Add patterns of variable declarations.
-    fn visit_mut_var_decl(&mut self, node: &mut swc_ecma_ast::VarDecl) {
-        let block = node.kind != swc_ecma_ast::VarDeclKind::Var;
+    fn visit_mut_var_decl(&mut self, node: &mut VarDecl) {
+        let block = node.kind != VarDeclKind::Var;
         let mut index = 0;
         while index < node.decls.len() {
             self.add_pat(&node.decls[index].name, block);
@@ -777,13 +779,13 @@ impl<'a> VisitMut for State<'a> {
     }
 
     /// Add identifier of class declaration.
-    fn visit_mut_class_decl(&mut self, node: &mut swc_ecma_ast::ClassDecl) {
+    fn visit_mut_class_decl(&mut self, node: &mut ClassDecl) {
         self.add_id(node.ident.sym.to_string(), false);
         node.visit_mut_children_with(self);
     }
 
     /// On function declarations, add name, create scope, add parameters.
-    fn visit_mut_fn_decl(&mut self, node: &mut swc_ecma_ast::FnDecl) {
+    fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) {
         let id = node.ident.sym.to_string();
         self.add_id(id.clone(), false);
         self.enter(Some(Info {
@@ -801,7 +803,7 @@ impl<'a> VisitMut for State<'a> {
     }
 
     /// On function expressions, add name, create scope, add parameters.
-    fn visit_mut_fn_expr(&mut self, node: &mut swc_ecma_ast::FnExpr) {
+    fn visit_mut_fn_expr(&mut self, node: &mut FnExpr) {
         // Note: `periscopic` adds the ID to the newly generated scope, for
         // fn expressions.
         // That seems wrong?
@@ -827,7 +829,7 @@ impl<'a> VisitMut for State<'a> {
     }
 
     /// On arrow functions, create scope, add parameters.
-    fn visit_mut_arrow_expr(&mut self, node: &mut swc_ecma_ast::ArrowExpr) {
+    fn visit_mut_arrow_expr(&mut self, node: &mut ArrowExpr) {
         self.enter(Some(Info::default()));
         let mut index = 0;
         while index < node.params.len() {
@@ -843,44 +845,44 @@ impl<'a> VisitMut for State<'a> {
     // I added `While`/`DoWhile` here just to be sure.
     // But there are more.
     /// On for statements, create scope.
-    fn visit_mut_for_stmt(&mut self, node: &mut swc_ecma_ast::ForStmt) {
+    fn visit_mut_for_stmt(&mut self, node: &mut ForStmt) {
         self.enter(None);
         node.visit_mut_children_with(self);
         self.exit();
     }
     /// On for/in statements, create scope.
-    fn visit_mut_for_in_stmt(&mut self, node: &mut swc_ecma_ast::ForInStmt) {
+    fn visit_mut_for_in_stmt(&mut self, node: &mut ForInStmt) {
         self.enter(None);
         node.visit_mut_children_with(self);
         self.exit();
     }
     /// On for/of statements, create scope.
-    fn visit_mut_for_of_stmt(&mut self, node: &mut swc_ecma_ast::ForOfStmt) {
+    fn visit_mut_for_of_stmt(&mut self, node: &mut ForOfStmt) {
         self.enter(None);
         node.visit_mut_children_with(self);
         self.exit();
     }
     /// On while statements, create scope.
-    fn visit_mut_while_stmt(&mut self, node: &mut swc_ecma_ast::WhileStmt) {
+    fn visit_mut_while_stmt(&mut self, node: &mut WhileStmt) {
         self.enter(None);
         node.visit_mut_children_with(self);
         self.exit();
     }
     /// On do/while statements, create scope.
-    fn visit_mut_do_while_stmt(&mut self, node: &mut swc_ecma_ast::DoWhileStmt) {
+    fn visit_mut_do_while_stmt(&mut self, node: &mut DoWhileStmt) {
         self.enter(None);
         node.visit_mut_children_with(self);
         self.exit();
     }
     /// On block statements, create scope.
-    fn visit_mut_block_stmt(&mut self, node: &mut swc_ecma_ast::BlockStmt) {
+    fn visit_mut_block_stmt(&mut self, node: &mut BlockStmt) {
         self.enter(None);
         node.visit_mut_children_with(self);
         self.exit();
     }
 
     /// On catch clauses, create scope, add param.
-    fn visit_mut_catch_clause(&mut self, node: &mut swc_ecma_ast::CatchClause) {
+    fn visit_mut_catch_clause(&mut self, node: &mut CatchClause) {
         self.enter(None);
         if let Some(pat) = &node.param {
             self.add_pat(pat, true);
@@ -895,25 +897,19 @@ impl<'a> VisitMut for State<'a> {
 /// ```js
 /// import { useMDXComponents as _provideComponents } from "x"
 /// ```
-fn create_import_provider(source: &str) -> swc_ecma_ast::ModuleItem {
-    swc_ecma_ast::ModuleItem::ModuleDecl(swc_ecma_ast::ModuleDecl::Import(
-        swc_ecma_ast::ImportDecl {
-            specifiers: vec![swc_ecma_ast::ImportSpecifier::Named(
-                swc_ecma_ast::ImportNamedSpecifier {
-                    local: create_ident("_provideComponents"),
-                    imported: Some(swc_ecma_ast::ModuleExportName::Ident(create_ident(
-                        "useMDXComponents",
-                    ))),
-                    span: swc_common::DUMMY_SP,
-                    is_type_only: false,
-                },
-            )],
-            src: Box::new(create_str(source)),
-            type_only: false,
-            asserts: None,
+fn create_import_provider(source: &str) -> ModuleItem {
+    ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+        specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
+            local: create_ident("_provideComponents"),
+            imported: Some(ModuleExportName::Ident(create_ident("useMDXComponents"))),
             span: swc_common::DUMMY_SP,
-        },
-    ))
+            is_type_only: false,
+        })],
+        src: Box::new(create_str(source)),
+        type_only: false,
+        asserts: None,
+        span: swc_common::DUMMY_SP,
+    }))
 }
 
 /// Generate an error helper.
@@ -923,18 +919,18 @@ fn create_import_provider(source: &str) -> swc_ecma_ast::ModuleItem {
 ///   throw new Error("Expected " + (component ? "component" : "object") + " `" + id + "` to be defined: you likely forgot to import, pass, or provide it.");
 /// }
 /// ```
-fn create_error_helper(development: bool, path: Option<String>) -> swc_ecma_ast::ModuleItem {
+fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
     let mut parameters = vec![
-        swc_ecma_ast::Param {
-            pat: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
+        Param {
+            pat: Pat::Ident(BindingIdent {
                 id: create_ident("id"),
                 type_ann: None,
             }),
             decorators: vec![],
             span: swc_common::DUMMY_SP,
         },
-        swc_ecma_ast::Param {
-            pat: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
+        Param {
+            pat: Pat::Ident(BindingIdent {
                 id: create_ident("component"),
                 type_ann: None,
             }),
@@ -945,8 +941,8 @@ fn create_error_helper(development: bool, path: Option<String>) -> swc_ecma_ast:
 
     // Accept a source location (which might be undefiend).
     if development {
-        parameters.push(swc_ecma_ast::Param {
-            pat: swc_ecma_ast::Pat::Ident(swc_ecma_ast::BindingIdent {
+        parameters.push(Param {
+            pat: Pat::Ident(BindingIdent {
                 id: create_ident("place"),
                 type_ann: None,
             }),
@@ -958,8 +954,8 @@ fn create_error_helper(development: bool, path: Option<String>) -> swc_ecma_ast:
     let mut message = vec![
         create_str_expression("Expected "),
         // `component ? "component" : "object"`
-        swc_ecma_ast::Expr::Paren(swc_ecma_ast::ParenExpr {
-            expr: Box::new(swc_ecma_ast::Expr::Cond(swc_ecma_ast::CondExpr {
+        Expr::Paren(ParenExpr {
+            expr: Box::new(Expr::Cond(CondExpr {
                 test: Box::new(create_ident_expression("component")),
                 cons: Box::new(create_str_expression("component")),
                 alt: Box::new(create_str_expression("object")),
@@ -974,8 +970,8 @@ fn create_error_helper(development: bool, path: Option<String>) -> swc_ecma_ast:
 
     // `place ? "\nIt’s referenced in your code at `" + place+ "`" : ""`
     if development {
-        message.push(swc_ecma_ast::Expr::Paren(swc_ecma_ast::ParenExpr {
-            expr: Box::new(swc_ecma_ast::Expr::Cond(swc_ecma_ast::CondExpr {
+        message.push(Expr::Paren(ParenExpr {
+            expr: Box::new(Expr::Cond(CondExpr {
                 test: Box::new(create_ident_expression("place")),
                 cons: Box::new(create_binary_expression(
                     vec![
@@ -987,7 +983,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> swc_ecma_ast:
                             create_str_expression("`")
                         },
                     ],
-                    swc_ecma_ast::BinaryOp::Add,
+                    BinaryOp::Add,
                 )),
                 alt: Box::new(create_str_expression("")),
                 span: swc_common::DUMMY_SP,
@@ -996,39 +992,34 @@ fn create_error_helper(development: bool, path: Option<String>) -> swc_ecma_ast:
         }));
     }
 
-    swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Decl(swc_ecma_ast::Decl::Fn(
-        swc_ecma_ast::FnDecl {
-            ident: create_ident("_missingMdxReference"),
-            declare: false,
-            function: Box::new(swc_ecma_ast::Function {
-                params: parameters,
-                decorators: vec![],
-                body: Some(swc_ecma_ast::BlockStmt {
-                    stmts: vec![swc_ecma_ast::Stmt::Throw(swc_ecma_ast::ThrowStmt {
-                        arg: Box::new(swc_ecma_ast::Expr::New(swc_ecma_ast::NewExpr {
-                            callee: Box::new(create_ident_expression("Error")),
-                            args: Some(vec![swc_ecma_ast::ExprOrSpread {
-                                spread: None,
-                                expr: Box::new(create_binary_expression(
-                                    message,
-                                    swc_ecma_ast::BinaryOp::Add,
-                                )),
-                            }]),
-                            span: swc_common::DUMMY_SP,
-                            type_args: None,
-                        })),
+    ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
+        ident: create_ident("_missingMdxReference"),
+        declare: false,
+        function: Box::new(Function {
+            params: parameters,
+            decorators: vec![],
+            body: Some(BlockStmt {
+                stmts: vec![Stmt::Throw(ThrowStmt {
+                    arg: Box::new(Expr::New(NewExpr {
+                        callee: Box::new(create_ident_expression("Error")),
+                        args: Some(vec![ExprOrSpread {
+                            spread: None,
+                            expr: Box::new(create_binary_expression(message, BinaryOp::Add)),
+                        }]),
                         span: swc_common::DUMMY_SP,
-                    })],
+                        type_args: None,
+                    })),
                     span: swc_common::DUMMY_SP,
-                }),
-                is_generator: false,
-                is_async: false,
-                type_params: None,
-                return_type: None,
+                })],
                 span: swc_common::DUMMY_SP,
             }),
-        },
-    )))
+            is_generator: false,
+            is_async: false,
+            type_params: None,
+            return_type: None,
+            span: swc_common::DUMMY_SP,
+        }),
+    })))
 }
 
 /// Check if this function is a props receiving component: it’s one of ours.

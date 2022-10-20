@@ -14,7 +14,7 @@ use swc_common::{
     sync::Lrc,
     BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Spanned,
 };
-use swc_ecma_ast::{EsVersion, Expr, Module};
+use swc_ecma_ast::{EsVersion, Expr, Module, PropOrSpread};
 use swc_ecma_codegen::{text_writer::JsWriter, Emitter};
 use swc_ecma_parser::{
     error::Error as SwcError, parse_file_as_expr, parse_file_as_module, EsConfig, Syntax,
@@ -45,7 +45,7 @@ pub fn parse_esm_to_tree(
     value: &str,
     stops: &[Stop],
     location: Option<&Location>,
-) -> Result<swc_ecma_ast::Module, String> {
+) -> Result<Module, String> {
     let (file, syntax, version) = create_config(value.into());
     let mut errors = vec![];
     let result = parse_file_as_module(&file, syntax, version, None, &mut errors);
@@ -114,7 +114,7 @@ pub fn parse_expression_to_tree(
     kind: &MdxExpressionKind,
     stops: &[Stop],
     location: Option<&Location>,
-) -> Result<Box<swc_ecma_ast::Expr>, String> {
+) -> Result<Box<Expr>, String> {
     // For attribute expression, a spread is needed, for which we have to prefix
     // and suffix the input.
     // See `check_expression_ast` for how the AST is verified.
@@ -145,8 +145,8 @@ pub fn parse_expression_to_tree(
                 if matches!(kind, MdxExpressionKind::AttributeExpression) {
                     let mut obj = None;
 
-                    if let swc_ecma_ast::Expr::Paren(d) = *expr {
-                        if let swc_ecma_ast::Expr::Object(d) = *d.expr {
+                    if let Expr::Paren(d) = *expr {
+                        if let Expr::Object(d) = *d.expr {
                             obj = Some(d);
                         }
                     };
@@ -158,8 +158,7 @@ pub fn parse_expression_to_tree(
                                 "expression",
                                 bytepos_to_point(obj.span.lo, location).as_ref()
                             ))
-                        } else if let Some(swc_ecma_ast::PropOrSpread::Spread(d)) = obj.props.pop()
-                        {
+                        } else if let Some(PropOrSpread::Spread(d)) = obj.props.pop() {
                             Ok(d.expr)
                         } else {
                             Err(create_error_message(

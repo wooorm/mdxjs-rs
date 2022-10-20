@@ -35,6 +35,12 @@ use crate::swc_utils::{
 };
 use core::str;
 use markdown::{Location, MdxExpressionKind};
+use swc_ecma_ast::{
+    Expr, ExprStmt, JSXAttr, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXClosingElement,
+    JSXClosingFragment, JSXElement, JSXElementChild, JSXElementName, JSXEmptyExpr, JSXExpr,
+    JSXExprContainer, JSXFragment, JSXMemberExpr, JSXNamespacedName, JSXObject, JSXOpeningElement,
+    JSXOpeningFragment, Lit, Module, ModuleItem, SpreadElement, Stmt, Str,
+};
 
 pub const MAGIC_EXPLICIT_MARKER: u32 = 1337;
 
@@ -44,7 +50,7 @@ pub struct Program {
     /// File path.
     pub path: Option<String>,
     /// JS AST.
-    pub module: swc_ecma_ast::Module,
+    pub module: Module,
     /// Comments relating to AST.
     pub comments: Vec<swc_common::comments::Comment>,
 }
@@ -68,7 +74,7 @@ struct Context<'a> {
     /// Comments we gather.
     comments: Vec<swc_common::comments::Comment>,
     /// Declarations and stuff.
-    esm: Vec<swc_ecma_ast::ModuleItem>,
+    esm: Vec<ModuleItem>,
     /// Optional way to turn relative positions into points.
     location: Option<&'a Location>,
 }
@@ -86,21 +92,14 @@ pub fn hast_util_to_swc(
         location,
     };
     let expr = match one(&mut context, tree)? {
-        Some(swc_ecma_ast::JSXElementChild::JSXFragment(x)) => {
-            Some(swc_ecma_ast::Expr::JSXFragment(x))
-        }
-        Some(swc_ecma_ast::JSXElementChild::JSXElement(x)) => {
-            Some(swc_ecma_ast::Expr::JSXElement(x))
-        }
-        Some(child) => Some(swc_ecma_ast::Expr::JSXFragment(create_fragment(
-            vec![child],
-            tree,
-        ))),
+        Some(JSXElementChild::JSXFragment(x)) => Some(Expr::JSXFragment(x)),
+        Some(JSXElementChild::JSXElement(x)) => Some(Expr::JSXElement(x)),
+        Some(child) => Some(Expr::JSXFragment(create_fragment(vec![child], tree))),
         None => None,
     };
 
     // Add the ESM.
-    let mut module = swc_ecma_ast::Module {
+    let mut module = Module {
         shebang: None,
         body: context.esm,
         span: position_to_span(tree.position()),
@@ -108,14 +107,10 @@ pub fn hast_util_to_swc(
 
     // We have some content, wrap it.
     if let Some(expr) = expr {
-        module
-            .body
-            .push(swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                swc_ecma_ast::ExprStmt {
-                    expr: Box::new(expr),
-                    span: swc_common::DUMMY_SP,
-                },
-            )));
+        module.body.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+            expr: Box::new(expr),
+            span: swc_common::DUMMY_SP,
+        })));
     }
 
     Ok(Program {
@@ -126,10 +121,7 @@ pub fn hast_util_to_swc(
 }
 
 /// Transform one node.
-fn one(
-    context: &mut Context,
-    node: &hast::Node,
-) -> Result<Option<swc_ecma_ast::JSXElementChild>, String> {
+fn one(context: &mut Context, node: &hast::Node) -> Result<Option<JSXElementChild>, String> {
     let value = match node {
         hast::Node::Comment(x) => Some(transform_comment(context, node, x)),
         hast::Node::Element(x) => transform_element(context, node, x)?,
@@ -145,10 +137,7 @@ fn one(
 }
 
 /// Transform children of `parent`.
-fn all(
-    context: &mut Context,
-    parent: &hast::Node,
-) -> Result<Vec<swc_ecma_ast::JSXElementChild>, String> {
+fn all(context: &mut Context, parent: &hast::Node) -> Result<Vec<JSXElementChild>, String> {
     let mut result = vec![];
     if let Some(children) = parent.children() {
         let mut index = 0;
@@ -171,7 +160,7 @@ fn transform_comment(
     context: &mut Context,
     node: &hast::Node,
     comment: &hast::Comment,
-) -> swc_ecma_ast::JSXElementChild {
+) -> JSXElementChild {
     context.comments.push(swc_common::comments::Comment {
         kind: swc_common::comments::CommentKind::Block,
         text: comment.value.clone().into(),
@@ -182,8 +171,8 @@ fn transform_comment(
     // Might be useful when transforming to acorn/babel later.
     // This is done in the JS version too:
     // <https://github.com/syntax-tree/hast-util-to-estree/blob/6c45f166d106ea3a165c14ec50c35ed190055e65/lib/index.js#L168>
-    swc_ecma_ast::JSXElementChild::JSXExprContainer(swc_ecma_ast::JSXExprContainer {
-        expr: swc_ecma_ast::JSXExpr::JSXEmptyExpr(swc_ecma_ast::JSXEmptyExpr {
+    JSXElementChild::JSXExprContainer(JSXExprContainer {
+        expr: JSXExpr::JSXEmptyExpr(JSXEmptyExpr {
             span: position_to_span(node.position()),
         }),
         span: position_to_span(node.position()),
@@ -195,7 +184,7 @@ fn transform_element(
     context: &mut Context,
     node: &hast::Node,
     element: &hast::Element,
-) -> Result<Option<swc_ecma_ast::JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, String> {
     let space = context.space;
 
     if space == Space::Html && element.tag_name == "svg" {
@@ -223,25 +212,21 @@ fn transform_element(
                     continue;
                 }
             }
-            hast::PropertyValue::String(x) => Some(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
+            hast::PropertyValue::String(x) => Some(Lit::Str(Str {
                 value: x.clone().into(),
                 span: swc_common::DUMMY_SP,
                 raw: None,
             })),
-            hast::PropertyValue::CommaSeparated(x) => {
-                Some(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                    value: x.join(", ").into(),
-                    span: swc_common::DUMMY_SP,
-                    raw: None,
-                }))
-            }
-            hast::PropertyValue::SpaceSeparated(x) => {
-                Some(swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                    value: x.join(" ").into(),
-                    span: swc_common::DUMMY_SP,
-                    raw: None,
-                }))
-            }
+            hast::PropertyValue::CommaSeparated(x) => Some(Lit::Str(Str {
+                value: x.join(", ").into(),
+                span: swc_common::DUMMY_SP,
+                raw: None,
+            })),
+            hast::PropertyValue::SpaceSeparated(x) => Some(Lit::Str(Str {
+                value: x.join(" ").into(),
+                span: swc_common::DUMMY_SP,
+                raw: None,
+            })),
         };
 
         // Turn property case into either React-specific case, or HTML
@@ -249,20 +234,22 @@ fn transform_element(
         // To do: create a spread if this is an invalid attr name.
         let attr_name = prop_to_attr_name(&prop.0);
 
-        attrs.push(swc_ecma_ast::JSXAttrOrSpread::JSXAttr(
-            swc_ecma_ast::JSXAttr {
-                name: create_jsx_attr_name(&attr_name),
-                value: value.map(swc_ecma_ast::JSXAttrValue::Lit),
-                span: swc_common::DUMMY_SP,
-            },
-        ));
+        attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+            name: create_jsx_attr_name(&attr_name),
+            value: value.map(JSXAttrValue::Lit),
+            span: swc_common::DUMMY_SP,
+        }));
 
         index += 1;
     }
 
-    Ok(Some(swc_ecma_ast::JSXElementChild::JSXElement(
-        create_element(&element.tag_name, attrs, children, node, false),
-    )))
+    Ok(Some(JSXElementChild::JSXElement(create_element(
+        &element.tag_name,
+        attrs,
+        children,
+        node,
+        false,
+    ))))
 }
 
 /// [`MdxJsxElement`][hast::MdxJsxElement].
@@ -270,7 +257,7 @@ fn transform_mdx_jsx_element(
     context: &mut Context,
     node: &hast::Node,
     element: &hast::MdxJsxElement,
-) -> Result<Option<swc_ecma_ast::JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, String> {
     let space = context.space;
 
     if let Some(name) = &element.name {
@@ -291,31 +278,27 @@ fn transform_mdx_jsx_element(
             hast::AttributeContent::Property(prop) => {
                 let value = match prop.value.as_ref() {
                     Some(hast::AttributeValue::Literal(x)) => {
-                        Some(swc_ecma_ast::JSXAttrValue::Lit(swc_ecma_ast::Lit::Str(
-                            swc_ecma_ast::Str {
-                                value: x.clone().into(),
-                                span: swc_common::DUMMY_SP,
-                                raw: None,
-                            },
-                        )))
+                        Some(JSXAttrValue::Lit(Lit::Str(Str {
+                            value: x.clone().into(),
+                            span: swc_common::DUMMY_SP,
+                            raw: None,
+                        })))
                     }
                     Some(hast::AttributeValue::Expression(value, stops)) => {
-                        Some(swc_ecma_ast::JSXAttrValue::JSXExprContainer(
-                            swc_ecma_ast::JSXExprContainer {
-                                expr: swc_ecma_ast::JSXExpr::Expr(parse_expression_to_tree(
-                                    value,
-                                    &MdxExpressionKind::AttributeValueExpression,
-                                    stops,
-                                    context.location,
-                                )?),
-                                span: swc_common::DUMMY_SP,
-                            },
-                        ))
+                        Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+                            expr: JSXExpr::Expr(parse_expression_to_tree(
+                                value,
+                                &MdxExpressionKind::AttributeValueExpression,
+                                stops,
+                                context.location,
+                            )?),
+                            span: swc_common::DUMMY_SP,
+                        }))
                     }
                     None => None,
                 };
 
-                swc_ecma_ast::JSXAttrOrSpread::JSXAttr(swc_ecma_ast::JSXAttr {
+                JSXAttrOrSpread::JSXAttr(JSXAttr {
                     span: swc_common::DUMMY_SP,
                     name: create_jsx_attr_name(&prop.name),
                     value,
@@ -328,7 +311,7 @@ fn transform_mdx_jsx_element(
                     stops,
                     context.location,
                 )?;
-                swc_ecma_ast::JSXAttrOrSpread::SpreadElement(swc_ecma_ast::SpreadElement {
+                JSXAttrOrSpread::SpreadElement(SpreadElement {
                     dot3_token: swc_common::DUMMY_SP,
                     expr,
                 })
@@ -340,9 +323,9 @@ fn transform_mdx_jsx_element(
     }
 
     Ok(Some(if let Some(name) = &element.name {
-        swc_ecma_ast::JSXElementChild::JSXElement(create_element(name, attrs, children, node, true))
+        JSXElementChild::JSXElement(create_element(name, attrs, children, node, true))
     } else {
-        swc_ecma_ast::JSXElementChild::JSXFragment(create_fragment(children, node))
+        JSXElementChild::JSXFragment(create_fragment(children, node))
     }))
 }
 
@@ -351,18 +334,16 @@ fn transform_mdx_expression(
     context: &mut Context,
     node: &hast::Node,
     expression: &hast::MdxExpression,
-) -> Result<Option<swc_ecma_ast::JSXElementChild>, String> {
-    Ok(Some(swc_ecma_ast::JSXElementChild::JSXExprContainer(
-        swc_ecma_ast::JSXExprContainer {
-            expr: swc_ecma_ast::JSXExpr::Expr(parse_expression_to_tree(
-                &expression.value,
-                &MdxExpressionKind::Expression,
-                &expression.stops,
-                context.location,
-            )?),
-            span: position_to_span(node.position()),
-        },
-    )))
+) -> Result<Option<JSXElementChild>, String> {
+    Ok(Some(JSXElementChild::JSXExprContainer(JSXExprContainer {
+        expr: JSXExpr::Expr(parse_expression_to_tree(
+            &expression.value,
+            &MdxExpressionKind::Expression,
+            &expression.stops,
+            context.location,
+        )?),
+        span: position_to_span(node.position()),
+    })))
 }
 
 /// [`MdxjsEsm`][hast::MdxjsEsm].
@@ -370,7 +351,7 @@ fn transform_mdxjs_esm(
     context: &mut Context,
     _node: &hast::Node,
     esm: &hast::MdxjsEsm,
-) -> Result<Option<swc_ecma_ast::JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, String> {
     let mut module = parse_esm_to_tree(&esm.value, &esm.stops, context.location)?;
     context.esm.append(&mut module.body);
     Ok(None)
@@ -381,7 +362,7 @@ fn transform_root(
     context: &mut Context,
     node: &hast::Node,
     _root: &hast::Root,
-) -> Result<Option<swc_ecma_ast::JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, String> {
     let mut children = all(context, node)?;
     let mut queue = vec![];
     let mut nodes = vec![];
@@ -393,9 +374,9 @@ fn transform_root(
     while let Some(child) = children.pop() {
         let mut stash = false;
 
-        if let swc_ecma_ast::JSXElementChild::JSXExprContainer(container) = &child {
-            if let swc_ecma_ast::JSXExpr::Expr(expr) = &container.expr {
-                if let swc_ecma_ast::Expr::Lit(swc_ecma_ast::Lit::Str(str)) = (*expr).as_ref() {
+        if let JSXElementChild::JSXExprContainer(container) = &child {
+            if let JSXExpr::Expr(expr) = &container.expr {
+                if let Expr::Lit(Lit::Str(str)) = (*expr).as_ref() {
                     if inter_element_whitespace(str.value.as_ref()) {
                         stash = true;
                     }
@@ -416,9 +397,9 @@ fn transform_root(
         }
     }
 
-    Ok(Some(swc_ecma_ast::JSXElementChild::JSXFragment(
-        create_fragment(nodes, node),
-    )))
+    Ok(Some(JSXElementChild::JSXFragment(create_fragment(
+        nodes, node,
+    ))))
 }
 
 /// [`Text`][hast::Text].
@@ -426,22 +407,18 @@ fn transform_text(
     _context: &mut Context,
     node: &hast::Node,
     text: &hast::Text,
-) -> Option<swc_ecma_ast::JSXElementChild> {
+) -> Option<JSXElementChild> {
     if text.value.is_empty() {
         None
     } else {
-        Some(swc_ecma_ast::JSXElementChild::JSXExprContainer(
-            swc_ecma_ast::JSXExprContainer {
-                expr: swc_ecma_ast::JSXExpr::Expr(Box::new(swc_ecma_ast::Expr::Lit(
-                    swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                        value: text.value.clone().into(),
-                        span: position_to_span(node.position()),
-                        raw: None,
-                    }),
-                ))),
+        Some(JSXElementChild::JSXExprContainer(JSXExprContainer {
+            expr: JSXExpr::Expr(Box::new(Expr::Lit(Lit::Str(Str {
+                value: text.value.clone().into(),
                 span: position_to_span(node.position()),
-            },
-        ))
+                raw: None,
+            })))),
+            span: position_to_span(node.position()),
+        }))
     }
 }
 
@@ -450,11 +427,11 @@ fn transform_text(
 /// Creates a void one if there are no children.
 fn create_element(
     name: &str,
-    attrs: Vec<swc_ecma_ast::JSXAttrOrSpread>,
-    children: Vec<swc_ecma_ast::JSXElementChild>,
+    attrs: Vec<JSXAttrOrSpread>,
+    children: Vec<JSXElementChild>,
     node: &hast::Node,
     explicit: bool,
-) -> Box<swc_ecma_ast::JSXElement> {
+) -> Box<JSXElement> {
     let mut span = position_to_span(node.position());
 
     span.ctxt = if explicit {
@@ -463,8 +440,8 @@ fn create_element(
         swc_common::SyntaxContext::empty()
     };
 
-    Box::new(swc_ecma_ast::JSXElement {
-        opening: swc_ecma_ast::JSXOpeningElement {
+    Box::new(JSXElement {
+        opening: JSXOpeningElement {
             name: create_jsx_name(name),
             attrs,
             self_closing: children.is_empty(),
@@ -474,7 +451,7 @@ fn create_element(
         closing: if children.is_empty() {
             None
         } else {
-            Some(swc_ecma_ast::JSXClosingElement {
+            Some(JSXClosingElement {
                 name: create_jsx_name(name),
                 span: swc_common::DUMMY_SP,
             })
@@ -485,15 +462,12 @@ fn create_element(
 }
 
 /// Create a fragment.
-fn create_fragment(
-    children: Vec<swc_ecma_ast::JSXElementChild>,
-    node: &hast::Node,
-) -> swc_ecma_ast::JSXFragment {
-    swc_ecma_ast::JSXFragment {
-        opening: swc_ecma_ast::JSXOpeningFragment {
+fn create_fragment(children: Vec<JSXElementChild>, node: &hast::Node) -> JSXFragment {
+    JSXFragment {
+        opening: JSXOpeningFragment {
             span: swc_common::DUMMY_SP,
         },
-        closing: swc_ecma_ast::JSXClosingFragment {
+        closing: JSXClosingFragment {
             span: swc_common::DUMMY_SP,
         },
         children,
@@ -502,53 +476,49 @@ fn create_fragment(
 }
 
 /// Create a JSX element name.
-fn create_jsx_name(name: &str) -> swc_ecma_ast::JSXElementName {
+fn create_jsx_name(name: &str) -> JSXElementName {
     match parse_jsx_name(name) {
         // `<a.b.c />`
         // `<a.b />`
         JsxName::Member(parts) => {
             // Always two or more items.
-            let mut member = swc_ecma_ast::JSXMemberExpr {
-                obj: swc_ecma_ast::JSXObject::Ident(create_ident(parts[0])),
+            let mut member = JSXMemberExpr {
+                obj: JSXObject::Ident(create_ident(parts[0])),
                 prop: create_ident(parts[1]),
             };
             let mut index = 2;
             while index < parts.len() {
-                member = swc_ecma_ast::JSXMemberExpr {
-                    obj: swc_ecma_ast::JSXObject::JSXMemberExpr(Box::new(member)),
+                member = JSXMemberExpr {
+                    obj: JSXObject::JSXMemberExpr(Box::new(member)),
                     prop: create_ident(parts[index]),
                 };
                 index += 1;
             }
-            swc_ecma_ast::JSXElementName::JSXMemberExpr(member)
+            JSXElementName::JSXMemberExpr(member)
         }
         // `<a:b />`
-        JsxName::Namespace(ns, name) => {
-            swc_ecma_ast::JSXElementName::JSXNamespacedName(swc_ecma_ast::JSXNamespacedName {
-                ns: create_ident(ns),
-                name: create_ident(name),
-            })
-        }
+        JsxName::Namespace(ns, name) => JSXElementName::JSXNamespacedName(JSXNamespacedName {
+            ns: create_ident(ns),
+            name: create_ident(name),
+        }),
         // `<a />`
-        JsxName::Normal(name) => swc_ecma_ast::JSXElementName::Ident(create_ident(name)),
+        JsxName::Normal(name) => JSXElementName::Ident(create_ident(name)),
     }
 }
 
 /// Create a JSX attribute name.
-fn create_jsx_attr_name(name: &str) -> swc_ecma_ast::JSXAttrName {
+fn create_jsx_attr_name(name: &str) -> JSXAttrName {
     match parse_jsx_name(name) {
         JsxName::Member(_) => {
             unreachable!("member expressions in attribute names are not supported")
         }
         // `<a b:c />`
-        JsxName::Namespace(ns, name) => {
-            swc_ecma_ast::JSXAttrName::JSXNamespacedName(swc_ecma_ast::JSXNamespacedName {
-                ns: create_ident(ns),
-                name: create_ident(name),
-            })
-        }
+        JsxName::Namespace(ns, name) => JSXAttrName::JSXNamespacedName(JSXNamespacedName {
+            ns: create_ident(ns),
+            name: create_ident(name),
+        }),
         // `<a b />`
-        JsxName::Normal(name) => swc_ecma_ast::JSXAttrName::Ident(create_ident(name)),
+        JsxName::Normal(name) => JSXAttrName::Ident(create_ident(name)),
     }
 }
 
@@ -739,6 +709,7 @@ mod tests {
     use crate::hast_util_to_swc::{hast_util_to_swc, Program};
     use crate::swc::serialize;
     use pretty_assertions::assert_eq;
+    use swc_ecma_ast::{Ident, ImportDecl, ImportDefaultSpecifier, ImportSpecifier, ModuleDecl};
 
     #[test]
     fn comments() -> Result<(), String> {
@@ -755,36 +726,26 @@ mod tests {
             comment_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
-                    body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                        swc_ecma_ast::ExprStmt {
-                            expr: Box::new(swc_ecma_ast::Expr::JSXFragment(
-                                swc_ecma_ast::JSXFragment {
-                                    opening: swc_ecma_ast::JSXOpeningFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    closing: swc_ecma_ast::JSXClosingFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    children: vec![
-                                        swc_ecma_ast::JSXElementChild::JSXExprContainer(
-                                            swc_ecma_ast::JSXExprContainer {
-                                                expr: swc_ecma_ast::JSXExpr::JSXEmptyExpr(
-                                                    swc_ecma_ast::JSXEmptyExpr {
-                                                        span: swc_common::DUMMY_SP,
-                                                    }
-                                                ),
-                                                span: swc_common::DUMMY_SP,
-                                            },
-                                        )
-                                    ],
+                    body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                        expr: Box::new(Expr::JSXFragment(JSXFragment {
+                            opening: JSXOpeningFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            closing: JSXClosingFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            children: vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
+                                expr: JSXExpr::JSXEmptyExpr(JSXEmptyExpr {
                                     span: swc_common::DUMMY_SP,
-                                }
-                            )),
+                                }),
+                                span: swc_common::DUMMY_SP,
+                            },)],
                             span: swc_common::DUMMY_SP,
-                        },
-                    ))],
+                        })),
+                        span: swc_common::DUMMY_SP,
+                    },))],
                     span: swc_common::DUMMY_SP,
                 },
                 comments: vec![swc_common::comments::Comment {
@@ -826,51 +787,39 @@ mod tests {
             element_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
-                    body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                        swc_ecma_ast::ExprStmt {
-                            expr: Box::new(swc_ecma_ast::Expr::JSXElement(Box::new(
-                                swc_ecma_ast::JSXElement {
-                                    opening: swc_ecma_ast::JSXOpeningElement {
-                                        name: swc_ecma_ast::JSXElementName::Ident(
-                                            swc_ecma_ast::Ident {
-                                                span: swc_common::DUMMY_SP,
-                                                sym: "a".into(),
-                                                optional: false,
-                                            }
-                                        ),
-                                        attrs: vec![swc_ecma_ast::JSXAttrOrSpread::JSXAttr(
-                                            swc_ecma_ast::JSXAttr {
-                                                name: swc_ecma_ast::JSXAttrName::Ident(
-                                                    swc_ecma_ast::Ident {
-                                                        sym: "className".into(),
-                                                        span: swc_common::DUMMY_SP,
-                                                        optional: false,
-                                                    }
-                                                ),
-                                                value: Some(swc_ecma_ast::JSXAttrValue::Lit(
-                                                    swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                                                        value: "b".into(),
-                                                        span: swc_common::DUMMY_SP,
-                                                        raw: None,
-                                                    })
-                                                )),
-                                                span: swc_common::DUMMY_SP,
-                                            },
-                                        )],
-                                        self_closing: true,
-                                        type_args: None,
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    closing: None,
-                                    children: vec![],
+                    body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                        expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
+                            opening: JSXOpeningElement {
+                                name: JSXElementName::Ident(Ident {
                                     span: swc_common::DUMMY_SP,
-                                }
-                            ))),
+                                    sym: "a".into(),
+                                    optional: false,
+                                }),
+                                attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
+                                    name: JSXAttrName::Ident(Ident {
+                                        sym: "className".into(),
+                                        span: swc_common::DUMMY_SP,
+                                        optional: false,
+                                    }),
+                                    value: Some(JSXAttrValue::Lit(Lit::Str(Str {
+                                        value: "b".into(),
+                                        span: swc_common::DUMMY_SP,
+                                        raw: None,
+                                    }))),
+                                    span: swc_common::DUMMY_SP,
+                                },)],
+                                self_closing: true,
+                                type_args: None,
+                                span: swc_common::DUMMY_SP,
+                            },
+                            closing: None,
+                            children: vec![],
                             span: swc_common::DUMMY_SP,
-                        },
-                    ))],
+                        }))),
+                        span: swc_common::DUMMY_SP,
+                    },))],
                     span: swc_common::DUMMY_SP,
                 },
                 comments: vec![],
@@ -1077,25 +1026,21 @@ mod tests {
             mdx_element_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
-                    body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                        swc_ecma_ast::ExprStmt {
-                            expr: Box::new(swc_ecma_ast::Expr::JSXFragment(
-                                swc_ecma_ast::JSXFragment {
-                                    opening: swc_ecma_ast::JSXOpeningFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    closing: swc_ecma_ast::JSXClosingFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    children: vec![],
-                                    span: swc_common::DUMMY_SP,
-                                }
-                            )),
+                    body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                        expr: Box::new(Expr::JSXFragment(JSXFragment {
+                            opening: JSXOpeningFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            closing: JSXClosingFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            children: vec![],
                             span: swc_common::DUMMY_SP,
-                        },
-                    ))],
+                        })),
+                        span: swc_common::DUMMY_SP,
+                    },))],
                     span: swc_common::DUMMY_SP,
                 },
                 comments: vec![],
@@ -1342,40 +1287,28 @@ mod tests {
             mdx_expression_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
-                    body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                        swc_ecma_ast::ExprStmt {
-                            expr: Box::new(swc_ecma_ast::Expr::JSXFragment(
-                                swc_ecma_ast::JSXFragment {
-                                    opening: swc_ecma_ast::JSXOpeningFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    closing: swc_ecma_ast::JSXClosingFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    children: vec![
-                                        swc_ecma_ast::JSXElementChild::JSXExprContainer(
-                                            swc_ecma_ast::JSXExprContainer {
-                                                expr: swc_ecma_ast::JSXExpr::Expr(Box::new(
-                                                    swc_ecma_ast::Expr::Ident(
-                                                        swc_ecma_ast::Ident {
-                                                            sym: "a".into(),
-                                                            span: swc_common::DUMMY_SP,
-                                                            optional: false,
-                                                        }
-                                                    )
-                                                )),
-                                                span: swc_common::DUMMY_SP,
-                                            },
-                                        )
-                                    ],
+                    body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                        expr: Box::new(Expr::JSXFragment(JSXFragment {
+                            opening: JSXOpeningFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            closing: JSXClosingFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            children: vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
+                                expr: JSXExpr::Expr(Box::new(Expr::Ident(Ident {
+                                    sym: "a".into(),
                                     span: swc_common::DUMMY_SP,
-                                }
-                            )),
+                                    optional: false,
+                                }))),
+                                span: swc_common::DUMMY_SP,
+                            },)],
                             span: swc_common::DUMMY_SP,
-                        },
-                    ))],
+                        })),
+                        span: swc_common::DUMMY_SP,
+                    },))],
                     span: swc_common::DUMMY_SP,
                 },
                 comments: vec![],
@@ -1411,30 +1344,26 @@ mod tests {
             mdxjs_esm_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
-                    body: vec![swc_ecma_ast::ModuleItem::ModuleDecl(
-                        swc_ecma_ast::ModuleDecl::Import(swc_ecma_ast::ImportDecl {
-                            specifiers: vec![swc_ecma_ast::ImportSpecifier::Default(
-                                swc_ecma_ast::ImportDefaultSpecifier {
-                                    local: swc_ecma_ast::Ident {
-                                        sym: "a".into(),
-                                        optional: false,
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    span: swc_common::DUMMY_SP,
-                                }
-                            )],
-                            src: Box::new(swc_ecma_ast::Str {
-                                value: "b".into(),
+                    body: vec![ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+                        specifiers: vec![ImportSpecifier::Default(ImportDefaultSpecifier {
+                            local: Ident {
+                                sym: "a".into(),
+                                optional: false,
                                 span: swc_common::DUMMY_SP,
-                                raw: Some("\'b\'".into()),
-                            }),
-                            type_only: false,
-                            asserts: None,
+                            },
                             span: swc_common::DUMMY_SP,
-                        })
-                    )],
+                        })],
+                        src: Box::new(Str {
+                            value: "b".into(),
+                            span: swc_common::DUMMY_SP,
+                            raw: Some("\'b\'".into()),
+                        }),
+                        type_only: false,
+                        asserts: None,
+                        span: swc_common::DUMMY_SP,
+                    }))],
                     span: swc_common::DUMMY_SP,
                 },
                 comments: vec![],
@@ -1469,40 +1398,28 @@ mod tests {
             root_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
-                    body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                        swc_ecma_ast::ExprStmt {
-                            expr: Box::new(swc_ecma_ast::Expr::JSXFragment(
-                                swc_ecma_ast::JSXFragment {
-                                    opening: swc_ecma_ast::JSXOpeningFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    closing: swc_ecma_ast::JSXClosingFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    children: vec![
-                                        swc_ecma_ast::JSXElementChild::JSXExprContainer(
-                                            swc_ecma_ast::JSXExprContainer {
-                                                expr: swc_ecma_ast::JSXExpr::Expr(Box::new(
-                                                    swc_ecma_ast::Expr::Lit(
-                                                        swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                                                            value: "a".into(),
-                                                            span: swc_common::DUMMY_SP,
-                                                            raw: None,
-                                                        }),
-                                                    )
-                                                )),
-                                                span: swc_common::DUMMY_SP,
-                                            },
-                                        )
-                                    ],
+                    body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                        expr: Box::new(Expr::JSXFragment(JSXFragment {
+                            opening: JSXOpeningFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            closing: JSXClosingFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            children: vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
+                                expr: JSXExpr::Expr(Box::new(Expr::Lit(Lit::Str(Str {
+                                    value: "a".into(),
                                     span: swc_common::DUMMY_SP,
-                                }
-                            )),
+                                    raw: None,
+                                }),))),
+                                span: swc_common::DUMMY_SP,
+                            },)],
                             span: swc_common::DUMMY_SP,
-                        },
-                    ))],
+                        })),
+                        span: swc_common::DUMMY_SP,
+                    },))],
                     span: swc_common::DUMMY_SP,
                 },
                 comments: vec![],
@@ -1534,40 +1451,28 @@ mod tests {
             text_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
-                    body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                        swc_ecma_ast::ExprStmt {
-                            expr: Box::new(swc_ecma_ast::Expr::JSXFragment(
-                                swc_ecma_ast::JSXFragment {
-                                    opening: swc_ecma_ast::JSXOpeningFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    closing: swc_ecma_ast::JSXClosingFragment {
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                    children: vec![
-                                        swc_ecma_ast::JSXElementChild::JSXExprContainer(
-                                            swc_ecma_ast::JSXExprContainer {
-                                                expr: swc_ecma_ast::JSXExpr::Expr(Box::new(
-                                                    swc_ecma_ast::Expr::Lit(
-                                                        swc_ecma_ast::Lit::Str(swc_ecma_ast::Str {
-                                                            value: "a".into(),
-                                                            span: swc_common::DUMMY_SP,
-                                                            raw: None,
-                                                        }),
-                                                    )
-                                                )),
-                                                span: swc_common::DUMMY_SP,
-                                            },
-                                        )
-                                    ],
+                    body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                        expr: Box::new(Expr::JSXFragment(JSXFragment {
+                            opening: JSXOpeningFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            closing: JSXClosingFragment {
+                                span: swc_common::DUMMY_SP,
+                            },
+                            children: vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
+                                expr: JSXExpr::Expr(Box::new(Expr::Lit(Lit::Str(Str {
+                                    value: "a".into(),
                                     span: swc_common::DUMMY_SP,
-                                }
-                            )),
+                                    raw: None,
+                                }),))),
+                                span: swc_common::DUMMY_SP,
+                            },)],
                             span: swc_common::DUMMY_SP,
-                        },
-                    ))],
+                        })),
+                        span: swc_common::DUMMY_SP,
+                    },))],
                     span: swc_common::DUMMY_SP,
                 },
                 comments: vec![],
@@ -1599,7 +1504,7 @@ mod tests {
             text_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
                     body: vec![],
                     span: swc_common::DUMMY_SP,
@@ -1624,7 +1529,7 @@ mod tests {
             doctype_ast,
             Program {
                 path: None,
-                module: swc_ecma_ast::Module {
+                module: Module {
                     shebang: None,
                     body: vec![],
                     span: swc_common::DUMMY_SP,

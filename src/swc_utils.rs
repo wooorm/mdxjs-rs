@@ -256,7 +256,7 @@ pub fn create_object_expression(value: Vec<PropOrSpread>) -> Expr {
 
 /// Generate a call.
 pub fn create_call(callee: Callee, args: Vec<ExprOrSpread>) -> CallExpr {
-    swc_ecma_ast::CallExpr {
+    CallExpr {
         callee,
         args,
         span: DUMMY_SP,

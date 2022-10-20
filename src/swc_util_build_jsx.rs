@@ -17,6 +17,12 @@ use swc_common::{
     comments::{Comment, CommentKind},
     util::take::Take,
 };
+use swc_ecma_ast::{
+    ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, ImportDecl, ImportNamedSpecifier,
+    ImportSpecifier, JSXAttrOrSpread, JSXAttrValue, JSXElement, JSXElementChild, JSXExpr,
+    JSXExprContainer, JSXFragment, KeyValueProp, Lit, ModuleDecl, ModuleExportName, ModuleItem,
+    Prop, PropName, PropOrSpread, ThisExpr,
+};
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
 /// Configuration.
@@ -66,73 +72,59 @@ pub fn swc_util_build_jsx(
     let mut specifiers = vec![];
 
     if state.import_fragment {
-        specifiers.push(swc_ecma_ast::ImportSpecifier::Named(
-            swc_ecma_ast::ImportNamedSpecifier {
-                local: create_ident("_Fragment"),
-                imported: Some(swc_ecma_ast::ModuleExportName::Ident(create_ident(
-                    "Fragment",
-                ))),
-                span: swc_common::DUMMY_SP,
-                is_type_only: false,
-            },
-        ));
+        specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
+            local: create_ident("_Fragment"),
+            imported: Some(ModuleExportName::Ident(create_ident("Fragment"))),
+            span: swc_common::DUMMY_SP,
+            is_type_only: false,
+        }));
     }
 
     if state.import_jsx {
-        specifiers.push(swc_ecma_ast::ImportSpecifier::Named(
-            swc_ecma_ast::ImportNamedSpecifier {
-                local: create_ident("_jsx"),
-                imported: Some(swc_ecma_ast::ModuleExportName::Ident(create_ident("jsx"))),
-                span: swc_common::DUMMY_SP,
-                is_type_only: false,
-            },
-        ));
+        specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
+            local: create_ident("_jsx"),
+            imported: Some(ModuleExportName::Ident(create_ident("jsx"))),
+            span: swc_common::DUMMY_SP,
+            is_type_only: false,
+        }));
     }
 
     if state.import_jsxs {
-        specifiers.push(swc_ecma_ast::ImportSpecifier::Named(
-            swc_ecma_ast::ImportNamedSpecifier {
-                local: create_ident("_jsxs"),
-                imported: Some(swc_ecma_ast::ModuleExportName::Ident(create_ident("jsxs"))),
-                span: swc_common::DUMMY_SP,
-                is_type_only: false,
-            },
-        ));
+        specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
+            local: create_ident("_jsxs"),
+            imported: Some(ModuleExportName::Ident(create_ident("jsxs"))),
+            span: swc_common::DUMMY_SP,
+            is_type_only: false,
+        }));
     }
 
     if state.import_jsx_dev {
-        specifiers.push(swc_ecma_ast::ImportSpecifier::Named(
-            swc_ecma_ast::ImportNamedSpecifier {
-                local: create_ident("_jsxDEV"),
-                imported: Some(swc_ecma_ast::ModuleExportName::Ident(create_ident(
-                    "jsxDEV",
-                ))),
-                span: swc_common::DUMMY_SP,
-                is_type_only: false,
-            },
-        ));
+        specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
+            local: create_ident("_jsxDEV"),
+            imported: Some(ModuleExportName::Ident(create_ident("jsxDEV"))),
+            span: swc_common::DUMMY_SP,
+            is_type_only: false,
+        }));
     }
 
     if !specifiers.is_empty() {
         program.module.body.insert(
             0,
-            swc_ecma_ast::ModuleItem::ModuleDecl(swc_ecma_ast::ModuleDecl::Import(
-                swc_ecma_ast::ImportDecl {
-                    specifiers,
-                    src: Box::new(create_str(&format!(
-                        "{}{}",
-                        directives.import_source.unwrap_or_else(|| "react".into()),
-                        if options.development {
-                            "/jsx-dev-runtime"
-                        } else {
-                            "/jsx-runtime"
-                        }
-                    ))),
-                    type_only: false,
-                    asserts: None,
-                    span: swc_common::DUMMY_SP,
-                },
-            )),
+            ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+                specifiers,
+                src: Box::new(create_str(&format!(
+                    "{}{}",
+                    directives.import_source.unwrap_or_else(|| "react".into()),
+                    if options.development {
+                        "/jsx-dev-runtime"
+                    } else {
+                        "/jsx-runtime"
+                    }
+                ))),
+                type_only: false,
+                asserts: None,
+                span: swc_common::DUMMY_SP,
+            })),
         );
     }
 
@@ -175,75 +167,74 @@ struct State<'a> {
     automatic: bool,
     /// Expression (ident or member) to use for `createElement` calls in
     /// the classic runtime.
-    create_element_expression: swc_ecma_ast::Expr,
+    create_element_expression: Expr,
     /// Expression (ident or member) to use as fragment symbol in the classic
     /// runtime.
-    fragment_expression: swc_ecma_ast::Expr,
+    fragment_expression: Expr,
 }
 
 impl<'a> State<'a> {
     /// Turn an attribute value into an expression.
     fn jsx_attribute_value_to_expression(
         &mut self,
-        value: Option<swc_ecma_ast::JSXAttrValue>,
-    ) -> Result<swc_ecma_ast::Expr, String> {
+        value: Option<JSXAttrValue>,
+    ) -> Result<Expr, String> {
         match value {
             // Boolean prop.
             None => Ok(create_bool_expression(true)),
-            Some(swc_ecma_ast::JSXAttrValue::JSXExprContainer(expression_container)) => {
+            Some(JSXAttrValue::JSXExprContainer(expression_container)) => {
                 match expression_container.expr {
-                    swc_ecma_ast::JSXExpr::JSXEmptyExpr(_) => {
+                    JSXExpr::JSXEmptyExpr(_) => {
                         unreachable!("Cannot use empty JSX expressions in attribute values");
                     }
-                    swc_ecma_ast::JSXExpr::Expr(expression) => Ok(*expression),
+                    JSXExpr::Expr(expression) => Ok(*expression),
                 }
             }
-            Some(swc_ecma_ast::JSXAttrValue::Lit(mut literal)) => {
+            Some(JSXAttrValue::Lit(mut literal)) => {
                 // Remove `raw` so we don’t get character references in strings.
-                if let swc_ecma_ast::Lit::Str(string_literal) = &mut literal {
+                if let Lit::Str(string_literal) = &mut literal {
                     string_literal.raw = None;
                 }
 
-                Ok(swc_ecma_ast::Expr::Lit(literal))
+                Ok(Expr::Lit(literal))
             }
-            Some(swc_ecma_ast::JSXAttrValue::JSXFragment(fragment)) => {
-                self.jsx_fragment_to_expression(fragment)
-            }
-            Some(swc_ecma_ast::JSXAttrValue::JSXElement(element)) => {
-                self.jsx_element_to_expression(*element)
-            }
+            Some(JSXAttrValue::JSXFragment(fragment)) => self.jsx_fragment_to_expression(fragment),
+            Some(JSXAttrValue::JSXElement(element)) => self.jsx_element_to_expression(*element),
         }
     }
 
     /// Turn children of elements or fragments into expressions.
     fn jsx_children_to_expressions(
         &mut self,
-        mut children: Vec<swc_ecma_ast::JSXElementChild>,
-    ) -> Result<Vec<swc_ecma_ast::Expr>, String> {
+        mut children: Vec<JSXElementChild>,
+    ) -> Result<Vec<Expr>, String> {
         let mut result = vec![];
         children.reverse();
         while let Some(child) = children.pop() {
+            if let JSXElementChild::JSXSpreadChild(_) = child {
+                return Err("Spread children not supported in Babel, SWC, or React".into());
+            }
+
             match child {
-                swc_ecma_ast::JSXElementChild::JSXSpreadChild(_) => {
-                    return Err("Spread children not supported in Babel, SWC, or React".into())
+                JSXElementChild::JSXExprContainer(JSXExprContainer {
+                    expr: JSXExpr::Expr(expression),
+                    ..
+                }) => {
+                    result.push(*expression);
                 }
-                swc_ecma_ast::JSXElementChild::JSXExprContainer(container) => {
-                    if let swc_ecma_ast::JSXExpr::Expr(expression) = container.expr {
-                        result.push(*expression);
-                    }
-                }
-                swc_ecma_ast::JSXElementChild::JSXText(text) => {
+                JSXElementChild::JSXText(text) => {
                     let value = jsx_text_to_value(text.value.as_ref());
                     if !value.is_empty() {
                         result.push(create_str_expression(&value));
                     }
                 }
-                swc_ecma_ast::JSXElementChild::JSXElement(element) => {
+                JSXElementChild::JSXElement(element) => {
                     result.push(self.jsx_element_to_expression(*element)?);
                 }
-                swc_ecma_ast::JSXElementChild::JSXFragment(fragment) => {
+                JSXElementChild::JSXFragment(fragment) => {
                     result.push(self.jsx_fragment_to_expression(fragment)?);
                 }
+                _ => {}
             }
         }
 
@@ -253,9 +244,9 @@ impl<'a> State<'a> {
     /// Turn optional attributes, and perhaps children (when automatic), into props.
     fn jsx_attributes_to_expressions(
         &mut self,
-        attributes: Option<Vec<swc_ecma_ast::JSXAttrOrSpread>>,
-        children: Option<Vec<swc_ecma_ast::Expr>>,
-    ) -> Result<(Option<swc_ecma_ast::Expr>, Option<swc_ecma_ast::Expr>), String> {
+        attributes: Option<Vec<JSXAttrOrSpread>>,
+        children: Option<Vec<Expr>>,
+    ) -> Result<(Option<Expr>, Option<Expr>), String> {
         let mut objects = vec![];
         let mut fields = vec![];
         let mut spread = false;
@@ -268,7 +259,7 @@ impl<'a> State<'a> {
             // in them and what’s spread in.
             while let Some(attribute) = attributes.pop() {
                 match attribute {
-                    swc_ecma_ast::JSXAttrOrSpread::SpreadElement(spread_element) => {
+                    JSXAttrOrSpread::SpreadElement(spread_element) => {
                         if !fields.is_empty() {
                             objects.push(create_object_expression(fields));
                             fields = vec![];
@@ -277,11 +268,11 @@ impl<'a> State<'a> {
                         objects.push(*spread_element.expr);
                         spread = true;
                     }
-                    swc_ecma_ast::JSXAttrOrSpread::JSXAttr(jsx_attribute) => {
+                    JSXAttrOrSpread::JSXAttr(jsx_attribute) => {
                         let name = jsx_attribute_name_to_prop_name(jsx_attribute.name);
                         let value = self.jsx_attribute_value_to_expression(jsx_attribute.value)?;
 
-                        if let swc_ecma_ast::PropName::Ident(ident) = &name {
+                        if let PropName::Ident(ident) = &name {
                             if self.automatic && ident.sym.as_ref() == "key" {
                                 if spread {
                                     let lo = jsx_attribute.span.lo;
@@ -298,12 +289,10 @@ impl<'a> State<'a> {
                             }
                         }
 
-                        fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
-                            swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                                key: name,
-                                value: Box::new(value),
-                            }),
-                        )));
+                        fields.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                            key: name,
+                            value: Box::new(value),
+                        }))));
                     }
                 }
             }
@@ -319,25 +308,23 @@ impl<'a> State<'a> {
                 let mut elements = vec![];
                 children.reverse();
                 while let Some(child) = children.pop() {
-                    elements.push(Some(swc_ecma_ast::ExprOrSpread {
+                    elements.push(Some(ExprOrSpread {
                         spread: None,
                         expr: Box::new(child),
                     }));
                 }
-                let lit = swc_ecma_ast::ArrayLit {
+                let lit = ArrayLit {
                     elems: elements,
                     span: swc_common::DUMMY_SP,
                 };
-                Some(swc_ecma_ast::Expr::Array(lit))
+                Some(Expr::Array(lit))
             };
 
             if let Some(value) = value {
-                fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
-                    swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                        key: create_prop_name("children"),
-                        value: Box::new(value),
-                    }),
-                )));
+                fields.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: create_prop_name("children"),
+                    value: Box::new(value),
+                }))));
             }
         }
 
@@ -356,20 +343,18 @@ impl<'a> State<'a> {
 
             // Don’t mutate the first object, shallow clone into a new
             // object instead.
-            if !matches!(objects.last(), Some(swc_ecma_ast::Expr::Object(_))) {
+            if !matches!(objects.last(), Some(Expr::Object(_))) {
                 objects.push(create_object_expression(vec![]));
             }
 
             while let Some(object) = objects.pop() {
-                args.push(swc_ecma_ast::ExprOrSpread {
+                args.push(ExprOrSpread {
                     spread: None,
                     expr: Box::new(object),
                 });
             }
 
-            let callee = swc_ecma_ast::Callee::Expr(Box::new(create_member_expression_from_str(
-                "Object.assign",
-            )));
+            let callee = Callee::Expr(Box::new(create_member_expression_from_str("Object.assign")));
             Some(create_call_expression(callee, args))
         };
 
@@ -380,10 +365,10 @@ impl<'a> State<'a> {
     fn jsx_expressions_to_call(
         &mut self,
         span: &swc_common::Span,
-        name: swc_ecma_ast::Expr,
-        attributes: Option<Vec<swc_ecma_ast::JSXAttrOrSpread>>,
-        mut children: Vec<swc_ecma_ast::Expr>,
-    ) -> Result<swc_ecma_ast::Expr, String> {
+        name: Expr,
+        attributes: Option<Vec<JSXAttrOrSpread>>,
+        mut children: Vec<Expr>,
+    ) -> Result<Expr, String> {
         let (callee, parameters) = if self.automatic {
             let is_static_children = children.len() > 1;
             let (props, key) = self.jsx_attributes_to_expressions(attributes, Some(children))?;
@@ -393,7 +378,7 @@ impl<'a> State<'a> {
                 // ```javascript
                 // Component
                 // ```
-                swc_ecma_ast::ExprOrSpread {
+                ExprOrSpread {
                     spread: None,
                     expr: Box::new(name),
                 },
@@ -404,7 +389,7 @@ impl<'a> State<'a> {
                 // {x: true, y: 'z'}
                 // {}
                 // ```
-                swc_ecma_ast::ExprOrSpread {
+                ExprOrSpread {
                     spread: None,
                     expr: Box::new(props.unwrap_or_else(|| create_object_expression(vec![]))),
                 },
@@ -416,12 +401,12 @@ impl<'a> State<'a> {
             // "xyz"
             // ```
             if let Some(key) = key {
-                parameters.push(swc_ecma_ast::ExprOrSpread {
+                parameters.push(ExprOrSpread {
                     spread: None,
                     expr: Box::new(key),
                 });
             } else if self.development {
-                parameters.push(swc_ecma_ast::ExprOrSpread {
+                parameters.push(ExprOrSpread {
                     spread: None,
                     expr: Box::new(create_ident_expression("undefined")),
                 });
@@ -433,36 +418,31 @@ impl<'a> State<'a> {
                 // ```javascript
                 // true
                 // ```
-                parameters.push(swc_ecma_ast::ExprOrSpread {
+                parameters.push(ExprOrSpread {
                     spread: None,
                     expr: Box::new(create_bool_expression(is_static_children)),
                 });
 
-                let mut meta_fields = vec![swc_ecma_ast::PropOrSpread::Prop(Box::new(
-                    swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                        key: swc_ecma_ast::PropName::Ident(create_ident("fileName")),
+                let mut meta_fields =
+                    vec![PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: PropName::Ident(create_ident("fileName")),
                         value: Box::new(if let Some(value) = &self.filepath {
                             create_str_expression(value)
                         } else {
                             create_str_expression("<source.js>")
                         }),
-                    }),
-                ))];
+                    })))];
 
                 if let Some(position) = span_to_position(span, self.location) {
-                    meta_fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
-                        swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                            key: create_prop_name("lineNumber"),
-                            value: Box::new(create_num_expression(position.start.line as f64)),
-                        }),
-                    )));
+                    meta_fields.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: create_prop_name("lineNumber"),
+                        value: Box::new(create_num_expression(position.start.line as f64)),
+                    }))));
 
-                    meta_fields.push(swc_ecma_ast::PropOrSpread::Prop(Box::new(
-                        swc_ecma_ast::Prop::KeyValue(swc_ecma_ast::KeyValueProp {
-                            key: create_prop_name("columnNumber"),
-                            value: Box::new(create_num_expression(position.start.column as f64)),
-                        }),
-                    )));
+                    meta_fields.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: create_prop_name("columnNumber"),
+                        value: Box::new(create_num_expression(position.start.column as f64)),
+                    }))));
                 }
 
                 // File name and positional info.
@@ -474,7 +454,7 @@ impl<'a> State<'a> {
                 //   columnNumber: 3
                 // }
                 // ```
-                parameters.push(swc_ecma_ast::ExprOrSpread {
+                parameters.push(ExprOrSpread {
                     spread: None,
                     expr: Box::new(create_object_expression(meta_fields)),
                 });
@@ -484,12 +464,12 @@ impl<'a> State<'a> {
                 // ```javascript
                 // this
                 // ```
-                let this_expression = swc_ecma_ast::ThisExpr {
+                let this_expression = ThisExpr {
                     span: swc_common::DUMMY_SP,
                 };
-                parameters.push(swc_ecma_ast::ExprOrSpread {
+                parameters.push(ExprOrSpread {
                     spread: None,
-                    expr: Box::new(swc_ecma_ast::Expr::This(this_expression)),
+                    expr: Box::new(Expr::This(this_expression)),
                 });
             }
 
@@ -515,7 +495,7 @@ impl<'a> State<'a> {
                 // ```javascript
                 // Component
                 // ```
-                swc_ecma_ast::ExprOrSpread {
+                ExprOrSpread {
                     spread: None,
                     expr: Box::new(name),
                 },
@@ -527,12 +507,12 @@ impl<'a> State<'a> {
             // {x: true, y: 'z'}
             // ```
             if let Some(props) = props {
-                parameters.push(swc_ecma_ast::ExprOrSpread {
+                parameters.push(ExprOrSpread {
                     spread: None,
                     expr: Box::new(props),
                 });
             } else if !children.is_empty() {
-                parameters.push(swc_ecma_ast::ExprOrSpread {
+                parameters.push(ExprOrSpread {
                     spread: None,
                     expr: Box::new(create_null_expression()),
                 });
@@ -541,7 +521,7 @@ impl<'a> State<'a> {
             // Each child as a parameter.
             children.reverse();
             while let Some(child) = children.pop() {
-                parameters.push(swc_ecma_ast::ExprOrSpread {
+                parameters.push(ExprOrSpread {
                     spread: None,
                     expr: Box::new(child),
                 });
@@ -550,27 +530,24 @@ impl<'a> State<'a> {
             (self.create_element_expression.clone(), parameters)
         };
 
-        let call_expression = swc_ecma_ast::CallExpr {
-            callee: swc_ecma_ast::Callee::Expr(Box::new(callee)),
+        let call_expression = CallExpr {
+            callee: Callee::Expr(Box::new(callee)),
             args: parameters,
             type_args: None,
             span: *span,
         };
 
-        Ok(swc_ecma_ast::Expr::Call(call_expression))
+        Ok(Expr::Call(call_expression))
     }
 
     /// Turn a JSX element into an expression.
-    fn jsx_element_to_expression(
-        &mut self,
-        element: swc_ecma_ast::JSXElement,
-    ) -> Result<swc_ecma_ast::Expr, String> {
+    fn jsx_element_to_expression(&mut self, element: JSXElement) -> Result<Expr, String> {
         let children = self.jsx_children_to_expressions(element.children)?;
         let mut name = jsx_element_name_to_expression(element.opening.name);
 
         // If the name could be an identifier, but start with a lowercase letter,
         // it’s not a component.
-        if let swc_ecma_ast::Expr::Ident(ident) = &name {
+        if let Expr::Ident(ident) = &name {
             let head = ident.as_ref().as_bytes();
             if matches!(head.first(), Some(b'a'..=b'z')) {
                 name = create_str_expression(&ident.sym);
@@ -581,10 +558,7 @@ impl<'a> State<'a> {
     }
 
     /// Turn a JSX fragment into an expression.
-    fn jsx_fragment_to_expression(
-        &mut self,
-        fragment: swc_ecma_ast::JSXFragment,
-    ) -> Result<swc_ecma_ast::Expr, String> {
+    fn jsx_fragment_to_expression(&mut self, fragment: JSXFragment) -> Result<Expr, String> {
         let name = if self.automatic {
             self.import_fragment = true;
             create_ident_expression("_Fragment")
@@ -600,14 +574,10 @@ impl<'a> VisitMut for State<'a> {
     noop_visit_mut_type!();
 
     /// Visit expressions, rewriting JSX, and walking deeper.
-    fn visit_mut_expr(&mut self, expr: &mut swc_ecma_ast::Expr) {
+    fn visit_mut_expr(&mut self, expr: &mut Expr) {
         let result = match expr {
-            swc_ecma_ast::Expr::JSXElement(element) => {
-                Some(self.jsx_element_to_expression(*element.take()))
-            }
-            swc_ecma_ast::Expr::JSXFragment(fragment) => {
-                Some(self.jsx_fragment_to_expression(fragment.take()))
-            }
+            Expr::JSXElement(element) => Some(self.jsx_element_to_expression(*element.take())),
+            Expr::JSXFragment(fragment) => Some(self.jsx_fragment_to_expression(fragment.take())),
             _ => None,
         };
 
@@ -811,7 +781,10 @@ mod tests {
     use pretty_assertions::assert_eq;
     use swc_common::comments::SingleThreadedComments;
     use swc_common::{source_map::Pos, BytePos, FileName, SourceFile};
-    use swc_ecma_ast::EsVersion;
+    use swc_ecma_ast::{
+        EsVersion, ExprStmt, JSXClosingElement, JSXElementName, JSXOpeningElement, JSXSpreadChild,
+        Module, Stmt,
+    };
     use swc_ecma_parser::{parse_file_as_module, EsConfig, Syntax};
 
     fn compile(value: &str, options: &Options) -> Result<String, String> {
@@ -1347,36 +1320,30 @@ _jsx(\"a\", {
         let mut program = Program {
             path: None,
             comments: vec![],
-            module: swc_ecma_ast::Module {
+            module: Module {
                 span: swc_common::DUMMY_SP,
                 shebang: None,
-                body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                    swc_ecma_ast::ExprStmt {
+                body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                    span: swc_common::DUMMY_SP,
+                    expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
                         span: swc_common::DUMMY_SP,
-                        expr: Box::new(swc_ecma_ast::Expr::JSXElement(Box::new(
-                            swc_ecma_ast::JSXElement {
-                                span: swc_common::DUMMY_SP,
-                                opening: swc_ecma_ast::JSXOpeningElement {
-                                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("a")),
-                                    attrs: vec![],
-                                    self_closing: false,
-                                    type_args: None,
-                                    span: swc_common::DUMMY_SP,
-                                },
-                                closing: Some(swc_ecma_ast::JSXClosingElement {
-                                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("a")),
-                                    span: swc_common::DUMMY_SP,
-                                }),
-                                children: vec![swc_ecma_ast::JSXElementChild::JSXSpreadChild(
-                                    swc_ecma_ast::JSXSpreadChild {
-                                        expr: Box::new(create_ident_expression("a")),
-                                        span: swc_common::DUMMY_SP,
-                                    },
-                                )],
-                            },
-                        ))),
-                    },
-                ))],
+                        opening: JSXOpeningElement {
+                            name: JSXElementName::Ident(create_ident("a")),
+                            attrs: vec![],
+                            self_closing: false,
+                            type_args: None,
+                            span: swc_common::DUMMY_SP,
+                        },
+                        closing: Some(JSXClosingElement {
+                            name: JSXElementName::Ident(create_ident("a")),
+                            span: swc_common::DUMMY_SP,
+                        }),
+                        children: vec![JSXElementChild::JSXSpreadChild(JSXSpreadChild {
+                            expr: Box::new(create_ident_expression("a")),
+                            span: swc_common::DUMMY_SP,
+                        })],
+                    }))),
+                }))],
             },
         };
 
@@ -1563,28 +1530,24 @@ _jsxDEV(_Fragment, {
         let mut program = Program {
             path: None,
             comments: vec![],
-            module: swc_ecma_ast::Module {
+            module: Module {
                 span: swc_common::DUMMY_SP,
                 shebang: None,
-                body: vec![swc_ecma_ast::ModuleItem::Stmt(swc_ecma_ast::Stmt::Expr(
-                    swc_ecma_ast::ExprStmt {
+                body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                    span: swc_common::DUMMY_SP,
+                    expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
                         span: swc_common::DUMMY_SP,
-                        expr: Box::new(swc_ecma_ast::Expr::JSXElement(Box::new(
-                            swc_ecma_ast::JSXElement {
-                                span: swc_common::DUMMY_SP,
-                                opening: swc_ecma_ast::JSXOpeningElement {
-                                    name: swc_ecma_ast::JSXElementName::Ident(create_ident("a")),
-                                    attrs: vec![],
-                                    self_closing: true,
-                                    type_args: None,
-                                    span: swc_common::DUMMY_SP,
-                                },
-                                closing: None,
-                                children: vec![],
-                            },
-                        ))),
-                    },
-                ))],
+                        opening: JSXOpeningElement {
+                            name: JSXElementName::Ident(create_ident("a")),
+                            attrs: vec![],
+                            self_closing: true,
+                            type_args: None,
+                            span: swc_common::DUMMY_SP,
+                        },
+                        closing: None,
+                        children: vec![],
+                    }))),
+                }))],
             },
         };
 
