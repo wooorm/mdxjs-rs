@@ -490,4 +490,18 @@ mod tests {
             "should support no point"
         );
     }
+
+    #[test]
+    fn position_opt_to_string_test() {
+        assert_eq!(
+            position_opt_to_string(None),
+            "0:0",
+            "should support no position"
+        );
+    }
+
+    #[test]
+    fn point_opt_to_string_test() {
+        assert_eq!(point_opt_to_string(None), "0:0", "should support no point");
+    }
 }
