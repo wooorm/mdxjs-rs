@@ -11,8 +11,8 @@ use markdown::{
 use swc_common::{BytePos, Span, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::{
     BinExpr, BinaryOp, Bool, CallExpr, Callee, ComputedPropName, Expr, ExprOrSpread, Ident,
-    JSXAttrName, JSXElementName, JSXMemberExpr, JSXObject, Lit, MemberExpr, MemberProp, Null,
-    Number, ObjectLit, PropName, PropOrSpread, Str,
+    JSXAttrName, JSXElementName, JSXMemberExpr, JSXNamespacedName, JSXObject, Lit, MemberExpr,
+    MemberProp, Null, Number, ObjectLit, PropName, PropOrSpread, Str,
 };
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut};
 
@@ -359,6 +359,45 @@ pub fn create_member_prop_from_str(name: &str) -> MemberProp {
     }
 }
 
+/// Generate a member expression from a string.
+///
+/// ```js
+/// a.b-c
+/// a
+/// ```
+pub fn create_jsx_name_from_str(name: &str) -> JSXElementName {
+    match parse_jsx_name(name) {
+        // `a`
+        JsxName::Normal(name) => JSXElementName::Ident(create_ident(name)),
+        // `a:b`
+        JsxName::Namespace(ns, name) => JSXElementName::JSXNamespacedName(JSXNamespacedName {
+            ns: create_ident(ns),
+            name: create_ident(name),
+        }),
+        // `a.b.c`
+        JsxName::Member(parts) => {
+            let mut member = create_jsx_member(
+                JSXObject::Ident(create_ident(parts[0])),
+                create_ident(parts[1]),
+            );
+            let mut index = 2;
+            while index < parts.len() {
+                member = create_jsx_member(
+                    JSXObject::JSXMemberExpr(Box::new(member)),
+                    create_ident(parts[index]),
+                );
+                index += 1;
+            }
+            JSXElementName::JSXMemberExpr(member)
+        }
+    }
+}
+
+/// Generate a member expression from an object and prop.
+pub fn create_jsx_member(obj: JSXObject, prop: Ident) -> JSXMemberExpr {
+    JSXMemberExpr { obj, prop }
+}
+
 /// Turn an JSX element name into an expression.
 pub fn jsx_element_name_to_expression(node: JSXElementName) -> Expr {
     match node {
@@ -370,6 +409,22 @@ pub fn jsx_element_name_to_expression(node: JSXElementName) -> Expr {
             namespace_name.ns.sym, namespace_name.name.sym
         )),
         JSXElementName::Ident(ident) => create_ident_or_literal(&ident),
+    }
+}
+
+/// Create a JSX attribute name.
+pub fn create_jsx_attr_name_from_str(name: &str) -> JSXAttrName {
+    match parse_jsx_name(name) {
+        JsxName::Member(_) => {
+            unreachable!("member expressions in attribute names are not supported")
+        }
+        // `<a b:c />`
+        JsxName::Namespace(ns, name) => JSXAttrName::JSXNamespacedName(JSXNamespacedName {
+            ns: create_ident(ns),
+            name: create_ident(name),
+        }),
+        // `<a b />`
+        JsxName::Normal(name) => JSXAttrName::Ident(create_ident(name)),
     }
 }
 

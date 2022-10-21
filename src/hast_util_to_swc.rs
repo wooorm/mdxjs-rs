@@ -31,15 +31,15 @@ extern crate swc_ecma_ast;
 use crate::hast;
 use crate::swc::{parse_esm_to_tree, parse_expression_to_tree};
 use crate::swc_utils::{
-    create_ident, inter_element_whitespace, parse_jsx_name, position_to_span, JsxName,
+    create_jsx_attr_name_from_str, create_jsx_name_from_str, inter_element_whitespace,
+    position_to_span,
 };
 use core::str;
 use markdown::{Location, MdxExpressionKind};
 use swc_ecma_ast::{
-    Expr, ExprStmt, JSXAttr, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXClosingElement,
-    JSXClosingFragment, JSXElement, JSXElementChild, JSXElementName, JSXEmptyExpr, JSXExpr,
-    JSXExprContainer, JSXFragment, JSXMemberExpr, JSXNamespacedName, JSXObject, JSXOpeningElement,
-    JSXOpeningFragment, Lit, Module, ModuleItem, SpreadElement, Stmt, Str,
+    Expr, ExprStmt, JSXAttr, JSXAttrOrSpread, JSXAttrValue, JSXClosingElement, JSXClosingFragment,
+    JSXElement, JSXElementChild, JSXEmptyExpr, JSXExpr, JSXExprContainer, JSXFragment,
+    JSXOpeningElement, JSXOpeningFragment, Lit, Module, ModuleItem, SpreadElement, Stmt, Str,
 };
 
 pub const MAGIC_EXPLICIT_MARKER: u32 = 1337;
@@ -235,7 +235,7 @@ fn transform_element(
         let attr_name = prop_to_attr_name(&prop.0);
 
         attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
-            name: create_jsx_attr_name(&attr_name),
+            name: create_jsx_attr_name_from_str(&attr_name),
             value: value.map(JSXAttrValue::Lit),
             span: swc_common::DUMMY_SP,
         }));
@@ -300,7 +300,7 @@ fn transform_mdx_jsx_element(
 
                 JSXAttrOrSpread::JSXAttr(JSXAttr {
                     span: swc_common::DUMMY_SP,
-                    name: create_jsx_attr_name(&prop.name),
+                    name: create_jsx_attr_name_from_str(&prop.name),
                     value,
                 })
             }
@@ -442,7 +442,7 @@ fn create_element(
 
     Box::new(JSXElement {
         opening: JSXOpeningElement {
-            name: create_jsx_name(name),
+            name: create_jsx_name_from_str(name),
             attrs,
             self_closing: children.is_empty(),
             type_args: None,
@@ -452,7 +452,7 @@ fn create_element(
             None
         } else {
             Some(JSXClosingElement {
-                name: create_jsx_name(name),
+                name: create_jsx_name_from_str(name),
                 span: swc_common::DUMMY_SP,
             })
         },
@@ -472,53 +472,6 @@ fn create_fragment(children: Vec<JSXElementChild>, node: &hast::Node) -> JSXFrag
         },
         children,
         span: position_to_span(node.position()),
-    }
-}
-
-/// Create a JSX element name.
-fn create_jsx_name(name: &str) -> JSXElementName {
-    match parse_jsx_name(name) {
-        // `<a.b.c />`
-        // `<a.b />`
-        JsxName::Member(parts) => {
-            // Always two or more items.
-            let mut member = JSXMemberExpr {
-                obj: JSXObject::Ident(create_ident(parts[0])),
-                prop: create_ident(parts[1]),
-            };
-            let mut index = 2;
-            while index < parts.len() {
-                member = JSXMemberExpr {
-                    obj: JSXObject::JSXMemberExpr(Box::new(member)),
-                    prop: create_ident(parts[index]),
-                };
-                index += 1;
-            }
-            JSXElementName::JSXMemberExpr(member)
-        }
-        // `<a:b />`
-        JsxName::Namespace(ns, name) => JSXElementName::JSXNamespacedName(JSXNamespacedName {
-            ns: create_ident(ns),
-            name: create_ident(name),
-        }),
-        // `<a />`
-        JsxName::Normal(name) => JSXElementName::Ident(create_ident(name)),
-    }
-}
-
-/// Create a JSX attribute name.
-fn create_jsx_attr_name(name: &str) -> JSXAttrName {
-    match parse_jsx_name(name) {
-        JsxName::Member(_) => {
-            unreachable!("member expressions in attribute names are not supported")
-        }
-        // `<a b:c />`
-        JsxName::Namespace(ns, name) => JSXAttrName::JSXNamespacedName(JSXNamespacedName {
-            ns: create_ident(ns),
-            name: create_ident(name),
-        }),
-        // `<a b />`
-        JsxName::Normal(name) => JSXAttrName::Ident(create_ident(name)),
     }
 }
 
@@ -709,7 +662,10 @@ mod tests {
     use crate::hast_util_to_swc::{hast_util_to_swc, Program};
     use crate::swc::serialize;
     use pretty_assertions::assert_eq;
-    use swc_ecma_ast::{Ident, ImportDecl, ImportDefaultSpecifier, ImportSpecifier, ModuleDecl};
+    use swc_ecma_ast::{
+        Ident, ImportDecl, ImportDefaultSpecifier, ImportSpecifier, JSXAttrName, JSXElementName,
+        ModuleDecl,
+    };
 
     #[test]
     fn comments() -> Result<(), String> {

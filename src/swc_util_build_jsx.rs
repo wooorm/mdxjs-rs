@@ -272,8 +272,8 @@ impl<'a> State<'a> {
                         spread = true;
                     }
                     JSXAttrOrSpread::JSXAttr(jsx_attribute) => {
-                        let mut value =
-                            Some(self.jsx_attribute_value_to_expression(jsx_attribute.value)?);
+                        let value = self.jsx_attribute_value_to_expression(jsx_attribute.value)?;
+                        let mut value = Some(value);
 
                         if let JSXAttrName::Ident(ident) = &jsx_attribute.name {
                             if self.automatic && &ident.sym == "key" {
