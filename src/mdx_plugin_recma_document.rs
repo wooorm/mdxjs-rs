@@ -221,10 +221,6 @@ pub fn mdx_plugin_recma_document(
             // export {a, b as c}
             // ```
             ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(mut named_export)) => {
-                // SWC is currently crashing when generating code, w/o source
-                // map, if an actual location is set on this node.
-                named_export.span = swc_common::DUMMY_SP;
-
                 let mut index = 0;
                 let mut id = None;
 
@@ -300,11 +296,7 @@ pub fn mdx_plugin_recma_document(
                     )));
                 }
             }
-            ModuleItem::ModuleDecl(ModuleDecl::Import(mut x)) => {
-                // SWC is currently crashing when generating code, w/o source
-                // map, if an actual location is set on this node.
-                x.span = swc_common::DUMMY_SP;
-
+            ModuleItem::ModuleDecl(ModuleDecl::Import(x)) => {
                 // Pass through.
                 replacements.push(ModuleItem::ModuleDecl(ModuleDecl::Import(x)));
             }
@@ -583,7 +575,7 @@ mod tests {
         let hast = mdast_util_to_hast(&mdast);
         let mut program = hast_util_to_swc(&hast, None, Some(&location))?;
         mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
-        Ok(serialize(&program.module, Some(&program.comments)))
+        Ok(serialize(&mut program.module, Some(&program.comments)))
     }
 
     #[test]
@@ -884,7 +876,7 @@ export default MDXContent;
         mdx_plugin_recma_document(&mut program, &Options::default(), None)?;
 
         assert_eq!(
-            serialize(&program.module, None),
+            serialize(&mut program.module, None),
             "while(true);
 function _createMdxContent(props) {
     return null;
@@ -918,7 +910,7 @@ export default MDXContent;
         mdx_plugin_recma_document(&mut program, &Options::default(), None)?;
 
         assert_eq!(
-            serialize(&program.module, None),
+            serialize(&mut program.module, None),
             "true;
 function _createMdxContent(props) {
     return null;
@@ -965,7 +957,7 @@ export default MDXContent;
         mdx_plugin_recma_document(&mut program, &Options::default(), None)?;
 
         assert_eq!(
-            serialize(&program.module, None),
+            serialize(&mut program.module, None),
             "function _createMdxContent(props) {
     return <>a</>;
 }
@@ -1016,7 +1008,7 @@ export default MDXContent;
         mdx_plugin_recma_document(&mut program, &Options::default(), None)?;
 
         assert_eq!(
-            serialize(&program.module, None),
+            serialize(&mut program.module, None),
             "function _createMdxContent(props) {
     return <a >b</a>;
 }

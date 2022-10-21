@@ -121,5 +121,5 @@ pub fn compile(value: &str, options: &Options) -> Result<String, String> {
         swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
     }
 
-    Ok(serialize(&program.module, Some(&program.comments)))
+    Ok(serialize(&mut program.module, Some(&program.comments)))
 }

@@ -814,7 +814,7 @@ mod tests {
                     comments: flat_comments(comments),
                 };
                 swc_util_build_jsx(&mut program, options, Some(&location))?;
-                Ok(serialize(&program.module, Some(&program.comments)))
+                Ok(serialize(&mut program.module, Some(&program.comments)))
             }
         }
     }
@@ -1551,7 +1551,7 @@ _jsxDEV(_Fragment, {
         swc_util_build_jsx(&mut program, &Options { development: true }, None)?;
 
         assert_eq!(
-            serialize(&program.module, Some(&program.comments)),
+            serialize(&mut program.module, Some(&program.comments)),
             "import { jsxDEV as _jsxDEV } from \"react/jsx-dev-runtime\";
 _jsxDEV(\"a\", {}, undefined, false, {
     fileName: \"<source.js>\"

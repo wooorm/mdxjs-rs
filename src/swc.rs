@@ -5,7 +5,7 @@ extern crate swc_common;
 extern crate swc_ecma_ast;
 extern crate swc_ecma_parser;
 
-use crate::swc_utils::{bytepos_to_point, prefix_error_with_point, RewriteContext};
+use crate::swc_utils::{bytepos_to_point, prefix_error_with_point, DropContext, RewriteContext};
 use markdown::{mdast::Stop, unist::Point, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
 use swc_common::{
@@ -189,13 +189,14 @@ pub fn parse_expression_to_tree(
 }
 
 /// Serialize an SWC module.
-pub fn serialize(module: &Module, comments: Option<&Vec<Comment>>) -> String {
+pub fn serialize(module: &mut Module, comments: Option<&Vec<Comment>>) -> String {
     let single_threaded_comments = SingleThreadedComments::default();
     if let Some(comments) = comments {
         for c in comments {
             single_threaded_comments.add_leading(c.span.lo, c.clone());
         }
     }
+    module.visit_mut_with(&mut DropContext {});
     let mut buf = vec![];
     let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
     {

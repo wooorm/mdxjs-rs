@@ -1054,7 +1054,7 @@ mod tests {
         let mut program = hast_util_to_swc(&hast, Some("example.mdx".into()), Some(&location))?;
         mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
         mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location));
-        Ok(serialize(&program.module, Some(&program.comments)))
+        Ok(serialize(&mut program.module, Some(&program.comments)))
     }
 
     #[test]
@@ -1420,7 +1420,7 @@ function _missingMdxReference(id, component) {
     let [A] = x
     let [...B] = x
     let {C} = x
-    // let {...D} = x - this currently crashes SWC.
+    let {...D} = x
     let {_: E} = x
     let {F = _} = x;
     return <><A /><B /><C /><D /><E /><F /><G /></>
@@ -1432,12 +1432,12 @@ function _missingMdxReference(id, component) {
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function X(x) {
-    const { D , G  } = _provideComponents();
-    if (!D) _missingMdxReference(\"D\", true);
+    const { G  } = _provideComponents();
     if (!G) _missingMdxReference(\"G\", true);
     let [A] = x;
     let [...B] = x;
     let { C  } = x;
+    let { ...D } = x;
     let { _: E  } = x;
     let { F =_  } = x;
     return <><A /><B /><C /><D /><E /><F /><G /></>;

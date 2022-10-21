@@ -157,6 +157,19 @@ impl<'a> VisitMut for RewriteContext<'a> {
     }
 }
 
+/// Visitor to drop SWC spans.
+#[derive(Debug, Default, Clone)]
+pub struct DropContext {}
+
+impl VisitMut for DropContext {
+    noop_visit_mut_type!();
+
+    /// Rewrite spans.
+    fn visit_mut_span(&mut self, span: &mut Span) {
+        *span = DUMMY_SP;
+    }
+}
+
 /// Generate an ident.
 ///
 /// ```js

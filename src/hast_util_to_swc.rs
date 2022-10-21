@@ -713,7 +713,7 @@ mod tests {
 
     #[test]
     fn comments() -> Result<(), String> {
-        let comment_ast = hast_util_to_swc(
+        let mut comment_ast = hast_util_to_swc(
             &hast::Node::Comment(hast::Comment {
                 value: "a".into(),
                 position: None,
@@ -758,7 +758,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&comment_ast.module, Some(&comment_ast.comments)),
+            serialize(&mut comment_ast.module, Some(&comment_ast.comments)),
             // To do: comment should be in this.
             "<>{}</>;\n",
             "should support a `Comment` (serialize)",
@@ -769,7 +769,7 @@ mod tests {
 
     #[test]
     fn elements() -> Result<(), String> {
-        let element_ast = hast_util_to_swc(
+        let mut element_ast = hast_util_to_swc(
             &hast::Node::Element(hast::Element {
                 tag_name: "a".into(),
                 properties: vec![(
@@ -828,14 +828,14 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&element_ast.module, Some(&element_ast.comments)),
+            serialize(&mut element_ast.module, Some(&element_ast.comments)),
             "<a className=\"b\"/>;\n",
             "should support an `Element` (serialize)",
         );
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
                         properties: vec![],
@@ -857,7 +857,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::Element(hast::Element {
                         tag_name: "svg".into(),
                         properties: vec![],
@@ -881,7 +881,7 @@ mod tests {
     fn element_attributes() -> Result<(), String> {
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
                         properties: vec![("b".into(), hast::PropertyValue::String("c".into()),)],
@@ -900,7 +900,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
                         properties: vec![("b".into(), hast::PropertyValue::Boolean(true),)],
@@ -919,7 +919,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
                         properties: vec![("b".into(), hast::PropertyValue::Boolean(false),)],
@@ -938,7 +938,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
                         properties: vec![(
@@ -960,7 +960,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
                         properties: vec![
@@ -985,7 +985,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::Element(hast::Element {
                         tag_name: "a".into(),
                         properties: vec![
@@ -1011,7 +1011,7 @@ mod tests {
 
     #[test]
     fn mdx_element() -> Result<(), String> {
-        let mdx_element_ast = hast_util_to_swc(
+        let mut mdx_element_ast = hast_util_to_swc(
             &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                 name: None,
                 attributes: vec![],
@@ -1049,14 +1049,14 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&mdx_element_ast.module, Some(&mdx_element_ast.comments)),
+            serialize(&mut mdx_element_ast.module, Some(&mdx_element_ast.comments)),
             "<></>;\n",
             "should support an `MdxElement` (fragment, serialize)",
         );
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
                         attributes: vec![],
@@ -1074,7 +1074,7 @@ mod tests {
         );
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
                         attributes: vec![],
@@ -1101,7 +1101,7 @@ mod tests {
     fn mdx_element_name() -> Result<(), String> {
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a:b".into()),
                         attributes: vec![],
@@ -1120,7 +1120,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a.b.c".into()),
                         attributes: vec![],
@@ -1139,7 +1139,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("svg".into()),
                         attributes: vec![],
@@ -1163,7 +1163,7 @@ mod tests {
     fn mdx_element_attributes() -> Result<(), String> {
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
                         attributes: vec![hast::AttributeContent::Property(hast::MdxJsxAttribute {
@@ -1185,7 +1185,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
                         attributes: vec![hast::AttributeContent::Property(hast::MdxJsxAttribute {
@@ -1207,7 +1207,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
                         attributes: vec![hast::AttributeContent::Property(hast::MdxJsxAttribute {
@@ -1229,7 +1229,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
                         attributes: vec![hast::AttributeContent::Property(hast::MdxJsxAttribute {
@@ -1251,7 +1251,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &hast_util_to_swc(
+                &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
                         attributes: vec![hast::AttributeContent::Expression("...c".into(), vec![])],
@@ -1273,7 +1273,7 @@ mod tests {
 
     #[test]
     fn mdx_expression() -> Result<(), String> {
-        let mdx_expression_ast = hast_util_to_swc(
+        let mut mdx_expression_ast = hast_util_to_swc(
             &hast::Node::MdxExpression(hast::MdxExpression {
                 value: "a".into(),
                 position: None,
@@ -1318,7 +1318,7 @@ mod tests {
 
         assert_eq!(
             serialize(
-                &mdx_expression_ast.module,
+                &mut mdx_expression_ast.module,
                 Some(&mdx_expression_ast.comments)
             ),
             "<>{a}</>;\n",
@@ -1330,7 +1330,7 @@ mod tests {
 
     #[test]
     fn mdx_esm() -> Result<(), String> {
-        let mdxjs_esm_ast = hast_util_to_swc(
+        let mut mdxjs_esm_ast = hast_util_to_swc(
             &hast::Node::MdxjsEsm(hast::MdxjsEsm {
                 value: "import a from 'b'".into(),
                 position: None,
@@ -1372,7 +1372,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&mdxjs_esm_ast.module, Some(&mdxjs_esm_ast.comments)),
+            serialize(&mut mdxjs_esm_ast.module, Some(&mdxjs_esm_ast.comments)),
             "import a from 'b';\n",
             "should support an `MdxjsEsm` (serialize)",
         );
@@ -1382,7 +1382,7 @@ mod tests {
 
     #[test]
     fn root() -> Result<(), String> {
-        let root_ast = hast_util_to_swc(
+        let mut root_ast = hast_util_to_swc(
             &hast::Node::Root(hast::Root {
                 children: vec![hast::Node::Text(hast::Text {
                     value: "a".into(),
@@ -1428,7 +1428,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&root_ast.module, Some(&root_ast.comments)),
+            serialize(&mut root_ast.module, Some(&root_ast.comments)),
             "<>{\"a\"}</>;\n",
             "should support a `Root` (serialize)",
         );
@@ -1438,7 +1438,7 @@ mod tests {
 
     #[test]
     fn text() -> Result<(), String> {
-        let text_ast = hast_util_to_swc(
+        let mut text_ast = hast_util_to_swc(
             &hast::Node::Text(hast::Text {
                 value: "a".into(),
                 position: None,
@@ -1481,7 +1481,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&text_ast.module, Some(&text_ast.comments)),
+            serialize(&mut text_ast.module, Some(&text_ast.comments)),
             "<>{\"a\"}</>;\n",
             "should support a `Text` (serialize)",
         );
@@ -1519,7 +1519,7 @@ mod tests {
 
     #[test]
     fn doctype() -> Result<(), String> {
-        let doctype_ast = hast_util_to_swc(
+        let mut doctype_ast = hast_util_to_swc(
             &hast::Node::Doctype(hast::Doctype { position: None }),
             None,
             None,
@@ -1540,7 +1540,7 @@ mod tests {
         );
 
         assert_eq!(
-            serialize(&doctype_ast.module, Some(&doctype_ast.comments)),
+            serialize(&mut doctype_ast.module, Some(&doctype_ast.comments)),
             "",
             "should support a `Doctype` (serialize)",
         );
