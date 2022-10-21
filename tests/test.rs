@@ -3,7 +3,7 @@ use mdxjs::{compile, JsxRuntime, Options};
 use pretty_assertions::assert_eq;
 
 #[test]
-fn mdxjs() -> Result<(), String> {
+fn simple() -> Result<(), String> {
     assert_eq!(
         compile("", &Options::default())?,
         "import { Fragment as _Fragment, jsx as _jsx } from \"react/jsx-runtime\";
@@ -21,6 +21,11 @@ export default MDXContent;
         "should work",
     );
 
+    Ok(())
+}
+
+#[test]
+fn development() -> Result<(), String> {
     assert_eq!(
         compile("<A />", &Options {
             development: true,
@@ -55,6 +60,11 @@ function _missingMdxReference(id, component, place) {
         "should support `options.development: true`",
     );
 
+    Ok(())
+}
+
+#[test]
+fn provider() -> Result<(), String> {
     assert_eq!(
         compile("<A />",  &Options {
             provider_import_source: Some("@mdx-js/react".into()),
@@ -81,6 +91,11 @@ function _missingMdxReference(id, component) {
         "should support `options.provider_import_source`",
     );
 
+    Ok(())
+}
+
+#[test]
+fn jsx() -> Result<(), String> {
     assert_eq!(
         compile("", &Options {
             jsx: true,
@@ -98,6 +113,11 @@ export default MDXContent;
         "should support `options.jsx: true`",
     );
 
+    Ok(())
+}
+
+#[test]
+fn classic() -> Result<(), String> {
     assert_eq!(
         compile("", &Options {
             jsx_runtime: Some(JsxRuntime::Classic),
@@ -116,6 +136,11 @@ export default MDXContent;
         "should support `options.jsx_runtime: JsxRuntime::Classic`",
     );
 
+    Ok(())
+}
+
+#[test]
+fn import_source() -> Result<(), String> {
     assert_eq!(
         compile(
             "",
@@ -139,6 +164,11 @@ export default MDXContent;
         "should support `options.jsx_import_source: Some(\"preact\".into())`",
     );
 
+    Ok(())
+}
+
+#[test]
+fn pragmas() -> Result<(), String> {
     assert_eq!(
         compile("", &Options {
             jsx_runtime: Some(JsxRuntime::Classic),
@@ -160,6 +190,11 @@ export default MDXContent;
         "should support `options.pragma`, `options.pragma_frag`, `options.pragma_import_source`",
     );
 
+    Ok(())
+}
+
+#[test]
+fn unravel_elements() -> Result<(), String> {
     assert_eq!(
         compile(
             "<x>a</x>
@@ -200,6 +235,11 @@ export default MDXContent;
         "should unravel paragraphs (1)",
     );
 
+    Ok(())
+}
+
+#[test]
+fn unravel_expressions() -> Result<(), String> {
     assert_eq!(
         compile("{1} {2}", &Default::default())?,
         "import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from \"react/jsx-runtime\";
@@ -225,6 +265,11 @@ export default MDXContent;
         "should unravel paragraphs (2)",
     );
 
+    Ok(())
+}
+
+#[test]
+fn explicit_jsx() -> Result<(), String> {
     assert_eq!(
         compile(
             "<h1>asd</h1>
@@ -261,4 +306,122 @@ export default MDXContent;
     );
 
     Ok(())
+}
+
+#[test]
+fn err_esm_invalid() {
+    assert_eq!(
+        compile("import 1/1", &Default::default()),
+        Err(
+            "1:8: Could not parse esm with swc: Expected 'from', got 'numeric literal (1, 1)'"
+                .into()
+        ),
+        "should crash on invalid code in ESM",
+    );
+}
+
+#[test]
+fn err_expression_invalid() {
+    assert_eq!(
+        compile("{!}", &Default::default()),
+        Err("1:4: Could not parse expression with swc: Unexpected eof".into()),
+        "should crash on invalid code in an expression",
+    );
+}
+
+#[test]
+fn err_expression_broken_multiline_comment() {
+    assert_eq!(
+        compile("{x/*}", &Default::default()),
+        Err("1:6: Could not parse expression with swc: Unexpected eof".into()),
+        "should crash on an unclosed block comment after an expression",
+    );
+}
+
+#[test]
+fn err_expression_broken_line_comment() {
+    assert_eq!(
+        compile("{x//}", &Default::default()),
+        Err("1:5: Could not parse expression with swc: Unexpected unclosed line comment, expected line ending: `\\n`".into()),
+        "should crash on an unclosed line comment after an expression",
+    );
+}
+
+#[test]
+fn err_esm_stmt() {
+    assert_eq!(
+        compile("export let a = 1\nlet b = 2", &Default::default()),
+        Err("2:1: Unexpected statement in code: only import/exports are supported".into()),
+        "should crash on statements in ESM",
+    );
+}
+
+#[test]
+fn err_expression_multi() {
+    assert_eq!(
+        compile("{x; y}", &Default::default()),
+        Err("1:3: Could not parse expression with swc: Unexpected content after expression".into()),
+        "should crash on more content after an expression",
+    );
+}
+
+#[test]
+fn err_expression_spread_multi_1() {
+    assert_eq!(
+        compile("<a {...x; y} />", &Default::default()),
+        Err("1:9: Could not parse expression with swc: Expected ',', got ';'".into()),
+        "should crash on more content after a (spread) expression (1)",
+    );
+}
+
+#[test]
+fn err_expression_spread_multi_2() {
+    assert_eq!(
+        compile("<a {...x, y} />", &Default::default()),
+        Err("1:5: Expected a single spread value, such as `...x`".into()),
+        "should crash on more content after a (spread) expression (2)",
+    );
+}
+
+#[test]
+fn err_expression_spread_empty() {
+    assert_eq!(
+        compile("<a {...} />", &Default::default()),
+        Err("1:12: Could not parse expression with swc: Unexpected token `}`. Expected this, import, async, function, [ for array literal, { for object literal, @ for decorator, function, class, null, true, false, number, bigint, string, regexp, ` for template literal, (, or an identifier".into()),
+        "should crash on an empty spread expression",
+    );
+}
+
+#[test]
+fn err_expression_spread_extra_comment() {
+    assert!(
+        matches!(compile("<a {...b /*c*/ } />", &Default::default()), Ok(_)),
+        "should support a spread expression with a comment",
+    );
+}
+
+#[test]
+fn err_expression_value_empty() {
+    assert_eq!(
+        compile("<a b={ } />", &Default::default()),
+        Err("1:7: Could not parse expression with swc: Unexpected eof".into()),
+        "should crash on an empty value expression",
+    );
+}
+
+#[test]
+fn err_expression_value_comment() {
+    assert_eq!(
+        compile("<a b={ /*c*/ } />", &Default::default()),
+        Err("1:7: Could not parse expression with swc: Unexpected eof".into()),
+        "should crash on a value expression with just a comment",
+    );
+}
+
+#[test]
+fn err_expression_value_extra_comment() {
+    assert!(
+        matches!(compile("<a b={1 /*c*/ } />", &Default::default()), Ok(_)),
+        "should support a value expression with a comment",
+    );
 }
