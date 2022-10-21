@@ -348,7 +348,8 @@ impl<'a> State<'a> {
                 // The primary ID of objects and components that are referenced.
                 if !reference.name.contains('.') {
                     // Ignore if invalid.
-                    if info.aliases.iter().any(|d| d.original == reference.name) {
+                    let invalid = info.aliases.iter().any(|d| d.original == reference.name);
+                    if invalid {
                         continue;
                     }
 
@@ -411,10 +412,8 @@ impl<'a> State<'a> {
         for reference in info.dynamic {
             // We use a conditional to check if `MDXLayout` is defined or not
             // in the `MDXContent` component.
-            if let Some(name) = &info.name {
-                if reference.name == "MDXLayout" && name == "MDXContent" {
-                    continue;
-                }
+            if reference.name == "MDXLayout" && info.name == Some("MDXContent".into()) {
+                continue;
             }
 
             self.create_error_helper = true;
@@ -441,36 +440,33 @@ impl<'a> State<'a> {
             }
 
             let mut name = reference.name;
-            let mut path = name
-                .split('.')
-                .into_iter()
-                .map(String::from)
-                .collect::<Vec<_>>();
+            let split = name.split('.');
+            let mut path = split.map(String::from).collect::<Vec<_>>();
             let alias = info.aliases.iter().find(|d| d.original == path[0]);
             if let Some(alias) = alias {
                 path[0] = alias.safe.clone();
                 name = path.join(".");
             }
 
-            let test = Expr::Unary(UnaryExpr {
+            let test = UnaryExpr {
                 op: UnaryOp::Bang,
                 arg: Box::new(create_member_expression_from_str(&name)),
                 span: DUMMY_SP,
-            });
-            let cons = Stmt::Expr(ExprStmt {
+            };
+            let callee = create_ident_expression("_missingMdxReference");
+            let call = create_call_expression(Callee::Expr(Box::new(callee)), args);
+            let cons = ExprStmt {
                 span: DUMMY_SP,
-                expr: Box::new(create_call_expression(
-                    Callee::Expr(Box::new(create_ident_expression("_missingMdxReference"))),
-                    args,
-                )),
-            });
-            let statement = Stmt::If(IfStmt {
-                test: Box::new(test),
-                cons: Box::new(cons),
+                expr: Box::new(call),
+            };
+            let statement = IfStmt {
+                test: Box::new(Expr::Unary(test)),
+                cons: Box::new(Stmt::Expr(cons)),
                 alt: None,
                 span: DUMMY_SP,
-            });
-            statements.push(statement);
+            };
+
+            statements.push(Stmt::If(statement));
         }
 
         // Add statements to functions.
@@ -566,11 +562,13 @@ impl<'a> State<'a> {
                 existing.component = component;
             }
         } else {
-            scope.dynamic.push(Dynamic {
+            let dynamic = Dynamic {
                 name,
                 component,
                 position: position.clone(),
-            });
+            };
+
+            scope.dynamic.push(dynamic);
         }
     }
 
@@ -645,10 +643,12 @@ impl<'a> State<'a> {
     /// Define a pattern in a scope.
     fn define_pat(&mut self, pat: &Pat, block: bool) {
         match pat {
-            // `x`
-            Pat::Ident(d) => self.define_id(d.id.sym.to_string(), block),
-            // `...x`
+            Pat::Ident(d) => {
+                // `x`
+                self.define_id(d.id.sym.to_string(), block);
+            }
             Pat::Array(d) => {
+                // `...x`
                 let mut index = 0;
                 while index < d.elems.len() {
                     if let Some(d) = &d.elems[index] {
@@ -657,10 +657,14 @@ impl<'a> State<'a> {
                     index += 1;
                 }
             }
-            // `...x`
-            Pat::Rest(d) => self.define_pat(&d.arg, block),
-            // `{x=y}`
-            Pat::Assign(d) => self.define_pat(&d.left, block),
+            Pat::Rest(d) => {
+                // `...x`
+                self.define_pat(&d.arg, block);
+            }
+            Pat::Assign(d) => {
+                // `{x=y}`
+                self.define_pat(&d.left, block);
+            }
             Pat::Object(d) => {
                 let mut index = 0;
                 while index < d.props.len() {
@@ -681,8 +685,9 @@ impl<'a> State<'a> {
                     index += 1;
                 }
             }
-            // Ignore `Invalid` / `Expr`.
-            _ => {}
+            _ => {
+                // Ignore `Invalid` / `Expr`.
+            }
         }
     }
 }
@@ -694,10 +699,10 @@ impl<'a> VisitMut for State<'a> {
     fn visit_mut_jsx_element(&mut self, node: &mut JSXElement) {
         let parts = match &node.opening.name {
             // `<x.y>`, `<Foo.Bar>`, `<x.y.z>`.
-            JSXElementName::JSXMemberExpr(d) => jsx_member_to_parts(d)
-                .into_iter()
-                .map(String::from)
-                .collect::<Vec<_>>(),
+            JSXElementName::JSXMemberExpr(d) => {
+                let parts = jsx_member_to_parts(d);
+                parts.into_iter().map(String::from).collect::<Vec<_>>()
+            }
             // `<foo>`, `<Foo>`, `<$>`, `<_bar>`, `<a_b>`.
             JSXElementName::Ident(d) => vec![(&d.sym).to_string()],
             // `<xml:thing>`.
