@@ -19,9 +19,9 @@ use swc_common::{
 };
 use swc_ecma_ast::{
     ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, ImportDecl, ImportNamedSpecifier,
-    ImportSpecifier, JSXAttrOrSpread, JSXAttrValue, JSXElement, JSXElementChild, JSXExpr,
-    JSXFragment, KeyValueProp, Lit, ModuleDecl, ModuleExportName, ModuleItem, Prop, PropName,
-    PropOrSpread, ThisExpr,
+    ImportSpecifier, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXElement, JSXElementChild,
+    JSXExpr, JSXFragment, KeyValueProp, Lit, ModuleDecl, ModuleExportName, ModuleItem, Prop,
+    PropName, PropOrSpread, ThisExpr,
 };
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
@@ -212,8 +212,14 @@ impl<'a> State<'a> {
         children.reverse();
         while let Some(child) = children.pop() {
             match child {
-                JSXElementChild::JSXSpreadChild(_) => {
-                    return Err("Spread children not supported in Babel, SWC, or React".into());
+                JSXElementChild::JSXSpreadChild(child) => {
+                    let lo = child.span.lo;
+                    let start = bytepos_to_point(lo, self.location);
+                    let reason = prefix_error_with_point(
+                        "Unexpected spread child, which is not supported in Babel, SWC, or React",
+                        start.as_ref(),
+                    );
+                    return Err(reason);
                 }
                 JSXElementChild::JSXExprContainer(container) => {
                     if let JSXExpr::Expr(expression) = container.expr {
@@ -266,11 +272,11 @@ impl<'a> State<'a> {
                         spread = true;
                     }
                     JSXAttrOrSpread::JSXAttr(jsx_attribute) => {
-                        let name = jsx_attribute_name_to_prop_name(jsx_attribute.name);
-                        let value = self.jsx_attribute_value_to_expression(jsx_attribute.value)?;
+                        let mut value =
+                            Some(self.jsx_attribute_value_to_expression(jsx_attribute.value)?);
 
-                        if let PropName::Ident(ident) = &name {
-                            if self.automatic && ident.sym.as_ref() == "key" {
+                        if let JSXAttrName::Ident(ident) = &jsx_attribute.name {
+                            if self.automatic && &ident.sym == "key" {
                                 if spread {
                                     let lo = jsx_attribute.span.lo;
                                     let start = bytepos_to_point(lo, self.location);
@@ -281,15 +287,19 @@ impl<'a> State<'a> {
                                     return Err(reason);
                                 }
 
-                                key = Some(value);
-                                continue;
+                                // Take the value out, so we don’t add it as a prop.
+                                key = value.take();
                             }
                         }
 
-                        fields.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                            key: name,
-                            value: Box::new(value),
-                        }))));
+                        if let Some(value) = value {
+                            fields.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(
+                                KeyValueProp {
+                                    key: jsx_attribute_name_to_prop_name(jsx_attribute.name),
+                                    value: Box::new(value),
+                                },
+                            ))));
+                        }
                     }
                 }
             }
@@ -420,15 +430,16 @@ impl<'a> State<'a> {
                     expr: Box::new(create_bool_expression(is_static_children)),
                 });
 
-                let mut meta_fields =
-                    vec![PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                        key: PropName::Ident(create_ident("fileName")),
-                        value: Box::new(if let Some(value) = &self.filepath {
-                            create_str_expression(value)
-                        } else {
-                            create_str_expression("<source.js>")
-                        }),
-                    })))];
+                let filename = if let Some(value) = &self.filepath {
+                    create_str_expression(value)
+                } else {
+                    create_str_expression("<source.js>")
+                };
+                let prop = PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Ident(create_ident("fileName")),
+                    value: Box::new(filename),
+                })));
+                let mut meta_fields = vec![prop];
 
                 if let Some(position) = span_to_position(span, self.location) {
                     meta_fields.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
@@ -1348,7 +1359,7 @@ _jsx(\"a\", {
             swc_util_build_jsx(&mut program, &Options::default(), None)
                 .err()
                 .unwrap(),
-            "Spread children not supported in Babel, SWC, or React",
+            "0:0: Unexpected spread child, which is not supported in Babel, SWC, or React",
             "should not support a spread child"
         );
     }
