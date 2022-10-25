@@ -321,7 +321,7 @@ fn err_esm_invalid() {
 }
 
 #[test]
-fn err_expression_broken_multiline_comment() {
+fn err_expression_broken_multiline_comment_a() {
     assert_eq!(
         compile("{x/*}", &Default::default()),
         Err("1:6: Could not parse expression with swc: Unexpected eof".into()),
@@ -330,11 +330,45 @@ fn err_expression_broken_multiline_comment() {
 }
 
 #[test]
-fn err_expression_broken_line_comment() {
+fn err_expression_broken_multiline_comment_b() {
+    assert_eq!(
+        compile("{/*x}", &Default::default()),
+        Err("1:6: Could not parse expression with swc: Unterminated block comment".into()),
+        "should crash on an unclosed block comment in an empty expression",
+    );
+}
+
+#[test]
+fn err_expression_broken_multiline_comment_c() {
+    assert!(
+        matches!(compile("{/*a*/}", &Default::default()), Ok(_)),
+        "should support a valid multiline comment",
+    );
+}
+
+#[test]
+fn err_expression_broken_line_comment_a() {
     assert_eq!(
         compile("{x//}", &Default::default()),
         Err("1:6: Could not parse expression with swc: Unexpected unclosed line comment, expected line ending: `\\n`".into()),
         "should crash on an unclosed line comment after an expression",
+    );
+}
+
+#[test]
+fn err_expression_broken_line_comment_b() {
+    assert_eq!(
+        compile("{//x}", &Default::default()),
+        Err("1:2: Could not parse expression with swc: Unexpected eof".into()),
+        "should crash on an unclosed line comment in an empty expression",
+    );
+}
+
+#[test]
+fn err_expression_broken_line_comment_c() {
+    assert!(
+        matches!(compile("{//a\n}", &Default::default()), Ok(_)),
+        "should support a valid line comment",
     );
 }
 

@@ -137,35 +137,24 @@ fn parse_expression_core(
                     prefix_len: prefix.len() as u32,
                 });
 
-                let expr_span = expr.span();
-
                 if matches!(kind, MdxExpressionKind::AttributeExpression) {
-                    let mut obj = None;
+                    let expr_span = expr.span();
 
                     if let Expr::Paren(d) = *expr {
-                        if let Expr::Object(d) = *d.expr {
-                            obj = Some(d);
+                        if let Expr::Object(mut obj) = *d.expr {
+                            if obj.props.len() > 1 {
+                                return Err((obj.span, "Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`)".into()));
+                            }
+
+                            if let Some(PropOrSpread::Spread(d)) = obj.props.pop() {
+                                return Ok(Some(d.expr));
+                            }
                         }
                     };
 
-                    if let Some(mut obj) = obj {
-                        if obj.props.len() > 1 {
-                            return Err((obj.span, "Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`)".into()));
-                        }
-
-                        if let Some(PropOrSpread::Spread(d)) = obj.props.pop() {
-                            return Ok(Some(d.expr));
-                        }
-
-                        return Err((
-                            obj.span,
-                            "Unexpected prop in spread (such as `{x}`): only a spread is supported (such as `{...x}`)".into(),
-                        ));
-                    }
-
                     return Err((
                         expr_span,
-                        "Expected an object spread (`{...spread}`)".into(),
+                        "Unexpected prop in spread (such as `{x}`): only a spread is supported (such as `{...x}`)".into(),
                     ));
                 }
 
@@ -310,10 +299,7 @@ fn whitespace_and_comments(mut index: usize, value: &str) -> Result<(), (Span, S
         }
         // In a line comment: `// a`.
         else if in_line {
-            if index + 1 < len && bytes[index] == b'\r' && bytes[index + 1] == b'\n' {
-                index += 1;
-                in_line = false;
-            } else if bytes[index] == b'\r' || bytes[index] == b'\n' {
+            if bytes[index] == b'\r' || bytes[index] == b'\n' {
                 in_line = false;
             }
         }

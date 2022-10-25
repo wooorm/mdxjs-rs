@@ -1217,11 +1217,29 @@ mod tests {
         );
 
         assert_eq!(
+            hast_util_to_swc(
+                &hast::Node::MdxJsxElement(hast::MdxJsxElement {
+                    name: Some("a".into()),
+                    attributes: vec![hast::AttributeContent::Property(hast::MdxJsxAttribute {
+                        name: "b".into(),
+                        value: Some(hast::AttributeValue::Expression("!".into(), vec![]))
+                    })],
+                    children: vec![],
+                    position: None,
+                }),
+                None,
+                None
+            ),
+            Err("0:0: Could not parse expression with swc: Unexpected eof".into()),
+            "should support an `MdxElement` (element, attribute w/ broken expression value)",
+        );
+
+        assert_eq!(
             serialize(
                 &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
-                        attributes: vec![hast::AttributeContent::Expression("...c".into(), vec![])],
+                        attributes: vec![hast::AttributeContent::Expression("...b".into(), vec![])],
                         children: vec![],
                         position: None,
                     }),
@@ -1231,8 +1249,23 @@ mod tests {
                 .module,
                 None
             ),
-            "<a {...c}/>;\n",
+            "<a {...b}/>;\n",
             "should support an `MdxElement` (element, expression attribute)",
+        );
+
+        assert_eq!(
+            hast_util_to_swc(
+                &hast::Node::MdxJsxElement(hast::MdxJsxElement {
+                    name: Some("a".into()),
+                    attributes: vec![hast::AttributeContent::Expression("...b,c".into(), vec![])],
+                    children: vec![],
+                    position: None,
+                }),
+                None,
+                None
+            ),
+            Err("0:0: Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`)".into()),
+            "should support an `MdxElement` (element, broken expression attribute)",
         );
 
         Ok(())
