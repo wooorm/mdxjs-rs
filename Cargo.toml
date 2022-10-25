@@ -12,6 +12,9 @@ keywords = ["markdown", "mdx", "compile"]
 categories = ["compilers", "text-processing"]
 include = ["src/", "license"]
 
+[features]
+serializable = ["serde"]
+
 [dependencies]
 markdown = "1.0.0-alpha.2"
 swc_common = "0.29"
@@ -19,6 +22,8 @@ swc_ecma_ast = "0.94"
 swc_ecma_parser = "0.122"
 swc_ecma_codegen = "0.127"
 swc_ecma_visit = "0.80"
+
+serde = { version = "1", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1"

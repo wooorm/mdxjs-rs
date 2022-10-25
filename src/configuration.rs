@@ -18,6 +18,8 @@ use crate::mdx_plugin_recma_document::JsxRuntime;
 ///
 // To do: link all docs when `markdown-rs` is stable.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serializable", serde(rename_all = "camelCase", default))]
 pub struct MdxConstructs {
     pub attention: bool,
     pub block_quote: bool,
@@ -118,6 +120,8 @@ impl MdxConstructs {
 /// *   `mdx_expression_parse`
 /// *   `mdx_esm_parse`
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serializable", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serializable", serde(rename_all = "camelCase", default))]
 pub struct MdxParseOptions {
     pub constructs: MdxConstructs,
     pub gfm_strikethrough_single_tilde: bool,
@@ -154,6 +158,8 @@ impl MdxParseOptions {
 
 /// Configuration (optional).
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serializable", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serializable", serde(rename_all = "camelCase", default))]
 pub struct Options {
     /// Configuration that describes how to parse from markdown.
     pub parse: MdxParseOptions,
