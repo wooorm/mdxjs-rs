@@ -1881,4 +1881,33 @@ function _missingMdxReference(id, component, place) {
             "should ignore invalid patterns"
         );
     }
+
+    #[test]
+    fn expr_patterns() {
+        let mut program = Program {
+            path: None,
+            comments: vec![],
+            module: Module {
+                span: DUMMY_SP,
+                shebang: None,
+                body: vec![ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                    kind: VarDeclKind::Let,
+                    decls: vec![VarDeclarator {
+                        span: DUMMY_SP,
+                        name: Pat::Expr(Box::new(Expr::Ident(create_ident("a")))),
+                        init: None,
+                        definite: false,
+                    }],
+                    span: DUMMY_SP,
+                    declare: false,
+                }))))],
+            },
+        };
+        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None);
+        assert_eq!(
+            serialize(&mut program.module, None),
+            "let a;\n",
+            "should ignore expression patterns"
+        );
+    }
 }
