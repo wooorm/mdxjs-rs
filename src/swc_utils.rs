@@ -121,16 +121,14 @@ pub fn point_to_string(point: &Point) -> String {
 /// > 👉 **Note**: SWC byte positions are offset by one: they are `0` when they
 /// > are missing or incremented by `1` when valid.
 #[derive(Debug, Default, Clone)]
-pub struct RewriteContext<'a> {
-    /// Size of prefix considered outside this tree.
-    pub prefix_len: usize,
+pub struct RewriteStopsContext<'a> {
     /// Stops in the original source.
     pub stops: &'a [Stop],
     /// Location info.
     pub location: Option<&'a Location>,
 }
 
-impl<'a> VisitMut for RewriteContext<'a> {
+impl<'a> VisitMut for RewriteStopsContext<'a> {
     noop_visit_mut_type!();
 
     /// Rewrite spans.
@@ -139,18 +137,36 @@ impl<'a> VisitMut for RewriteContext<'a> {
         let lo_rel = span.lo.0 as usize;
         let hi_rel = span.hi.0 as usize;
 
-        if lo_rel > self.prefix_len && hi_rel > self.prefix_len {
-            let lo_clean = Location::relative_to_absolute(self.stops, lo_rel - 1 - self.prefix_len);
-            let hi_clean = Location::relative_to_absolute(self.stops, hi_rel - 1 - self.prefix_len);
-            if let Some(lo_abs) = lo_clean {
-                if let Some(hi_abs) = hi_clean {
-                    result = Span {
-                        lo: BytePos(lo_abs as u32 + 1),
-                        hi: BytePos(hi_abs as u32 + 1),
-                        ctxt: SyntaxContext::empty(),
-                    };
-                }
+        let lo_clean = Location::relative_to_absolute(self.stops, lo_rel - 1);
+        let hi_clean = Location::relative_to_absolute(self.stops, hi_rel - 1);
+        if let Some(lo_abs) = lo_clean {
+            if let Some(hi_abs) = hi_clean {
+                result = create_span(lo_abs as u32 + 1, hi_abs as u32 + 1);
             }
+        }
+
+        *span = result;
+    }
+}
+
+/// Visitor to fix SWC byte positions by removing a prefix.
+///
+/// > 👉 **Note**: SWC byte positions are offset by one: they are `0` when they
+/// > are missing or incremented by `1` when valid.
+#[derive(Debug, Default, Clone)]
+pub struct RewritePrefixContext {
+    /// Size of prefix considered outside this tree.
+    pub prefix_len: u32,
+}
+
+impl VisitMut for RewritePrefixContext {
+    noop_visit_mut_type!();
+
+    /// Rewrite spans.
+    fn visit_mut_span(&mut self, span: &mut Span) {
+        let mut result = DUMMY_SP;
+        if span.lo.0 > self.prefix_len && span.hi.0 > self.prefix_len {
+            result = create_span(span.lo.0 - self.prefix_len, span.hi.0 - self.prefix_len);
         }
 
         *span = result;
@@ -167,6 +183,15 @@ impl VisitMut for DropContext {
     /// Rewrite spans.
     fn visit_mut_span(&mut self, span: &mut Span) {
         *span = DUMMY_SP;
+    }
+}
+
+/// Generate a span.
+pub fn create_span(lo: u32, hi: u32) -> Span {
+    Span {
+        lo: BytePos(lo),
+        hi: BytePos(hi),
+        ctxt: SyntaxContext::default(),
     }
 }
 

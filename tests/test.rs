@@ -321,15 +321,6 @@ fn err_esm_invalid() {
 }
 
 #[test]
-fn err_expression_invalid() {
-    assert_eq!(
-        compile("{!}", &Default::default()),
-        Err("1:4: Could not parse expression with swc: Unexpected eof".into()),
-        "should crash on invalid code in an expression",
-    );
-}
-
-#[test]
 fn err_expression_broken_multiline_comment() {
     assert_eq!(
         compile("{x/*}", &Default::default()),
@@ -342,7 +333,7 @@ fn err_expression_broken_multiline_comment() {
 fn err_expression_broken_line_comment() {
     assert_eq!(
         compile("{x//}", &Default::default()),
-        Err("1:5: Could not parse expression with swc: Unexpected unclosed line comment, expected line ending: `\\n`".into()),
+        Err("1:6: Could not parse expression with swc: Unexpected unclosed line comment, expected line ending: `\\n`".into()),
         "should crash on an unclosed line comment after an expression",
     );
 }
@@ -351,8 +342,17 @@ fn err_expression_broken_line_comment() {
 fn err_esm_stmt() {
     assert_eq!(
         compile("export let a = 1\nlet b = 2", &Default::default()),
-        Err("2:1: Unexpected statement in code: only import/exports are supported".into()),
+        Err("2:10: Unexpected statement in code: only import/exports are supported".into()),
         "should crash on statements in ESM",
+    );
+}
+
+#[test]
+fn err_expression_invalid() {
+    assert_eq!(
+        compile("{!}", &Default::default()),
+        Err("1:4: Could not parse expression with swc: Unexpected eof".into()),
+        "should crash on invalid code in an expression",
     );
 }
 
@@ -360,43 +360,24 @@ fn err_esm_stmt() {
 fn err_expression_multi() {
     assert_eq!(
         compile("{x; y}", &Default::default()),
-        Err("1:3: Could not parse expression with swc: Unexpected content after expression".into()),
+        Err("1:7: Could not parse expression with swc: Unexpected content after expression".into()),
         "should crash on more content after an expression",
     );
 }
 
 #[test]
-fn err_expression_spread_multi_1() {
-    assert_eq!(
-        compile("<a {...x; y} />", &Default::default()),
-        Err("1:9: Could not parse expression with swc: Expected ',', got ';'".into()),
-        "should crash on more content after a (spread) expression (1)",
-    );
-}
-
-#[test]
-fn err_expression_spread_multi_2() {
-    assert_eq!(
-        compile("<a {...x, y} />", &Default::default()),
-        Err("1:5: Expected a single spread value, such as `...x`".into()),
-        "should crash on more content after a (spread) expression (2)",
-    );
-}
-
-#[test]
-fn err_expression_spread_empty() {
-    assert_eq!(
-        compile("<a {...} />", &Default::default()),
-        Err("1:12: Could not parse expression with swc: Unexpected token `}`. Expected this, import, async, function, [ for array literal, { for object literal, @ for decorator, function, class, null, true, false, number, bigint, string, regexp, ` for template literal, (, or an identifier".into()),
-        "should crash on an empty spread expression",
-    );
-}
-
-#[test]
-fn err_expression_spread_extra_comment() {
+fn err_expression_empty() {
     assert!(
-        matches!(compile("<a {...b /*c*/ } />", &Default::default()), Ok(_)),
-        "should support a spread expression with a comment",
+        matches!(compile("a {} b", &Default::default()), Ok(_)),
+        "should support an empty expression",
+    );
+}
+
+#[test]
+fn err_expression_comment() {
+    assert!(
+        matches!(compile("a { /* b */ } c", &Default::default()), Ok(_)),
+        "should support a comment in an empty expression",
     );
 }
 
@@ -406,6 +387,15 @@ fn err_expression_value_empty() {
         compile("<a b={ } />", &Default::default()),
         Err("1:7: Could not parse expression with swc: Unexpected eof".into()),
         "should crash on an empty value expression",
+    );
+}
+
+#[test]
+fn err_expression_value_invalid() {
+    assert_eq!(
+        compile("<a b={!} />", &Default::default()),
+        Err("1:12: Could not parse expression with swc: Unexpected eof".into()),
+        "should crash on an invalid value expression",
     );
 }
 
@@ -423,5 +413,58 @@ fn err_expression_value_extra_comment() {
     assert!(
         matches!(compile("<a b={1 /*c*/ } />", &Default::default()), Ok(_)),
         "should support a value expression with a comment",
+    );
+}
+
+#[test]
+fn err_expression_spread_none() {
+    assert_eq!(
+        compile("<a {x} />", &Default::default()),
+        Err("1:5: Unexpected prop in spread (such as `{x}`): only a spread is supported (such as `{...x}`)".into()),
+        "should crash on a non-spread",
+    );
+}
+
+#[test]
+fn err_expression_spread_multi_1() {
+    assert_eq!(
+        compile("<a {...x; y} />", &Default::default()),
+        Err("1:9: Could not parse expression with swc: Expected ',', got ';'".into()),
+        "should crash on more content after a (spread) expression (1)",
+    );
+}
+
+#[test]
+fn err_expression_spread_multi_2() {
+    assert_eq!(
+        compile("<a {...x, y} />", &Default::default()),
+        Err("1:5: Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`)".into()),
+        "should crash on more content after a (spread) expression (2)",
+    );
+}
+
+#[test]
+fn err_expression_spread_empty() {
+    assert_eq!(
+        compile("<a {...} />", &Default::default()),
+        Err("1:12: Could not parse expression with swc: Unexpected token `}`. Expected this, import, async, function, [ for array literal, { for object literal, @ for decorator, function, class, null, true, false, number, bigint, string, regexp, ` for template literal, (, or an identifier".into()),
+        "should crash on an empty spread expression",
+    );
+}
+
+#[test]
+fn err_expression_spread_invalid() {
+    assert_eq!(
+        compile("<a {...?} />", &Default::default()),
+        Err("1:13: Could not parse expression with swc: Unexpected token `?`. Expected this, import, async, function, [ for array literal, { for object literal, @ for decorator, function, class, null, true, false, number, bigint, string, regexp, ` for template literal, (, or an identifier".into()),
+        "should crash on an invalid spread expression",
+    );
+}
+
+#[test]
+fn err_expression_spread_extra_comment() {
+    assert!(
+        matches!(compile("<a {...b /*c*/ } />", &Default::default()), Ok(_)),
+        "should support a spread expression with a comment",
     );
 }

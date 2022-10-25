@@ -286,12 +286,15 @@ fn transform_mdx_jsx_element(
                     }
                     Some(hast::AttributeValue::Expression(value, stops)) => {
                         Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
-                            expr: JSXExpr::Expr(parse_expression_to_tree(
-                                value,
-                                &MdxExpressionKind::AttributeValueExpression,
-                                stops,
-                                context.location,
-                            )?),
+                            expr: JSXExpr::Expr(
+                                parse_expression_to_tree(
+                                    value,
+                                    &MdxExpressionKind::AttributeValueExpression,
+                                    stops,
+                                    context.location,
+                                )?
+                                .unwrap(),
+                            ),
                             span: swc_common::DUMMY_SP,
                         }))
                     }
@@ -313,7 +316,7 @@ fn transform_mdx_jsx_element(
                 )?;
                 JSXAttrOrSpread::SpreadElement(SpreadElement {
                     dot3_token: swc_common::DUMMY_SP,
-                    expr,
+                    expr: expr.unwrap(),
                 })
             }
         };
@@ -335,14 +338,22 @@ fn transform_mdx_expression(
     node: &hast::Node,
     expression: &hast::MdxExpression,
 ) -> Result<Option<JSXElementChild>, String> {
+    let expr = parse_expression_to_tree(
+        &expression.value,
+        &MdxExpressionKind::Expression,
+        &expression.stops,
+        context.location,
+    )?;
+    let span = position_to_span(node.position());
+    let child = if let Some(expr) = expr {
+        JSXExpr::Expr(expr)
+    } else {
+        JSXExpr::JSXEmptyExpr(JSXEmptyExpr { span })
+    };
+
     Ok(Some(JSXElementChild::JSXExprContainer(JSXExprContainer {
-        expr: JSXExpr::Expr(parse_expression_to_tree(
-            &expression.value,
-            &MdxExpressionKind::Expression,
-            &expression.stops,
-            context.location,
-        )?),
-        span: position_to_span(node.position()),
+        expr: child,
+        span,
     })))
 }
 
