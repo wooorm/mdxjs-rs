@@ -13,7 +13,7 @@ categories = ["compilers", "text-processing"]
 include = ["src/", "license"]
 
 [dependencies]
-markdown = "1.0.0-alpha.1"
+markdown = "1.0.0-alpha.2"
 swc_common = "0.29"
 swc_ecma_ast = "0.94"
 swc_ecma_parser = "0.122"
