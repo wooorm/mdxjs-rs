@@ -1377,6 +1377,23 @@ mod tests {
             "should support an `MdxjsEsm` (serialize)",
         );
 
+        assert_eq!(
+            hast_util_to_swc(
+                &hast::Node::MdxjsEsm(hast::MdxjsEsm {
+                    value: "import 1/1".into(),
+                    position: None,
+                    stops: vec![],
+                }),
+                None,
+                None
+            ),
+            Err(
+                "0:0: Could not parse esm with swc: Expected 'from', got 'numeric literal (1, 1)'"
+                    .into()
+            ),
+            "should support an `MdxjsEsm` (w/ broken content)",
+        );
+
         Ok(())
     }
 
