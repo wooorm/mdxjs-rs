@@ -8,13 +8,13 @@ use markdown::{
     Location,
 };
 
-use swc_common::{BytePos, Span, SyntaxContext, DUMMY_SP};
-use swc_ecma_ast::{
+use swc_core::common::{BytePos, Span, SyntaxContext, DUMMY_SP};
+use swc_core::ecma::ast::{
     BinExpr, BinaryOp, Bool, CallExpr, Callee, ComputedPropName, Expr, ExprOrSpread, Ident,
     JSXAttrName, JSXElementName, JSXMemberExpr, JSXNamespacedName, JSXObject, Lit, MemberExpr,
     MemberProp, Null, Number, ObjectLit, PropName, PropOrSpread, Str,
 };
-use swc_ecma_visit::{noop_visit_mut_type, VisitMut};
+use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut};
 
 /// Turn a unist position, into an SWC span, of two byte positions.
 ///
@@ -220,7 +220,7 @@ pub fn create_ident_expression(sym: &str) -> Expr {
 /// Generate a null.
 pub fn create_null() -> Null {
     Null {
-        span: swc_common::DUMMY_SP,
+        span: swc_core::common::DUMMY_SP,
     }
 }
 

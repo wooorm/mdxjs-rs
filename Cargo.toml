@@ -14,11 +14,13 @@ include = ["src/", "license"]
 
 [dependencies]
 markdown = "1.0.0-alpha.2"
-swc_common = "0.29"
-swc_ecma_ast = "0.94"
-swc_ecma_parser = "0.122"
-swc_ecma_codegen = "0.127"
-swc_ecma_visit = "0.80"
+swc_core = { features = [
+  "ecma_ast",
+  "ecma_visit",
+  "ecma_codegen",
+  "ecma_parser",
+  "common",
+], version = "0.40.16" }
 
 [dev-dependencies]
 pretty_assertions = "1"

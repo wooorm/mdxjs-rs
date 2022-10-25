@@ -3,7 +3,6 @@
 //! Port of <https://github.com/mdx-js/mdx/blob/main/packages/mdx/lib/plugin/recma-document.js>,
 //! by the same author.
 
-extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
     bytepos_to_point, create_call_expression, create_ident, create_ident_expression,
@@ -14,7 +13,7 @@ use markdown::{
     unist::{Point, Position},
     Location,
 };
-use swc_ecma_ast::{
+use swc_core::ecma::ast::{
     AssignPat, BindingIdent, BlockStmt, Callee, CondExpr, Decl, DefaultDecl, ExportDefaultExpr,
     ExportSpecifier, Expr, ExprOrSpread, FnDecl, Function, ImportDecl, ImportDefaultSpecifier,
     ImportNamedSpecifier, ImportSpecifier, JSXAttrOrSpread, JSXClosingElement, JSXElement,
@@ -127,10 +126,10 @@ pub fn mdx_plugin_recma_document(
         if !pragmas.is_empty() {
             program.comments.insert(
                 0,
-                swc_common::comments::Comment {
-                    kind: swc_common::comments::CommentKind::Block,
+                swc_core::common::comments::Comment {
+                    kind: swc_core::common::comments::CommentKind::Block,
                     text: pragmas.join(" ").into(),
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                 },
             );
         }
@@ -149,7 +148,7 @@ pub fn mdx_plugin_recma_document(
         replacements.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
             specifiers: vec![ImportSpecifier::Default(ImportDefaultSpecifier {
                 local: create_ident(sym),
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
             })],
             src: Box::new(create_str(
                 if let Some(source) = &options.pragma_import_source {
@@ -160,7 +159,7 @@ pub fn mdx_plugin_recma_document(
             )),
             type_only: false,
             asserts: None,
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
         })));
     }
 
@@ -276,13 +275,13 @@ pub fn mdx_plugin_recma_document(
                             specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
                                 local: create_ident("MDXLayout"),
                                 imported: Some(ModuleExportName::Ident(id)),
-                                span: swc_common::DUMMY_SP,
+                                span: swc_core::common::DUMMY_SP,
                                 is_type_only: false,
                             })],
                             src: source,
                             type_only: false,
                             asserts: None,
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         })));
                     }
                     // It’s an `export {x}`, so generate a variable declaration.
@@ -365,7 +364,7 @@ pub fn mdx_plugin_recma_document(
     replacements.push(ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultExpr(
         ExportDefaultExpr {
             expr: Box::new(create_ident_expression("MDXContent")),
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
         },
     )));
 
@@ -383,16 +382,16 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
         opening: JSXOpeningElement {
             name: JSXElementName::Ident(create_ident("MDXLayout")),
             attrs: vec![JSXAttrOrSpread::SpreadElement(SpreadElement {
-                dot3_token: swc_common::DUMMY_SP,
+                dot3_token: swc_core::common::DUMMY_SP,
                 expr: Box::new(create_ident_expression("props")),
             })],
             self_closing: false,
             type_args: None,
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
         },
         closing: Some(JSXClosingElement {
             name: JSXElementName::Ident(create_ident("MDXLayout")),
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
         }),
         // ```jsx
         // <_createMdxContent {...props} />
@@ -401,18 +400,18 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
             opening: JSXOpeningElement {
                 name: JSXElementName::Ident(create_ident("_createMdxContent")),
                 attrs: vec![JSXAttrOrSpread::SpreadElement(SpreadElement {
-                    dot3_token: swc_common::DUMMY_SP,
+                    dot3_token: swc_core::common::DUMMY_SP,
                     expr: Box::new(create_ident_expression("props")),
                 })],
                 self_closing: true,
                 type_args: None,
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
             },
             closing: None,
             children: vec![],
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
         }))],
-        span: swc_common::DUMMY_SP,
+        span: swc_core::common::DUMMY_SP,
     }));
 
     if !has_internal_layout {
@@ -429,7 +428,7 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
                     expr: Box::new(create_ident_expression("props")),
                 }],
             )),
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
         });
     }
 
@@ -448,21 +447,21 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
                     type_ann: None,
                 }),
                 decorators: vec![],
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
             }],
             decorators: vec![],
             body: Some(BlockStmt {
                 stmts: vec![Stmt::Return(ReturnStmt {
                     arg: Some(Box::new(expr.unwrap_or_else(create_null_expression))),
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                 })],
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
             }),
             is_generator: false,
             is_async: false,
             type_params: None,
             return_type: None,
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
         }),
     })));
 
@@ -482,25 +481,25 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
                         type_ann: None,
                     })),
                     right: Box::new(create_object_expression(vec![])),
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                     type_ann: None,
                 }),
                 decorators: vec![],
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
             }],
             decorators: vec![],
             body: Some(BlockStmt {
                 stmts: vec![Stmt::Return(ReturnStmt {
                     arg: Some(Box::new(result)),
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                 })],
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
             }),
             is_generator: false,
             is_async: false,
             type_params: None,
             return_type: None,
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
         }),
     })));
 
@@ -521,10 +520,10 @@ fn create_layout_decl(expr: Expr) -> ModuleItem {
                 type_ann: None,
             }),
             init: Some(Box::new(expr)),
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
             definite: false,
         }],
-        span: swc_common::DUMMY_SP,
+        span: swc_core::common::DUMMY_SP,
     }))))
 }
 
@@ -557,7 +556,7 @@ mod tests {
     use crate::swc_utils::create_bool_expression;
     use markdown::{to_mdast, ParseOptions};
     use pretty_assertions::assert_eq;
-    use swc_ecma_ast::{
+    use swc_core::ecma::ast::{
         EmptyStmt, ExportDefaultDecl, ExprStmt, JSXClosingFragment, JSXFragment,
         JSXOpeningFragment, JSXText, Module, TsInterfaceBody, TsInterfaceDecl, WhileStmt,
     };
@@ -821,21 +820,21 @@ export default MDXContent;
                     path: None,
                     comments: vec![],
                     module: Module {
-                        span: swc_common::DUMMY_SP,
+                        span: swc_core::common::DUMMY_SP,
                         shebang: None,
                         body: vec![ModuleItem::ModuleDecl(
                             ModuleDecl::ExportDefaultDecl(
                                 ExportDefaultDecl {
-                                    span: swc_common::DUMMY_SP,
+                                    span: swc_core::common::DUMMY_SP,
                                     decl: DefaultDecl::TsInterfaceDecl(Box::new(
                                         TsInterfaceDecl {
-                                            span: swc_common::DUMMY_SP,
+                                            span: swc_core::common::DUMMY_SP,
                                             id: create_ident("a"),
                                             declare: true,
                                             type_params: None,
                                             extends: vec![],
                                             body: TsInterfaceBody {
-                                                span: swc_common::DUMMY_SP,
+                                                span: swc_core::common::DUMMY_SP,
                                                 body: vec![]
                                             }
                                         }
@@ -861,13 +860,13 @@ export default MDXContent;
             path: None,
             comments: vec![],
             module: Module {
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
                 shebang: None,
                 body: vec![ModuleItem::Stmt(Stmt::While(WhileStmt {
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                     test: Box::new(create_bool_expression(true)),
                     body: Box::new(Stmt::Empty(EmptyStmt {
-                        span: swc_common::DUMMY_SP,
+                        span: swc_core::common::DUMMY_SP,
                     })),
                 }))],
             },
@@ -898,10 +897,10 @@ export default MDXContent;
             path: None,
             comments: vec![],
             module: Module {
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
                 shebang: None,
                 body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                     expr: Box::new(create_bool_expression(true)),
                 }))],
             },
@@ -932,21 +931,21 @@ export default MDXContent;
             path: None,
             comments: vec![],
             module: Module {
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
                 shebang: None,
                 body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                     expr: Box::new(Expr::JSXFragment(JSXFragment {
-                        span: swc_common::DUMMY_SP,
+                        span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningFragment {
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         },
                         closing: JSXClosingFragment {
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         },
                         children: vec![JSXElementChild::JSXText(JSXText {
                             value: "a".into(),
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                             raw: "a".into(),
                         })],
                     })),
@@ -978,26 +977,26 @@ export default MDXContent;
             path: None,
             comments: vec![],
             module: Module {
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
                 shebang: None,
                 body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                     expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
-                        span: swc_common::DUMMY_SP,
+                        span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningElement {
                             name: JSXElementName::Ident(create_ident("a")),
                             attrs: vec![],
                             self_closing: false,
                             type_args: None,
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         },
                         closing: Some(JSXClosingElement {
                             name: JSXElementName::Ident(create_ident("a")),
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         }),
                         children: vec![JSXElementChild::JSXText(JSXText {
                             value: "b".into(),
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                             raw: "b".into(),
                         })],
                     }))),

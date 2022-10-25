@@ -1,27 +1,24 @@
 //! Bridge between `markdown-rs` and SWC.
 
 extern crate markdown;
-extern crate swc_common;
-extern crate swc_ecma_ast;
-extern crate swc_ecma_parser;
 
 use crate::swc_utils::{
     create_span, prefix_error_with_point, DropContext, RewritePrefixContext, RewriteStopsContext,
 };
 use markdown::{mdast::Stop, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
-use swc_common::{
+use swc_core::common::{
     comments::{Comment, Comments, SingleThreadedComments, SingleThreadedCommentsMap},
     source_map::Pos,
     sync::Lrc,
     BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Span, Spanned,
 };
-use swc_ecma_ast::{EsVersion, Expr, Module, PropOrSpread};
-use swc_ecma_codegen::{text_writer::JsWriter, Emitter};
-use swc_ecma_parser::{
+use swc_core::ecma::ast::{EsVersion, Expr, Module, PropOrSpread};
+use swc_core::ecma::codegen::{text_writer::JsWriter, Emitter};
+use swc_core::ecma::parser::{
     error::Error as SwcError, parse_file_as_expr, parse_file_as_module, EsConfig, Syntax,
 };
-use swc_ecma_visit::VisitMutWith;
+use swc_core::ecma::visit::VisitMutWith;
 
 /// Lex ESM in MDX with SWC.
 pub fn parse_esm(value: &str) -> MdxSignal {
@@ -218,7 +215,7 @@ pub fn serialize(module: &mut Module, comments: Option<&Vec<Comment>>) -> String
     let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
     {
         let mut emitter = Emitter {
-            cfg: swc_ecma_codegen::Config {
+            cfg: swc_core::ecma::codegen::Config {
                 ..Default::default()
             },
             cm: cm.clone(),
