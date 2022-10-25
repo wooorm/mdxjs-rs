@@ -636,51 +636,50 @@ impl<'a> State<'a> {
 
     /// Define a pattern in a scope.
     fn define_pat(&mut self, pat: &Pat, block: bool) {
-        match pat {
-            Pat::Ident(d) => {
-                // `x`
-                self.define_id(d.id.sym.to_string(), block);
-            }
-            Pat::Array(d) => {
-                // `...x`
-                let mut index = 0;
-                while index < d.elems.len() {
-                    if let Some(d) = &d.elems[index] {
-                        self.define_pat(d, block);
-                    }
-                    index += 1;
+        // `x`
+        if let Pat::Ident(d) = pat {
+            self.define_id(d.id.sym.to_string(), block);
+        }
+
+        // `...x`
+        if let Pat::Array(d) = pat {
+            let mut index = 0;
+            while index < d.elems.len() {
+                if let Some(d) = &d.elems[index] {
+                    self.define_pat(d, block);
                 }
+                index += 1;
             }
-            Pat::Rest(d) => {
-                // `...x`
-                self.define_pat(&d.arg, block);
-            }
-            Pat::Assign(d) => {
-                // `{x=y}`
-                self.define_pat(&d.left, block);
-            }
-            Pat::Object(d) => {
-                let mut index = 0;
-                while index < d.props.len() {
-                    match &d.props[index] {
-                        // `{...x}`
-                        ObjectPatProp::Rest(d) => {
-                            self.define_pat(&d.arg, block);
-                        }
-                        // `{key: value}`
-                        ObjectPatProp::KeyValue(d) => {
-                            self.define_pat(&d.value, block);
-                        }
-                        // `{key}` or `{key = value}`
-                        ObjectPatProp::Assign(d) => {
-                            self.define_id(d.key.sym.to_string(), block);
-                        }
+        }
+
+        // `...x`
+        if let Pat::Rest(d) = pat {
+            self.define_pat(&d.arg, block);
+        }
+
+        // `{x=y}`
+        if let Pat::Assign(d) = pat {
+            self.define_pat(&d.left, block);
+        }
+
+        if let Pat::Object(d) = pat {
+            let mut index = 0;
+            while index < d.props.len() {
+                match &d.props[index] {
+                    // `{...x}`
+                    ObjectPatProp::Rest(d) => {
+                        self.define_pat(&d.arg, block);
                     }
-                    index += 1;
+                    // `{key: value}`
+                    ObjectPatProp::KeyValue(d) => {
+                        self.define_pat(&d.value, block);
+                    }
+                    // `{key}` or `{key = value}`
+                    ObjectPatProp::Assign(d) => {
+                        self.define_id(d.key.sym.to_string(), block);
+                    }
                 }
-            }
-            Pat::Invalid(_) | Pat::Expr(_) => {
-                // Ignore `Invalid` / `Expr`.
+                index += 1;
             }
         }
     }
