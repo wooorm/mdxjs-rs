@@ -345,14 +345,10 @@ impl<'a> State<'a> {
             let mut props = vec![];
 
             for reference in &info.dynamic {
+                let invalid = info.aliases.iter().any(|d| d.original == reference.name);
                 // The primary ID of objects and components that are referenced.
-                if !reference.name.contains('.') {
-                    // Ignore if invalid.
-                    let invalid = info.aliases.iter().any(|d| d.original == reference.name);
-                    if invalid {
-                        continue;
-                    }
-
+                // Ignore if invalid.
+                if !reference.name.contains('.') && !invalid {
                     // `wrapper: MDXLayout`
                     if reference.name == "MDXLayout" {
                         let binding = BindingIdent {
@@ -412,61 +408,59 @@ impl<'a> State<'a> {
         for reference in info.dynamic {
             // We use a conditional to check if `MDXLayout` is defined or not
             // in the `MDXContent` component.
-            if reference.name == "MDXLayout" && info.name == Some("MDXContent".into()) {
-                continue;
-            }
+            let layout = reference.name == "MDXLayout" && info.name == Some("MDXContent".into());
 
-            self.create_error_helper = true;
+            if !layout {
+                self.create_error_helper = true;
 
-            let mut args = vec![
-                ExprOrSpread {
-                    spread: None,
-                    expr: Box::new(create_str_expression(&reference.name)),
-                },
-                ExprOrSpread {
-                    spread: None,
-                    expr: Box::new(create_bool_expression(reference.component)),
-                },
-            ];
-
-            // Add the source location if it exists and if `development` is on.
-            if let Some(position) = reference.position.as_ref() {
-                if self.development {
-                    args.push(ExprOrSpread {
+                let mut args = vec![
+                    ExprOrSpread {
                         spread: None,
-                        expr: Box::new(create_str_expression(&position_to_string(position))),
-                    });
+                        expr: Box::new(create_str_expression(&reference.name)),
+                    },
+                    ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(create_bool_expression(reference.component)),
+                    },
+                ];
+
+                // Add the source location if it exists and if `development` is on.
+                if let Some(position) = reference.position.as_ref() {
+                    if self.development {
+                        args.push(ExprOrSpread {
+                            spread: None,
+                            expr: Box::new(create_str_expression(&position_to_string(position))),
+                        });
+                    }
                 }
+
+                let mut name = reference.name;
+                let split = name.split('.');
+                let mut path = split.map(String::from).collect::<Vec<_>>();
+                let alias = info.aliases.iter().find(|d| d.original == path[0]);
+                if let Some(alias) = alias {
+                    path[0] = alias.safe.clone();
+                    name = path.join(".");
+                }
+                let test = UnaryExpr {
+                    op: UnaryOp::Bang,
+                    arg: Box::new(create_member_expression_from_str(&name)),
+                    span: DUMMY_SP,
+                };
+                let callee = create_ident_expression("_missingMdxReference");
+                let call = create_call_expression(Callee::Expr(Box::new(callee)), args);
+                let cons = ExprStmt {
+                    span: DUMMY_SP,
+                    expr: Box::new(call),
+                };
+                let statement = IfStmt {
+                    test: Box::new(Expr::Unary(test)),
+                    cons: Box::new(Stmt::Expr(cons)),
+                    alt: None,
+                    span: DUMMY_SP,
+                };
+                statements.push(Stmt::If(statement));
             }
-
-            let mut name = reference.name;
-            let split = name.split('.');
-            let mut path = split.map(String::from).collect::<Vec<_>>();
-            let alias = info.aliases.iter().find(|d| d.original == path[0]);
-            if let Some(alias) = alias {
-                path[0] = alias.safe.clone();
-                name = path.join(".");
-            }
-
-            let test = UnaryExpr {
-                op: UnaryOp::Bang,
-                arg: Box::new(create_member_expression_from_str(&name)),
-                span: DUMMY_SP,
-            };
-            let callee = create_ident_expression("_missingMdxReference");
-            let call = create_call_expression(Callee::Expr(Box::new(callee)), args);
-            let cons = ExprStmt {
-                span: DUMMY_SP,
-                expr: Box::new(call),
-            };
-            let statement = IfStmt {
-                test: Box::new(Expr::Unary(test)),
-                cons: Box::new(Stmt::Expr(cons)),
-                alt: None,
-                span: DUMMY_SP,
-            };
-
-            statements.push(Stmt::If(statement));
         }
 
         // Add statements to functions.
@@ -685,7 +679,7 @@ impl<'a> State<'a> {
                     index += 1;
                 }
             }
-            _ => {
+            Pat::Invalid(_) | Pat::Expr(_) => {
                 // Ignore `Invalid` / `Expr`.
             }
         }
