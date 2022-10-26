@@ -1,7 +1,5 @@
 //! Turn JSX into function calls.
 
-extern crate swc_common;
-extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::Program;
 use crate::mdx_plugin_recma_document::JsxRuntime;
 use crate::swc_utils::{
@@ -13,17 +11,17 @@ use crate::swc_utils::{
 };
 use core::str;
 use markdown::Location;
-use swc_common::{
+use swc_core::common::{
     comments::{Comment, CommentKind},
     util::take::Take,
 };
-use swc_ecma_ast::{
+use swc_core::ecma::ast::{
     ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, ImportDecl, ImportNamedSpecifier,
     ImportSpecifier, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXElement, JSXElementChild,
     JSXExpr, JSXFragment, KeyValueProp, Lit, ModuleDecl, ModuleExportName, ModuleItem, Prop,
     PropName, PropOrSpread, ThisExpr,
 };
-use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
+use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
 /// Configuration.
 #[derive(Debug, Default, Clone)]
@@ -75,7 +73,7 @@ pub fn swc_util_build_jsx(
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
             local: create_ident("_Fragment"),
             imported: Some(ModuleExportName::Ident(create_ident("Fragment"))),
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
     }
@@ -84,7 +82,7 @@ pub fn swc_util_build_jsx(
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
             local: create_ident("_jsx"),
             imported: Some(ModuleExportName::Ident(create_ident("jsx"))),
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
     }
@@ -93,7 +91,7 @@ pub fn swc_util_build_jsx(
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
             local: create_ident("_jsxs"),
             imported: Some(ModuleExportName::Ident(create_ident("jsxs"))),
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
     }
@@ -102,7 +100,7 @@ pub fn swc_util_build_jsx(
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
             local: create_ident("_jsxDEV"),
             imported: Some(ModuleExportName::Ident(create_ident("jsxDEV"))),
-            span: swc_common::DUMMY_SP,
+            span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
     }
@@ -123,7 +121,7 @@ pub fn swc_util_build_jsx(
                 ))),
                 type_only: false,
                 asserts: None,
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
             })),
         );
     }
@@ -322,7 +320,7 @@ impl<'a> State<'a> {
                 }
                 let lit = ArrayLit {
                     elems: elements,
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                 };
                 Some(Expr::Array(lit))
             };
@@ -371,7 +369,7 @@ impl<'a> State<'a> {
     /// Turn the parsed parts from fragments or elements into a call.
     fn jsx_expressions_to_call(
         &mut self,
-        span: &swc_common::Span,
+        span: &swc_core::common::Span,
         name: Expr,
         attributes: Option<Vec<JSXAttrOrSpread>>,
         mut children: Vec<Expr>,
@@ -473,7 +471,7 @@ impl<'a> State<'a> {
                 // this
                 // ```
                 let this_expression = ThisExpr {
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                 };
                 parameters.push(ExprOrSpread {
                     spread: None,
@@ -787,13 +785,14 @@ mod tests {
     use crate::hast_util_to_swc::Program;
     use crate::swc::{flat_comments, serialize};
     use pretty_assertions::assert_eq;
-    use swc_common::comments::SingleThreadedComments;
-    use swc_common::{source_map::Pos, BytePos, FileName, SourceFile};
-    use swc_ecma_ast::{
+    use swc_core::common::{
+        comments::SingleThreadedComments, source_map::Pos, BytePos, FileName, SourceFile,
+    };
+    use swc_core::ecma::ast::{
         EsVersion, ExprStmt, JSXClosingElement, JSXElementName, JSXOpeningElement, JSXSpreadChild,
         Module, Stmt,
     };
-    use swc_ecma_parser::{parse_file_as_module, EsConfig, Syntax};
+    use swc_core::ecma::parser::{parse_file_as_module, EsConfig, Syntax};
 
     fn compile(value: &str, options: &Options) -> Result<String, String> {
         let location = Location::new(value.as_bytes());
@@ -1329,26 +1328,26 @@ _jsx(\"a\", {
             path: None,
             comments: vec![],
             module: Module {
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
                 shebang: None,
                 body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                     expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
-                        span: swc_common::DUMMY_SP,
+                        span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningElement {
                             name: JSXElementName::Ident(create_ident("a")),
                             attrs: vec![],
                             self_closing: false,
                             type_args: None,
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         },
                         closing: Some(JSXClosingElement {
                             name: JSXElementName::Ident(create_ident("a")),
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         }),
                         children: vec![JSXElementChild::JSXSpreadChild(JSXSpreadChild {
                             expr: Box::new(create_ident_expression("a")),
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         })],
                     }))),
                 }))],
@@ -1539,18 +1538,18 @@ _jsxDEV(_Fragment, {
             path: None,
             comments: vec![],
             module: Module {
-                span: swc_common::DUMMY_SP,
+                span: swc_core::common::DUMMY_SP,
                 shebang: None,
                 body: vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-                    span: swc_common::DUMMY_SP,
+                    span: swc_core::common::DUMMY_SP,
                     expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
-                        span: swc_common::DUMMY_SP,
+                        span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningElement {
                             name: JSXElementName::Ident(create_ident("a")),
                             attrs: vec![],
                             self_closing: true,
                             type_args: None,
-                            span: swc_common::DUMMY_SP,
+                            span: swc_core::common::DUMMY_SP,
                         },
                         closing: None,
                         children: vec![],

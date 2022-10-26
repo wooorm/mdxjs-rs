@@ -3,8 +3,6 @@
 //! Port of <https://github.com/mdx-js/mdx/blob/main/packages/mdx/lib/plugin/recma-jsx-rewrite.js>,
 //! by the same author.
 
-extern crate swc_common;
-extern crate swc_ecma_ast;
 use crate::hast_util_to_swc::{Program, MAGIC_EXPLICIT_MARKER};
 use crate::swc_utils::{
     create_binary_expression, create_bool_expression, create_call_expression, create_ident,
@@ -14,8 +12,8 @@ use crate::swc_utils::{
     jsx_member_to_parts, position_to_string, span_to_position,
 };
 use markdown::{unist::Position, Location};
-use swc_common::{util::take::Take, Span, DUMMY_SP};
-use swc_ecma_ast::{
+use swc_core::common::{util::take::Take, Span, DUMMY_SP};
+use swc_core::ecma::ast::{
     ArrowExpr, AssignPatProp, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Callee,
     CatchClause, ClassDecl, CondExpr, Decl, DoWhileStmt, Expr, ExprOrSpread, ExprStmt, FnDecl,
     FnExpr, ForInStmt, ForOfStmt, ForStmt, Function, IfStmt, ImportDecl, ImportNamedSpecifier,
@@ -24,7 +22,7 @@ use swc_ecma_ast::{
     ParenExpr, Pat, Prop, PropOrSpread, ReturnStmt, Stmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl,
     VarDeclKind, VarDeclarator, WhileStmt,
 };
-use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
+use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
 /// Configuration.
 #[derive(Debug, Default, Clone)]
@@ -1005,7 +1003,7 @@ mod tests {
     use crate::swc_utils::create_jsx_name_from_str;
     use markdown::{to_mdast, Location, ParseOptions};
     use pretty_assertions::assert_eq;
-    use swc_ecma_ast::{Invalid, JSXOpeningElement, Module};
+    use swc_core::ecma::ast::{Invalid, JSXOpeningElement, Module};
 
     fn compile(value: &str, options: &Options, named: bool) -> Result<String, String> {
         let location = Location::new(value.as_bytes());
