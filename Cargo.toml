@@ -16,16 +16,15 @@ include = ["src/", "license"]
 serializable = ["serde"]
 
 [dependencies]
-markdown = "1.0.0-alpha.2"
-swc_core = { features = [
+markdown = "1.0.0-alpha.3"
+serde = { version = "1", optional = true }
+swc_core = { version = "0.40.16", features = [
   "ecma_ast",
   "ecma_visit",
   "ecma_codegen",
   "ecma_parser",
   "common",
-], version = "0.40.16" }
-
-serde = { version = "1", optional = true }
+] }
 
 [dev-dependencies]
 pretty_assertions = "1"
