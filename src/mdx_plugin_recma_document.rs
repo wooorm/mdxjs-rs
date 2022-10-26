@@ -22,6 +22,8 @@ use swc_core::ecma::ast::{
 };
 /// JSX runtimes (default: `JsxRuntime::Automatic`).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serializable", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serializable", serde(rename_all = "camelCase"))]
 pub enum JsxRuntime {
     /// Automatic runtime.
     ///

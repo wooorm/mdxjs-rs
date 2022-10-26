@@ -12,6 +12,9 @@ keywords = ["markdown", "mdx", "compile"]
 categories = ["compilers", "text-processing"]
 include = ["src/", "license"]
 
+[features]
+serializable = ["serde"]
+
 [dependencies]
 markdown = "1.0.0-alpha.2"
 swc_core = { features = [
@@ -21,6 +24,8 @@ swc_core = { features = [
   "ecma_parser",
   "common",
 ], version = "0.40.16" }
+
+serde = { version = "1", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1"
