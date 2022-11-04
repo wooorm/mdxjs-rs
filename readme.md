@@ -121,9 +121,9 @@ export default MDXContent
 ## API
 
 `mdxjs-rs` exposes
-[`compile`](https://docs.rs/mdxjs/0.0.0/mdxjs/fn.compile.html),
-[`JsxRuntime`](https://docs.rs/mdxjs/0.0.0/mdxjs/struct.JsxRuntime.html),
-[`Options`](https://docs.rs/mdxjs/0.0.0/mdxjs/struct.Options.html),
+[`compile`](https://docs.rs/mdxjs/latest/mdxjs/fn.compile.html),
+[`JsxRuntime`](https://docs.rs/mdxjs/latest/mdxjs/enum.JsxRuntime.html),
+[`Options`](https://docs.rs/mdxjs/latest/mdxjs/struct.Options.html,
 and a few other structs and enums.
 
 See the [crate docs][docs] for more info.
