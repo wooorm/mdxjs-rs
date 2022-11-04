@@ -123,7 +123,7 @@ export default MDXContent
 `mdxjs-rs` exposes
 [`compile`](https://docs.rs/mdxjs/latest/mdxjs/fn.compile.html),
 [`JsxRuntime`](https://docs.rs/mdxjs/latest/mdxjs/enum.JsxRuntime.html),
-[`Options`](https://docs.rs/mdxjs/latest/mdxjs/struct.Options.html,
+[`Options`](https://docs.rs/mdxjs/latest/mdxjs/struct.Options.html),
 and a few other structs and enums.
 
 See the [crate docs][docs] for more info.
