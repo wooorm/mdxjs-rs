@@ -190,7 +190,7 @@ pub fn mdast_util_to_hast(mdast: &mdast::Node) -> hast::Node {
                                 "#fnref-{}{}",
                                 safe_id,
                                 if reference_index == 0 {
-                                    "".into()
+                                    String::new()
                                 } else {
                                     format!("-{}", &(reference_index + 1).to_string())
                                 }
@@ -499,7 +499,7 @@ fn transform_footnote_reference(
                         if reuse_counter > 1 {
                             format!("-{}", reuse_counter)
                         } else {
-                            "".into()
+                            String::new()
                         }
                     )),
                 ),
@@ -4036,7 +4036,7 @@ mod tests {
     fn util_list_loose() {
         assert_eq!(
             list_loose(&mdast::Node::Text(mdast::Text {
-                value: "".into(),
+                value: String::new(),
                 position: None
             })),
             false,
@@ -4106,7 +4106,7 @@ mod tests {
     fn util_list_item_loose() {
         assert_eq!(
             list_item_loose(&mdast::Node::Text(mdast::Text {
-                value: "".into(),
+                value: String::new(),
                 position: None
             })),
             false,
