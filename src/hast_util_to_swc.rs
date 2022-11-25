@@ -1508,7 +1508,7 @@ mod tests {
     fn text_empty() -> Result<(), String> {
         let text_ast = hast_util_to_swc(
             &hast::Node::Text(hast::Text {
-                value: "".into(),
+                value: String::new(),
                 position: None,
             }),
             None,

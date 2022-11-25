@@ -494,7 +494,7 @@ impl<'a> State<'a> {
         } else {
             // Classic runtime.
             let (props, key) = self.jsx_attributes_to_expressions(attributes, None)?;
-            debug_assert!(key == None, "key should not be extracted");
+            debug_assert!(key.is_none(), "key should not be extracted");
             let mut parameters = vec![
                 // Component name.
                 //

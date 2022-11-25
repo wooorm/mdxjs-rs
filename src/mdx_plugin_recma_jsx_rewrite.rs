@@ -695,7 +695,7 @@ impl<'a> VisitMut for State<'a> {
                 parts.into_iter().map(String::from).collect::<Vec<_>>()
             }
             // `<foo>`, `<Foo>`, `<$>`, `<_bar>`, `<a_b>`.
-            JSXElementName::Ident(d) => vec![(&d.sym).to_string()],
+            JSXElementName::Ident(d) => vec![(d.sym).to_string()],
             // `<xml:thing>`.
             JSXElementName::JSXNamespacedName(d) => {
                 vec![format!("{}:{}", d.ns.sym, d.name.sym)]

@@ -65,7 +65,7 @@ impl ToString for Node {
             Node::MdxExpression(x) => x.value.clone(),
             Node::MdxjsEsm(x) => x.value.clone(),
             // Voids.
-            Node::Doctype(_) => "".into(),
+            Node::Doctype(_) => String::new(),
         }
     }
 }
