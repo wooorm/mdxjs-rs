@@ -481,7 +481,7 @@ fn err_expression_spread_multi_2() {
 fn err_expression_spread_empty() {
     assert_eq!(
         compile("<a {...} />", &Default::default()),
-        Err("1:12: Could not parse expression with swc: Unexpected token `}`. Expected this, import, async, function, [ for array literal, { for object literal, @ for decorator, function, class, null, true, false, number, bigint, string, regexp, ` for template literal, (, or an identifier".into()),
+        Err("1:12: Could not parse expression with swc: Expression expected".into()),
         "should crash on an empty spread expression",
     );
 }
@@ -490,7 +490,7 @@ fn err_expression_spread_empty() {
 fn err_expression_spread_invalid() {
     assert_eq!(
         compile("<a {...?} />", &Default::default()),
-        Err("1:13: Could not parse expression with swc: Unexpected token `?`. Expected this, import, async, function, [ for array literal, { for object literal, @ for decorator, function, class, null, true, false, number, bigint, string, regexp, ` for template literal, (, or an identifier".into()),
+        Err("1:13: Could not parse expression with swc: Expression expected".into()),
         "should crash on an invalid spread expression",
     );
 }
