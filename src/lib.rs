@@ -12,6 +12,7 @@
 #![allow(clippy::cast_precision_loss)]
 
 extern crate markdown;
+
 mod configuration;
 mod hast;
 mod hast_util_to_swc;
@@ -32,7 +33,7 @@ use crate::{
 };
 use markdown::{to_mdast, Constructs, Location, ParseOptions};
 
-pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
+pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options, PluginOptions, MdastNode, HastNode, RecmaProgram};
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
 /// Turn MDX into JavaScript.
@@ -53,6 +54,11 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
 pub fn compile(value: &str, options: &Options) -> Result<String, String> {
+    compile_with_plugins(&value, &options, &PluginOptions::default())
+}
+
+/// Turn MDX into JavaScript using the specified Plugins
+pub fn compile_with_plugins(value: &str, options: &Options, plugins: &PluginOptions) -> Result<String, String> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,
@@ -112,14 +118,32 @@ pub fn compile(value: &str, options: &Options) -> Result<String, String> {
 
     let location = Location::new(value.as_bytes());
     let mdast = to_mdast(value, &parse_options)?;
-    let hast = mdast_util_to_hast(&mdast);
-    let mut program = hast_util_to_swc(&hast, options.filepath.clone(), Some(&location))?;
-    mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
-    mdx_plugin_recma_jsx_rewrite(&mut program, &rewrite_options, Some(&location));
+    let mdast_transformed = plugins.experimental_mdast_transforms.as_ref()
+        .map(|plugins| plugins
+            .iter()
+            .fold(mdast.clone(), |old, plugin| plugin(&old)));
+    let mdast_ref = mdast_transformed.as_ref().unwrap_or(&mdast);
+
+    let hast = mdast_util_to_hast(mdast_ref);
+    let hast_transformed = plugins.experimental_hast_transforms.as_ref()
+        .map(|plugins| plugins
+            .iter()
+            .fold(hast.clone(), |old, plugin| plugin(&old)));
+    let hast_ref = hast_transformed.as_ref().unwrap_or(&hast);
+
+    let mut program = hast_util_to_swc(hast_ref, options.filepath.clone(), Some(&location))?;
+    let mut module_transformed = plugins.experimental_recma_transforms.as_ref()
+        .map(|plugins| plugins
+            .iter()
+            .fold(program.clone(), |old, plugin| plugin(&old)));
+    let program_ref = module_transformed.as_mut().unwrap_or(&mut program);
+
+    mdx_plugin_recma_document(program_ref, &document_options, Some(&location))?;
+    mdx_plugin_recma_jsx_rewrite(program_ref, &rewrite_options, Some(&location));
 
     if !options.jsx {
-        swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
+        swc_util_build_jsx(program_ref, &build_options, Some(&location))?;
     }
 
-    Ok(serialize(&mut program.module, Some(&program.comments)))
+    Ok(serialize(&mut program_ref.module, Some(&program_ref.comments)))
 }
