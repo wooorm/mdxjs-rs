@@ -33,7 +33,9 @@ use crate::{
 };
 use markdown::{to_mdast, Constructs, Location, ParseOptions};
 
-pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options, PluginOptions, MdastNode, HastNode, RecmaProgram};
+pub use crate::configuration::{
+    HastNode, MdastNode, MdxConstructs, MdxParseOptions, Options, PluginOptions, RecmaProgram,
+};
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
 /// Turn MDX into JavaScript.
@@ -54,11 +56,20 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
 pub fn compile(value: &str, options: &Options) -> Result<String, String> {
-    compile_with_plugins(&value, &options, &PluginOptions::default())
+    compile_with_plugins(value, options, &PluginOptions::default())
 }
 
 /// Turn MDX into JavaScript using the specified Plugins
-pub fn compile_with_plugins(value: &str, options: &Options, plugins: &PluginOptions) -> Result<String, String> {
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
+pub fn compile_with_plugins(
+    value: &str,
+    options: &Options,
+    plugins: &PluginOptions,
+) -> Result<String, String> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,
@@ -118,24 +129,36 @@ pub fn compile_with_plugins(value: &str, options: &Options, plugins: &PluginOpti
 
     let location = Location::new(value.as_bytes());
     let mdast = to_mdast(value, &parse_options)?;
-    let mdast_transformed = plugins.experimental_mdast_transforms.as_ref()
-        .map(|plugins| plugins
-            .iter()
-            .fold(mdast.clone(), |old, plugin| plugin(&old)));
+    let mdast_transformed = plugins
+        .experimental_mdast_transforms
+        .as_ref()
+        .map(|plugins| {
+            plugins
+                .iter()
+                .fold(mdast.clone(), |old, plugin| plugin(&old))
+        });
     let mdast_ref = mdast_transformed.as_ref().unwrap_or(&mdast);
 
     let hast = mdast_util_to_hast(mdast_ref);
-    let hast_transformed = plugins.experimental_hast_transforms.as_ref()
-        .map(|plugins| plugins
-            .iter()
-            .fold(hast.clone(), |old, plugin| plugin(&old)));
+    let hast_transformed = plugins
+        .experimental_hast_transforms
+        .as_ref()
+        .map(|plugins| {
+            plugins
+                .iter()
+                .fold(hast.clone(), |old, plugin| plugin(&old))
+        });
     let hast_ref = hast_transformed.as_ref().unwrap_or(&hast);
 
     let mut program = hast_util_to_swc(hast_ref, options.filepath.clone(), Some(&location))?;
-    let mut module_transformed = plugins.experimental_recma_transforms.as_ref()
-        .map(|plugins| plugins
-            .iter()
-            .fold(program.clone(), |old, plugin| plugin(&old)));
+    let mut module_transformed = plugins
+        .experimental_recma_transforms
+        .as_ref()
+        .map(|plugins| {
+            plugins
+                .iter()
+                .fold(program.clone(), |old, plugin| plugin(&old))
+        });
     let program_ref = module_transformed.as_mut().unwrap_or(&mut program);
 
     mdx_plugin_recma_document(program_ref, &document_options, Some(&location))?;
@@ -145,5 +168,8 @@ pub fn compile_with_plugins(value: &str, options: &Options, plugins: &PluginOpti
         swc_util_build_jsx(program_ref, &build_options, Some(&location))?;
     }
 
-    Ok(serialize(&mut program_ref.module, Some(&program_ref.comments)))
+    Ok(serialize(
+        &mut program_ref.module,
+        Some(&program_ref.comments),
+    ))
 }

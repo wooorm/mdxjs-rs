@@ -1,11 +1,11 @@
 //! Configuration.
 
-use std::rc::Rc;
 use crate::mdx_plugin_recma_document::JsxRuntime;
+use std::rc::Rc;
 
-pub use markdown::mdast::Node as MdastNode;
 pub use crate::hast::Node as HastNode;
 pub use crate::hast_util_to_swc::Program as RecmaProgram;
+pub use markdown::mdast::Node as MdastNode;
 
 /// Like `Constructs` from `markdown-rs`.
 ///
@@ -161,10 +161,14 @@ impl MdxParseOptions {
     }
 }
 
+type MdastPlugin = Rc<dyn Fn(&MdastNode) -> MdastNode + 'static>;
+type HastPlugin = Rc<dyn Fn(&HastNode) -> HastNode + 'static>;
+type RecmaPlugin = Rc<dyn Fn(&RecmaProgram) -> RecmaProgram + 'static>;
+
 pub struct PluginOptions {
-    pub experimental_mdast_transforms: Option<Vec<Rc<dyn Fn(&MdastNode) -> MdastNode + 'static>>>,
-    pub experimental_hast_transforms: Option<Vec<Rc<dyn Fn(&HastNode) -> HastNode + 'static>>>,
-    pub experimental_recma_transforms: Option<Vec<Rc<dyn Fn(&RecmaProgram) -> RecmaProgram + 'static>>>,
+    pub experimental_mdast_transforms: Option<Vec<MdastPlugin>>,
+    pub experimental_hast_transforms: Option<Vec<HastPlugin>>,
+    pub experimental_recma_transforms: Option<Vec<RecmaPlugin>>,
 }
 
 impl Default for PluginOptions {
