@@ -174,7 +174,6 @@ pub struct PluginOptions {
 }
 
 impl Default for PluginOptions {
-    /// MDX with `CommonMark` defaults.
     fn default() -> Self {
         Self {
             experimental_mdast_transforms: None,
