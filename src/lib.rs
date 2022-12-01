@@ -14,7 +14,7 @@
 extern crate markdown;
 
 mod configuration;
-mod hast;
+pub mod hast;
 mod hast_util_to_swc;
 mod mdast_util_to_hast;
 mod mdx_plugin_recma_document;
@@ -128,48 +128,36 @@ pub fn compile_with_plugins(
     };
 
     let location = Location::new(value.as_bytes());
-    let mdast = to_mdast(value, &parse_options)?;
-    let mdast_transformed = plugins
-        .experimental_mdast_transforms
-        .as_ref()
-        .map(|plugins| {
-            plugins
-                .iter()
-                .fold(mdast.clone(), |old, plugin| plugin(&old))
-        });
-    let mdast_ref = mdast_transformed.as_ref().unwrap_or(&mdast);
+    let mut mdast = to_mdast(value, &parse_options)?;
 
-    let hast = mdast_util_to_hast(mdast_ref);
-    let hast_transformed = plugins
-        .experimental_hast_transforms
-        .as_ref()
-        .map(|plugins| {
-            plugins
-                .iter()
-                .fold(hast.clone(), |old, plugin| plugin(&old))
-        });
-    let hast_ref = hast_transformed.as_ref().unwrap_or(&hast);
-
-    let mut program = hast_util_to_swc(hast_ref, options.filepath.clone(), Some(&location))?;
-    let mut module_transformed = plugins
-        .experimental_recma_transforms
-        .as_ref()
-        .map(|plugins| {
-            plugins
-                .iter()
-                .fold(program.clone(), |old, plugin| plugin(&old))
-        });
-    let program_ref = module_transformed.as_mut().unwrap_or(&mut program);
-
-    mdx_plugin_recma_document(program_ref, &document_options, Some(&location))?;
-    mdx_plugin_recma_jsx_rewrite(program_ref, &rewrite_options, Some(&location));
-
-    if !options.jsx {
-        swc_util_build_jsx(program_ref, &build_options, Some(&location))?;
+    if let Some(mdast_plugins) = &plugins.experimental_mdast_transforms {
+        for plugin in mdast_plugins {
+            plugin(&mut mdast)?;
+        }
     }
 
-    Ok(serialize(
-        &mut program_ref.module,
-        Some(&program_ref.comments),
-    ))
+    let mut hast = mdast_util_to_hast(&mdast);
+
+    if let Some(hast_plugins) = &plugins.experimental_hast_transforms {
+        for plugin in hast_plugins {
+            plugin(&mut hast)?;
+        }
+    }
+
+    let mut program = hast_util_to_swc(&hast, options.filepath.clone(), Some(&location))?;
+
+    mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
+    mdx_plugin_recma_jsx_rewrite(&mut program, &rewrite_options, Some(&location));
+
+    if let Some(recma_plugins) = &plugins.experimental_recma_transforms {
+        for plugin in recma_plugins {
+            plugin(&mut program)?;
+        }
+    }
+
+    if !options.jsx {
+        swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
+    }
+
+    Ok(serialize(&mut program.module, Some(&program.comments)))
 }

@@ -1,8 +1,12 @@
 extern crate mdxjs;
 
 use markdown::mdast;
+use mdxjs::hast;
 use mdxjs::{HastNode, MdastNode, Options, PluginOptions, RecmaProgram};
 use std::rc::Rc;
+use swc_core::common::{Span, SyntaxContext};
+use swc_core::ecma::ast as estree;
+use swc_core::ecma::atoms::JsWord;
 
 /// Example that compiles the example MDX document from <https://mdxjs.com>
 /// to JavaScript.
@@ -15,23 +19,37 @@ fn main() -> Result<(), String> {
                 ..Default::default()
             },
             &PluginOptions {
-                experimental_mdast_transforms: Some(vec![Rc::new(|root: &MdastNode| {
-                    let mut root1 = root.clone();
-                    visit_mut(&mut root1, |n| {
-                        match n {
-                            mdast::Node::Text(text) => text.value = "Hello World!".into(),
-                            _ => {}
+                experimental_mdast_transforms: Some(vec![Rc::new(|root: &mut MdastNode| {
+                    mdast_visit_mut(root, |n| {
+                        if let mdast::Node::Text(text) = n {
+                            text.value = "Hello World!".into();
+                        }
+                    });
+                    Ok(())
+                })]),
+                experimental_hast_transforms: Some(vec![Rc::new(|root: &mut HastNode| {
+                    hast_visit_mut(root, |n| {
+                        if let hast::Node::Element(e) = n {
+                            if e.tag_name == "h1" {
+                                e.tag_name = "h2".into();
+                            }
                         };
                     });
-                    root1
+                    Ok(())
                 })]),
-                experimental_hast_transforms: Some(vec![Rc::new(|root: &HastNode| {
-                    root.clone()
-                })]),
-                experimental_recma_transforms: Some(vec![Rc::new(|program: &RecmaProgram| {
-                    program.clone()
-                })]),
-                ..Default::default()
+                experimental_recma_transforms: Some(vec![Rc::new(|program: &mut RecmaProgram| {
+                    let body = &mut program.module.body;
+                    body.push(estree::ModuleItem::Stmt(estree::Stmt::Expr(
+                        estree::ExprStmt {
+                            expr: Box::new(estree::Expr::Ident(estree::Ident::from((
+                                JsWord::from("hello"),
+                                SyntaxContext::empty(),
+                            )))),
+                            span: Span::default(),
+                        },
+                    )));
+                    Ok(())
+                })])
             }
         )?
     );
@@ -39,43 +57,14 @@ fn main() -> Result<(), String> {
     Ok(())
 }
 
-/// Visit.
-fn visit<Visitor>(node: &mdast::Node, visitor: Visitor)
-where
-    Visitor: FnMut(&mdast::Node),
-{
-    visit_impl(node, visitor);
-}
-
-/// Internal implementation to visit.
-fn visit_impl<Visitor>(node: &mdast::Node, mut visitor: Visitor) -> Visitor
-where
-    Visitor: FnMut(&mdast::Node),
-{
-    visitor(node);
-
-    if let Some(children) = node.children() {
-        let mut index = 0;
-        while index < children.len() {
-            let child = &children[index];
-            visitor = visit_impl(child, visitor);
-            index += 1;
-        }
-    }
-
-    visitor
-}
-
-/// Visit.
-fn visit_mut<Visitor>(node: &mut mdast::Node, visitor: Visitor)
+fn mdast_visit_mut<Visitor>(node: &mut mdast::Node, visitor: Visitor)
 where
     Visitor: FnMut(&mut mdast::Node),
 {
-    visit_mut_impl(node, visitor);
+    mdast_visit_mut_impl(node, visitor);
 }
 
-/// Internal implementation to visit.
-fn visit_mut_impl<Visitor>(node: &mut mdast::Node, mut visitor: Visitor) -> Visitor
+fn mdast_visit_mut_impl<Visitor>(node: &mut mdast::Node, mut visitor: Visitor) -> Visitor
 where
     Visitor: FnMut(&mut mdast::Node),
 {
@@ -85,7 +74,32 @@ where
         let mut index = 0;
         while index < children.len() {
             let child = &mut children[index];
-            visitor = visit_mut_impl(child, visitor);
+            visitor = mdast_visit_mut_impl(child, visitor);
+            index += 1;
+        }
+    }
+
+    visitor
+}
+
+fn hast_visit_mut<Visitor>(node: &mut hast::Node, visitor: Visitor)
+where
+    Visitor: FnMut(&mut hast::Node),
+{
+    hast_visit_mut_impl(node, visitor);
+}
+
+fn hast_visit_mut_impl<Visitor>(node: &mut hast::Node, mut visitor: Visitor) -> Visitor
+where
+    Visitor: FnMut(&mut hast::Node),
+{
+    visitor(node);
+
+    if let Some(children) = node.children_mut() {
+        let mut index = 0;
+        while index < children.len() {
+            let child = &mut children[index];
+            visitor = hast_visit_mut_impl(child, visitor);
             index += 1;
         }
     }
