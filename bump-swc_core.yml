@@ -1,0 +1,39 @@
+name: Bump up swc_core
+  on:
+    schedule:
+      # two times daily, at 12:00 and 06:00
+      - cron: '0 0 * * *'
+      - cron: '0 6 * * *'
+
+jobs:
+  upgrade-swc-core:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        override: true
+
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "gha-cargo-upgrade"
+        cache-on-failure: true
+
+    - name: Run cargo upgrade
+      uses: kwonoj/gha-cargo-upgrade@latest
+      with:
+        token: ${{ secrets.GHA_UPGRADE_TOKEN }}
+        packages: "swc_core"
+        incompatible: true
