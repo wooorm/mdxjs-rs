@@ -816,7 +816,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<a >{\"a\"}</a>;\n",
+            "<a>{\"a\"}</a>;\n",
             "should support an `Element` w/ children",
         );
 
@@ -835,7 +835,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<svg />;\n",
+            "<svg/>;\n",
             "should support an `Element` in the SVG space",
         );
 
@@ -897,7 +897,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<a />;\n",
+            "<a/>;\n",
             "should support an `Element` w/ a boolean (false) attribute",
         );
 
@@ -1034,7 +1034,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<a />;\n",
+            "<a/>;\n",
             "should support an `MdxElement` (element, no children)",
         );
         assert_eq!(
@@ -1055,7 +1055,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<a >{\"b\"}</a>;\n",
+            "<a>{\"b\"}</a>;\n",
             "should support an `MdxElement` (element, children)",
         );
 
@@ -1079,7 +1079,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<a:b />;\n",
+            "<a:b/>;\n",
             "should support an `MdxElement` (element, namespace id)",
         );
 
@@ -1098,7 +1098,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<a.b.c />;\n",
+            "<a.b.c/>;\n",
             "should support an `MdxElement` (element, member expression)",
         );
 
@@ -1117,7 +1117,7 @@ mod tests {
                 .module,
                 None
             ),
-            "<svg />;\n",
+            "<svg/>;\n",
             "should support an `MdxElement` (element, `<svg>`)",
         );
 
