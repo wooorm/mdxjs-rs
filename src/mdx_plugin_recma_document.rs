@@ -584,7 +584,7 @@ mod tests {
         assert_eq!(
             compile("# hi\n\nAlpha *bravo* **charlie**.")?,
             "function _createMdxContent(props) {
-    return <><h1 >{\"hi\"}</h1>{\"\\n\"}<p >{\"Alpha \"}<em >{\"bravo\"}</em>{\" \"}<strong >{\"charlie\"}</strong>{\".\"}</p></>;
+    return <><h1>{\"hi\"}</h1>{\"\\n\"}<p>{\"Alpha \"}<em>{\"bravo\"}</em>{\" \"}<strong>{\"charlie\"}</strong>{\".\"}</p></>;
 }
 function MDXContent(props = {}) {
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
@@ -603,7 +603,7 @@ export default MDXContent;
             compile("import a from 'b'\n\n# {a}")?,
             "import a from 'b';
 function _createMdxContent(props) {
-    return <h1 >{a}</h1>;
+    return <h1>{a}</h1>;
 }
 function MDXContent(props = {}) {
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
@@ -622,7 +622,7 @@ export default MDXContent;
             compile("export * from 'a'\n\n# b")?,
             "export * from 'a';
 function _createMdxContent(props) {
-    return <h1 >{\"b\"}</h1>;
+    return <h1>{\"b\"}</h1>;
 }
 function MDXContent(props = {}) {
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
@@ -1011,7 +1011,7 @@ export default MDXContent;
         assert_eq!(
             serialize(&mut program.module, None),
             "function _createMdxContent(props) {
-    return <a >b</a>;
+    return <a>b</a>;
 }
 function MDXContent(props = {}) {
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);

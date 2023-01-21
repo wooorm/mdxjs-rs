@@ -1054,7 +1054,7 @@ export default MDXContent;
     const _components = Object.assign({
         h1: \"h1\"
     }, props.components);
-    return <_components.h1 >{\"hi\"}</_components.h1>;
+    return <_components.h1>{\"hi\"}</_components.h1>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1076,7 +1076,7 @@ export default MDXContent;
     const _components = Object.assign({
         \"a:b\": \"a:b\"
     }, props.components), _component0 = _components[\"a:b\"];
-    return <_component0 />;
+    return <_component0/>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1103,7 +1103,7 @@ function _createMdxContent(props) {
     const _components = Object.assign({
         h1: \"h1\"
     }, props.components);
-    return <_components.h1 >{\"hi\"}</_components.h1>;
+    return <_components.h1>{\"hi\"}</_components.h1>;
 }
 function MDXContent(props = {}) {
     return <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout>;
@@ -1125,7 +1125,7 @@ export default MDXContent;
         h1: \"h1\"
     }, props.components), { Hi  } = _components;
     if (!Hi) _missingMdxReference(\"Hi\", true);
-    return <_components.h1 ><Hi /></_components.h1>;
+    return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1158,7 +1158,7 @@ function _missingMdxReference(id, component) {
     if (!a.b) _missingMdxReference(\"a.b\", true);
     if (!a.b.c) _missingMdxReference(\"a.b.c\", false);
     if (!a.b.c.d) _missingMdxReference(\"a.b.c.d\", true);
-    return <_components.p ><X />{\", \"}<X.y />{\", \"}<Y.Z />{\", \"}<a.b.c.d />{\", \"}<a.b /></_components.p>;
+    return <_components.p><X/>{\", \"}<X.y/>{\", \"}<Y.Z/>{\", \"}<a.b.c.d/>{\", \"}<a.b/></_components.p>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1187,7 +1187,7 @@ function _missingMdxReference(id, component) {
     }, props.components), _component0 = _components[\"a-b\"], _component1 = _components[\"qwe-rty\"], _component2 = _components[\"c-d\"];
     if (!_component2) _missingMdxReference(\"c-d\", false);
     if (!_component2[\"e-f\"]) _missingMdxReference(\"c-d.e-f\", true);
-    return <_components.h1 ><_component0 />{\", \"}<_component1 />{\", \"}<_component0 />{\", \"}<_component2.e-f /></_components.h1>;
+    return <_components.h1><_component0/>{\", \"}<_component1/>{\", \"}<_component0/>{\", \"}<_component2.e-f/></_components.h1>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1213,7 +1213,7 @@ function _createMdxContent(props) {
     const _components = Object.assign({
         h1: \"h1\"
     }, props.components);
-    return <_components.h1 ><Hi /></_components.h1>;
+    return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1236,7 +1236,7 @@ export default MDXContent;
             )?,
             "import * as X from './a.js';
 function _createMdxContent(props) {
-    return <X />;
+    return <X/>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1263,10 +1263,10 @@ export default MDXContent;
             &Options::default(), true
         )?,
             "export function A() {
-    return <B />;
+    return <B/>;
 }
 function _createMdxContent(props) {
-    return <A />;
+    return <A/>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1293,7 +1293,7 @@ export default MDXContent;
             "export class A {
 }
 function _createMdxContent(props) {
-    return <A />;
+    return <A/>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1323,7 +1323,7 @@ function _createMdxContent(props) {
         h1: \"h1\"
     }, _provideComponents(), props.components), { Hi  } = _components;
     if (!Hi) _missingMdxReference(\"Hi\", true);
-    return <_components.h1 ><Hi /></_components.h1>;
+    return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
@@ -1385,10 +1385,10 @@ export default MDXContent;
 export function A() {
     const { B  } = _provideComponents();
     if (!B) _missingMdxReference(\"B\", true);
-    return <B />;
+    return <B/>;
 }
 function _createMdxContent(props) {
-    return <A />;
+    return <A/>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
@@ -1433,7 +1433,7 @@ export function X(x) {
     let { ...D } = x;
     let { _: E  } = x;
     let { F =_  } = x;
-    return <><A /><B /><C /><D /><E /><F /><G /></>;
+    return <><A/><B/><C/><D/><E/><F/><G/></>;
 }
 function _createMdxContent(props) {
     return <></>;
@@ -1546,7 +1546,7 @@ export function A() {
         let B = true;
     })();
     ((B)=>{})();
-    return <B />;
+    return <B/>;
 }
 function _createMdxContent(props) {
     return <></>;
@@ -1585,7 +1585,7 @@ function _createMdxContent(props) {
     if (!X.y) _missingMdxReference(\"X.y\", true);
     if (!Y) _missingMdxReference(\"Y\", false);
     if (!Y.Z) _missingMdxReference(\"Y.Z\", true);
-    return <_components.p ><X />{\", \"}<X.y />{\", \"}<Y.Z /></_components.p>;
+    return <_components.p><X/>{\", \"}<X.y/>{\", \"}<Y.Z/></_components.p>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
@@ -1624,10 +1624,10 @@ export function A() {
     if (!X.y) _missingMdxReference(\"X.y\", true);
     if (!Y) _missingMdxReference(\"Y\", false);
     if (!Y.Z) _missingMdxReference(\"Y.Z\", true);
-    return <X />, <X.y />, <Y.Z />;
+    return <X/>, <X.y/>, <Y.Z/>;
 }
 function _createMdxContent(props) {
-    return <A />;
+    return <A/>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
@@ -1658,7 +1658,7 @@ function _missingMdxReference(id, component) {
 export const A = ()=>{
     const { B  } = _provideComponents();
     if (!B) _missingMdxReference(\"B\", true);
-    return <B />;
+    return <B/>;
 };
 function _createMdxContent(props) {
     return <></>;
@@ -1692,7 +1692,7 @@ function _missingMdxReference(id, component) {
 export const A = function B() {
     const { C  } = _provideComponents();
     if (!C) _missingMdxReference(\"C\", true);
-    return <C />;
+    return <C/>;
 };
 function _createMdxContent(props) {
     return <></>;
@@ -1732,10 +1732,10 @@ export function A() {
     const _components = Object.assign({
         \"b-c\": \"b-c\"
     }, _provideComponents());
-    return <_components.b-c />;
+    return <_components.b-c/>;
 }
 function _createMdxContent(props) {
-    return <A />;
+    return <A/>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
@@ -1761,7 +1761,7 @@ export default MDXContent;
         h1: \"h1\"
     }, props.components), { Hi  } = _components;
     if (!Hi) _missingMdxReference(\"Hi\", true, \"1:3-1:9\");
-    return <_components.h1 ><Hi /></_components.h1>;
+    return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1790,7 +1790,7 @@ function _missingMdxReference(id, component, place) {
         h1: \"h1\"
     }, props.components), { Hi  } = _components;
     if (!Hi) _missingMdxReference(\"Hi\", true, \"1:3-1:9\");
-    return <_components.h1 ><Hi /></_components.h1>;
+    return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout  } = props.components || {};
@@ -1845,7 +1845,7 @@ function _missingMdxReference(id, component, place) {
         mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None);
         assert_eq!(
             serialize(&mut program.module, None),
-            "let a = <b />;\n",
+            "let a = <b/>;\n",
             "should not rewrite JSX outside of components"
         );
     }
