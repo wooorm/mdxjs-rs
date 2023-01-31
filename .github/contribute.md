@@ -67,7 +67,6 @@ and how to run useful scripts.
 ### Release
 
 *   update the `version` field in `Cargo.toml`
-*   search for the previous version in `readme.md`, replace with new one
 *   `git commit --all --message 1.2.3 && git tag 1.2.3 && git push && git push --tags`
 *   `cargo publish`
 
