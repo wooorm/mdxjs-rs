@@ -282,13 +282,13 @@ fn transform_mdx_jsx_element(
                             raw: None,
                         })))
                     }
-                    Some(hast::AttributeValue::Expression(value, stops)) => {
+                    Some(hast::AttributeValue::Expression(expression)) => {
                         Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
                             expr: JSXExpr::Expr(
                                 parse_expression_to_tree(
-                                    value,
+                                    &expression.value,
                                     &MdxExpressionKind::AttributeValueExpression,
-                                    stops,
+                                    &expression.stops,
                                     context.location,
                                 )?
                                 .unwrap(),
@@ -305,7 +305,7 @@ fn transform_mdx_jsx_element(
                     value,
                 })
             }
-            hast::AttributeContent::Expression(value, stops) => {
+            hast::AttributeContent::Expression { value, stops } => {
                 let expr = parse_expression_to_tree(
                     value,
                     &MdxExpressionKind::AttributeExpression,
@@ -669,6 +669,7 @@ mod tests {
     use super::*;
     use crate::hast;
     use crate::hast_util_to_swc::{hast_util_to_swc, Program};
+    use crate::markdown::mdast;
     use crate::swc::serialize;
     use pretty_assertions::assert_eq;
     use swc_core::ecma::ast::{
@@ -1199,7 +1200,12 @@ mod tests {
                         name: Some("a".into()),
                         attributes: vec![hast::AttributeContent::Property(hast::MdxJsxAttribute {
                             name: "b".into(),
-                            value: Some(hast::AttributeValue::Expression("c".into(), vec![]))
+                            value: Some(hast::AttributeValue::Expression(
+                                mdast::AttributeValueExpression {
+                                    value: "c".into(),
+                                    stops: vec![]
+                                }
+                            ))
                         })],
                         children: vec![],
                         position: None,
@@ -1220,7 +1226,12 @@ mod tests {
                     name: Some("a".into()),
                     attributes: vec![hast::AttributeContent::Property(hast::MdxJsxAttribute {
                         name: "b".into(),
-                        value: Some(hast::AttributeValue::Expression("!".into(), vec![]))
+                        value: Some(hast::AttributeValue::Expression(
+                            mdast::AttributeValueExpression {
+                                value: "!".into(),
+                                stops: vec![]
+                            }
+                        ))
                     })],
                     children: vec![],
                     position: None,
@@ -1237,7 +1248,10 @@ mod tests {
                 &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
-                        attributes: vec![hast::AttributeContent::Expression("...b".into(), vec![])],
+                        attributes: vec![hast::AttributeContent::Expression {
+                            value: "...b".into(),
+                            stops: vec![]
+                        }],
                         children: vec![],
                         position: None,
                     }),
@@ -1255,7 +1269,7 @@ mod tests {
             hast_util_to_swc(
                 &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                     name: Some("a".into()),
-                    attributes: vec![hast::AttributeContent::Expression("...b,c".into(), vec![])],
+                    attributes: vec![hast::AttributeContent::Expression { value: "...b,c".into(), stops: vec![] } ],
                     children: vec![],
                     position: None,
                 }),
