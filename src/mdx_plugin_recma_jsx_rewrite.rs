@@ -473,7 +473,7 @@ impl<'a> State<'a> {
                     decl.function.body.as_mut().unwrap()
                 }
                 Func::Arrow(arr) => {
-                    if let BlockStmtOrExpr::Expr(expr) = &mut arr.body {
+                    if let BlockStmtOrExpr::Expr(expr) = &mut *arr.body {
                         let block = BlockStmt {
                             stmts: vec![Stmt::Return(ReturnStmt {
                                 arg: Some(expr.take()),
@@ -481,7 +481,7 @@ impl<'a> State<'a> {
                             })],
                             span: DUMMY_SP,
                         };
-                        arr.body = BlockStmtOrExpr::BlockStmt(block);
+                        arr.body = Box::new(BlockStmtOrExpr::BlockStmt(block));
                     }
                     arr.body.as_mut_block_stmt().unwrap()
                 }
