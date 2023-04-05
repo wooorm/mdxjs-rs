@@ -18,7 +18,7 @@ serializable = ["serde"]
 [dependencies]
 markdown = "1.0.0-alpha.7"
 serde = { version = "1", optional = true }
-swc_core = { version = "0.72.0", features = [
+swc_core = { version = "0.74.0", features = [
   "ecma_ast",
   "ecma_visit",
   "ecma_codegen",
