@@ -64,11 +64,73 @@ See [Project][] for more info.
 See [Project][project] in the readme for info on how the project is structured
 and how to run useful scripts.
 
+### Commit
+
+Look at the commits in the project for the style being used.
+
+For example:
+
+```git-commit
+Update `swc_core`
+
+Some long description here
+
+Closes GH-24.
+```
+
+Some points:
+
+*   short descriptive message as title
+*   no issue/PR references in title
+*   reference the issues/PRs that are closed in the commit body
+*   optionally you can include who reviewed or co-authored:
+    ```
+    Reviewed-by: Titus Wormer <tituswormer@gmail.com>
+
+    Co-authored-by: Titus Wormer <tituswormer@gmail.com>
+    ```
+
 ### Release
+
+Perform the following steps locally, no PR needed:
 
 *   update the `version` field in `Cargo.toml`
 *   `git commit --all --message 1.2.3 && git tag 1.2.3 && git push && git push --tags`
 *   `cargo publish`
+
+For the release notes, here’s what I do.
+You can also look at the existing release notes for how to do it.
+
+*   go to releases: <https://github.com/wooorm/mdxjs-rs/releases>
+*   click “Draft a new release”
+*   click “Choose a release”, choose the one you just released
+*   click “Generate release notes”, it might generate for example:
+    ```markdown
+    ## What's Changed
+    * Update `swc_core` by @kdy1 in https://github.com/wooorm/mdxjs-rs/pull/25
+
+    **Full Changelog**: https://github.com/wooorm/mdxjs-rs/compare/0.1.10...0.1.11
+    ```
+*   locally I run `git l` (git alias for
+    `l = log --pretty=oneline --graph --abbrev-commit`) to produce a markdown
+    list of the commits, such as:
+    ```markdown
+    * 4513866 (HEAD -> main, tag: 0.1.11, origin/main) 0.1.11
+    * 833eacf Update `swc_core`
+    ```
+*   finally I manually merge the two results to get:
+    ```
+    * 833eacf Update `swc_core`
+      by @kdy1 in https://github.com/wooorm/mdxjs-rs/pull/25
+
+    **Full Changelog**: https://github.com/wooorm/mdxjs-rs/compare/0.1.10...0.1.11
+    ```
+*   for long release notes with important info, I think about what a reader
+    wants and needs.
+    What is breaking?
+    What is actually important?
+    Sometimes I reorder and amend stuff to highlight what’s important and how
+    users need to migrate!
 
 ## Resources
 
