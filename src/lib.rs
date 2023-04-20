@@ -4,6 +4,8 @@
 //!
 //! *   [`compile()`][]
 //!     — turn MDX into JavaScript
+//! *   [`compile_with_ast()`][]
+//!     — turn MDX into JavaScript, but also return the original Markdown AST
 #![deny(clippy::pedantic)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::too_many_lines)]
@@ -30,20 +32,20 @@ use crate::{
     swc::{parse_esm, parse_expression, serialize},
     swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
 };
-use markdown::{to_mdast, Constructs, Location, ParseOptions};
+use markdown::{to_mdast, Constructs, Location, ParseOptions, mdast::Node};
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
-/// Turn MDX into JavaScript.
+/// Turn MDX into JavaScript, but also return the original Markdown AST.
 ///
 /// ## Examples
 ///
 /// ```
-/// use mdxjs::compile;
+/// use mdxjs::compile_with_ast;
 /// # fn main() -> Result<(), String> {
 ///
-/// assert_eq!(compile("# Hi!", &Default::default())?, "import { jsx as _jsx } from \"react/jsx-runtime\";\nfunction _createMdxContent(props) {\n    const _components = Object.assign({\n        h1: \"h1\"\n    }, props.components);\n    return _jsx(_components.h1, {\n        children: \"Hi!\"\n    });\n}\nfunction MDXContent(props = {}) {\n    const { wrapper: MDXLayout  } = props.components || {};\n    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {\n        children: _jsx(_createMdxContent, props)\n    })) : _createMdxContent(props);\n}\nexport default MDXContent;\n");
+/// assert_eq!(compile_with_ast("# Hi!", &Default::default())?.0, "import { jsx as _jsx } from \"react/jsx-runtime\";\nfunction _createMdxContent(props) {\n    const _components = Object.assign({\n        h1: \"h1\"\n    }, props.components);\n    return _jsx(_components.h1, {\n        children: \"Hi!\"\n    });\n}\nfunction MDXContent(props = {}) {\n    const { wrapper: MDXLayout  } = props.components || {};\n    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {\n        children: _jsx(_createMdxContent, props)\n    })) : _createMdxContent(props);\n}\nexport default MDXContent;\n");
 /// # Ok(())
 /// # }
 /// ```
@@ -52,7 +54,7 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 ///
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
-pub fn compile(value: &str, options: &Options) -> Result<String, String> {
+pub fn compile_with_ast(value: &str, options: &Options) -> Result<(String, Node), String> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,
@@ -121,5 +123,26 @@ pub fn compile(value: &str, options: &Options) -> Result<String, String> {
         swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
     }
 
-    Ok(serialize(&mut program.module, Some(&program.comments)))
+    Ok((serialize(&mut program.module, Some(&program.comments)), mdast))
+}
+
+/// Turn MDX into JavaScript.
+///
+/// ## Examples
+///
+/// ```
+/// use mdxjs::compile;
+/// # fn main() -> Result<(), String> {
+///
+/// assert_eq!(compile("# Hi!", &Default::default())?, "import { jsx as _jsx } from \"react/jsx-runtime\";\nfunction _createMdxContent(props) {\n    const _components = Object.assign({\n        h1: \"h1\"\n    }, props.components);\n    return _jsx(_components.h1, {\n        children: \"Hi!\"\n    });\n}\nfunction MDXContent(props = {}) {\n    const { wrapper: MDXLayout  } = props.components || {};\n    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {\n        children: _jsx(_createMdxContent, props)\n    })) : _createMdxContent(props);\n}\nexport default MDXContent;\n");
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
+pub fn compile(value: &str, options: &Options) -> Result<String, String> {
+    Ok(compile_with_ast(value, options)?.0)
 }
