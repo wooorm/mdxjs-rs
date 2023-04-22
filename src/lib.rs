@@ -14,8 +14,8 @@
 #![allow(clippy::cast_precision_loss)]
 
 extern crate markdown;
-pub mod hast;
 mod configuration;
+pub mod hast;
 mod hast_util_to_swc;
 mod mdast_util_to_hast;
 mod mdx_plugin_recma_document;
@@ -33,7 +33,7 @@ use crate::{
     swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
 };
 use hast_util_to_swc::Program;
-use markdown::{to_mdast, Constructs, Location, ParseOptions, mdast};
+use markdown::{mdast, to_mdast, Constructs, Location, ParseOptions};
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
@@ -98,7 +98,7 @@ pub fn parse_to_mdast(value: &str, options: &Options) -> Result<mdast::Node, Str
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
 pub fn mdast_to_hast(mdast: &mdast::Node) -> hast::Node {
-    mdast_util_to_hast(&mdast)
+    mdast_util_to_hast(mdast)
 }
 
 /// Turn an hast node into an SWC program.
@@ -107,7 +107,11 @@ pub fn mdast_to_hast(mdast: &mdast::Node) -> hast::Node {
 ///
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
-pub fn hast_to_program(hast: &hast::Node, original_source: &str, options: &Options) -> Result<Program, String> {
+pub fn hast_to_program(
+    hast: &hast::Node,
+    original_source: &str,
+    options: &Options,
+) -> Result<Program, String> {
     let document_options = DocumentOptions {
         pragma: options.pragma.clone(),
         pragma_frag: options.pragma_frag.clone(),
@@ -125,7 +129,7 @@ pub fn hast_to_program(hast: &hast::Node, original_source: &str, options: &Optio
 
     let location = Location::new(original_source.as_bytes());
 
-    let mut program = hast_util_to_swc(&hast, options.filepath.clone(), Some(&location))?;
+    let mut program = hast_util_to_swc(hast, options.filepath.clone(), Some(&location))?;
     mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
     mdx_plugin_recma_jsx_rewrite(&mut program, &rewrite_options, Some(&location));
 
