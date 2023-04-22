@@ -14,8 +14,8 @@
 #![allow(clippy::cast_precision_loss)]
 
 extern crate markdown;
+pub mod hast;
 mod configuration;
-mod hast;
 mod hast_util_to_swc;
 mod mdast_util_to_hast;
 mod mdx_plugin_recma_document;
@@ -32,29 +32,19 @@ use crate::{
     swc::{parse_esm, parse_expression, serialize},
     swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
 };
-use markdown::{to_mdast, Constructs, Location, ParseOptions, mdast::Node};
+use hast_util_to_swc::Program;
+use markdown::{to_mdast, Constructs, Location, ParseOptions, mdast};
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
-/// Turn MDX into JavaScript, but also return the original Markdown AST.
-///
-/// ## Examples
-///
-/// ```
-/// use mdxjs::compile_with_ast;
-/// # fn main() -> Result<(), String> {
-///
-/// assert_eq!(compile_with_ast("# Hi!", &Default::default())?.0, "import { jsx as _jsx } from \"react/jsx-runtime\";\nfunction _createMdxContent(props) {\n    const _components = Object.assign({\n        h1: \"h1\"\n    }, props.components);\n    return _jsx(_components.h1, {\n        children: \"Hi!\"\n    });\n}\nfunction MDXContent(props = {}) {\n    const { wrapper: MDXLayout  } = props.components || {};\n    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {\n        children: _jsx(_createMdxContent, props)\n    })) : _createMdxContent(props);\n}\nexport default MDXContent;\n");
-/// # Ok(())
-/// # }
-/// ```
+/// Turn MDX into an mdast node.
 ///
 /// ## Errors
 ///
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
-pub fn compile_with_ast(value: &str, options: &Options) -> Result<(String, Node), String> {
+pub fn parse_to_mdast(value: &str, options: &Options) -> Result<mdast::Node, String> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,
@@ -97,6 +87,27 @@ pub fn compile_with_ast(value: &str, options: &Options) -> Result<(String, Node)
         mdx_esm_parse: Some(Box::new(parse_esm)),
         mdx_expression_parse: Some(Box::new(parse_expression)),
     };
+
+    to_mdast(value, &parse_options)
+}
+
+/// Turn a mdast node into an hast one.
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
+pub fn mdast_to_hast(mdast: &mdast::Node) -> hast::Node {
+    mdast_util_to_hast(&mdast)
+}
+
+/// Turn an hast node into an SWC program.
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
+pub fn hast_to_program(hast: &hast::Node, original_source: &str, options: &Options) -> Result<Program, String> {
     let document_options = DocumentOptions {
         pragma: options.pragma.clone(),
         pragma_frag: options.pragma_frag.clone(),
@@ -112,9 +123,8 @@ pub fn compile_with_ast(value: &str, options: &Options) -> Result<(String, Node)
         development: options.development,
     };
 
-    let location = Location::new(value.as_bytes());
-    let mdast = to_mdast(value, &parse_options)?;
-    let hast = mdast_util_to_hast(&mdast);
+    let location = Location::new(original_source.as_bytes());
+
     let mut program = hast_util_to_swc(&hast, options.filepath.clone(), Some(&location))?;
     mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
     mdx_plugin_recma_jsx_rewrite(&mut program, &rewrite_options, Some(&location));
@@ -123,7 +133,11 @@ pub fn compile_with_ast(value: &str, options: &Options) -> Result<(String, Node)
         swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
     }
 
-    Ok((serialize(&mut program.module, Some(&program.comments)), mdast))
+    Ok(program)
+}
+
+pub fn program_to_string(program: &mut Program) -> String {
+    serialize(&mut program.module, Some(&program.comments))
 }
 
 /// Turn MDX into JavaScript.
@@ -144,5 +158,9 @@ pub fn compile_with_ast(value: &str, options: &Options) -> Result<(String, Node)
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
 pub fn compile(value: &str, options: &Options) -> Result<String, String> {
-    Ok(compile_with_ast(value, options)?.0)
+    let mdast = parse_to_mdast(value, options)?;
+    let hast = mdast_to_hast(&mdast);
+    let mut program = hast_to_program(&hast, value, options)?;
+
+    Ok(program_to_string(&mut program))
 }
