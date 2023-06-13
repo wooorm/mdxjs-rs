@@ -241,13 +241,13 @@ fn transform_element(
         index += 1;
     }
 
-    Ok(Some(JSXElementChild::JSXElement(create_element(
+    Ok(Some(JSXElementChild::JSXElement(Box::new(create_element(
         &element.tag_name,
         attrs,
         children,
         node,
         false,
-    ))))
+    )))))
 }
 
 /// [`MdxJsxElement`][hast::MdxJsxElement].
@@ -324,7 +324,7 @@ fn transform_mdx_jsx_element(
     }
 
     Ok(Some(if let Some(name) = &element.name {
-        JSXElementChild::JSXElement(create_element(name, attrs, children, node, true))
+        JSXElementChild::JSXElement(Box::new(create_element(name, attrs, children, node, true)))
     } else {
         JSXElementChild::JSXFragment(create_fragment(children, node))
     }))
@@ -440,7 +440,7 @@ fn create_element(
     children: Vec<JSXElementChild>,
     node: &hast::Node,
     explicit: bool,
-) -> Box<JSXElement> {
+) -> JSXElement {
     let mut span = position_to_span(node.position());
 
     span.ctxt = if explicit {
@@ -449,7 +449,7 @@ fn create_element(
         swc_core::common::SyntaxContext::empty()
     };
 
-    Box::new(JSXElement {
+    JSXElement {
         opening: JSXOpeningElement {
             name: create_jsx_name_from_str(name),
             attrs,
@@ -467,7 +467,7 @@ fn create_element(
         },
         children,
         span,
-    })
+    }
 }
 
 /// Create a fragment.
