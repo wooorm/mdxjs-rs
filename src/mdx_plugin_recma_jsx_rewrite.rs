@@ -1035,7 +1035,7 @@ mod tests {
     return <></>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1057,7 +1057,7 @@ export default MDXContent;
     return <_components.h1>{\"hi\"}</_components.h1>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1079,7 +1079,7 @@ export default MDXContent;
     return <_component0/>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1123,12 +1123,12 @@ export default MDXContent;
             "function _createMdxContent(props) {
     const _components = Object.assign({
         h1: \"h1\"
-    }, props.components), { Hi  } = _components;
+    }, props.components), { Hi } = _components;
     if (!Hi) _missingMdxReference(\"Hi\", true);
     return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1149,7 +1149,7 @@ function _missingMdxReference(id, component) {
           "function _createMdxContent(props) {
     const _components = Object.assign({
         p: \"p\"
-    }, props.components), { X , Y , a  } = _components;
+    }, props.components), { X, Y, a } = _components;
     if (!X) _missingMdxReference(\"X\", true);
     if (!X.y) _missingMdxReference(\"X.y\", true);
     if (!Y) _missingMdxReference(\"Y\", false);
@@ -1161,7 +1161,7 @@ function _missingMdxReference(id, component) {
     return <_components.p><X/>{\", \"}<X.y/>{\", \"}<Y.Z/>{\", \"}<a.b.c.d/>{\", \"}<a.b/></_components.p>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1190,7 +1190,7 @@ function _missingMdxReference(id, component) {
     return <_components.h1><_component0/>{\", \"}<_component1/>{\", \"}<_component0/>{\", \"}<_component2.e-f/></_components.h1>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1216,7 +1216,7 @@ function _createMdxContent(props) {
     return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1239,7 +1239,7 @@ function _createMdxContent(props) {
     return <X/>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1269,7 +1269,7 @@ function _createMdxContent(props) {
     return <A/>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1296,7 +1296,7 @@ function _createMdxContent(props) {
     return <A/>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1321,12 +1321,12 @@ export default MDXContent;
 function _createMdxContent(props) {
     const _components = Object.assign({
         h1: \"h1\"
-    }, _provideComponents(), props.components), { Hi  } = _components;
+    }, _provideComponents(), props.components), { Hi } = _components;
     if (!Hi) _missingMdxReference(\"Hi\", true);
     return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1355,7 +1355,7 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1383,7 +1383,7 @@ export default MDXContent;
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
-    const { B  } = _provideComponents();
+    const { B } = _provideComponents();
     if (!B) _missingMdxReference(\"B\", true);
     return <B/>;
 }
@@ -1391,7 +1391,7 @@ function _createMdxContent(props) {
     return <A/>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1425,21 +1425,21 @@ function _missingMdxReference(id, component) {
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function X(x) {
-    const { G  } = _provideComponents();
+    const { G } = _provideComponents();
     if (!G) _missingMdxReference(\"G\", true);
     let [A] = x;
     let [...B] = x;
-    let { C  } = x;
+    let { C } = x;
     let { ...D } = x;
-    let { _: E  } = x;
-    let { F =_  } = x;
+    let { _: E } = x;
+    let { F = _ } = x;
     return <><A/><B/><C/><D/><E/><F/><G/></>;
 }
 function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1510,7 +1510,7 @@ function _missingMdxReference(id, component) {
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
-    const { B  } = _provideComponents();
+    const { B } = _provideComponents();
     if (!B) _missingMdxReference(\"B\", true);
     while(true){
         let B = true;
@@ -1552,7 +1552,7 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1580,7 +1580,7 @@ function _missingMdxReference(id, component) {
 function _createMdxContent(props) {
     const _components = Object.assign({
         p: \"p\"
-    }, _provideComponents(), props.components), { X , Y  } = _components;
+    }, _provideComponents(), props.components), { X, Y } = _components;
     if (!X) _missingMdxReference(\"X\", true);
     if (!X.y) _missingMdxReference(\"X.y\", true);
     if (!Y) _missingMdxReference(\"Y\", false);
@@ -1588,7 +1588,7 @@ function _createMdxContent(props) {
     return <_components.p><X/>{\", \"}<X.y/>{\", \"}<Y.Z/></_components.p>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1619,7 +1619,7 @@ function _missingMdxReference(id, component) {
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
-    const { X , Y  } = _provideComponents();
+    const { X, Y } = _provideComponents();
     if (!X) _missingMdxReference(\"X\", true);
     if (!X.y) _missingMdxReference(\"X.y\", true);
     if (!Y) _missingMdxReference(\"Y\", false);
@@ -1630,7 +1630,7 @@ function _createMdxContent(props) {
     return <A/>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1656,7 +1656,7 @@ function _missingMdxReference(id, component) {
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export const A = ()=>{
-    const { B  } = _provideComponents();
+    const { B } = _provideComponents();
     if (!B) _missingMdxReference(\"B\", true);
     return <B/>;
 };
@@ -1664,7 +1664,7 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1690,7 +1690,7 @@ function _missingMdxReference(id, component) {
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export const A = function B() {
-    const { C  } = _provideComponents();
+    const { C } = _provideComponents();
     if (!C) _missingMdxReference(\"C\", true);
     return <C/>;
 };
@@ -1698,7 +1698,7 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1738,7 +1738,7 @@ function _createMdxContent(props) {
     return <A/>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1759,12 +1759,12 @@ export default MDXContent;
             "function _createMdxContent(props) {
     const _components = Object.assign({
         h1: \"h1\"
-    }, props.components), { Hi  } = _components;
+    }, props.components), { Hi } = _components;
     if (!Hi) _missingMdxReference(\"Hi\", true, \"1:3-1:9\");
     return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -1788,12 +1788,12 @@ function _missingMdxReference(id, component, place) {
             "function _createMdxContent(props) {
     const _components = Object.assign({
         h1: \"h1\"
-    }, props.components), { Hi  } = _components;
+    }, props.components), { Hi } = _components;
     if (!Hi) _missingMdxReference(\"Hi\", true, \"1:3-1:9\");
     return <_components.h1><Hi/></_components.h1>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;

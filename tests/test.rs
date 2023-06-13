@@ -11,7 +11,7 @@ function _createMdxContent(props) {
     return _jsx(_Fragment, {});
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
         children: _jsx(_createMdxContent, props)
     })) : _createMdxContent(props);
@@ -34,7 +34,7 @@ fn development() -> Result<(), String> {
         })?,
         "import { jsxDEV as _jsxDEV } from \"react/jsx-dev-runtime\";
 function _createMdxContent(props) {
-    const { A  } = props.components || {};
+    const { A } = props.components || {};
     if (!A) _missingMdxReference(\"A\", true, \"1:1-1:6\");
     return _jsxDEV(A, {}, undefined, false, {
         fileName: \"example.mdx\",
@@ -43,7 +43,7 @@ function _createMdxContent(props) {
     }, this);
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? _jsxDEV(MDXLayout, Object.assign({}, props, {
         children: _jsxDEV(_createMdxContent, props, undefined, false, {
             fileName: \"example.mdx\"
@@ -73,12 +73,12 @@ fn provider() -> Result<(), String> {
         "import { jsx as _jsx } from \"react/jsx-runtime\";
 import { useMDXComponents as _provideComponents } from \"@mdx-js/react\";
 function _createMdxContent(props) {
-    const { A  } = Object.assign({}, _provideComponents(), props.components);
+    const { A } = Object.assign({}, _provideComponents(), props.components);
     if (!A) _missingMdxReference(\"A\", true);
     return _jsx(A, {});
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = Object.assign({}, _provideComponents(), props.components);
+    const { wrapper: MDXLayout } = Object.assign({}, _provideComponents(), props.components);
     return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
         children: _jsx(_createMdxContent, props)
     })) : _createMdxContent(props);
@@ -105,7 +105,7 @@ fn jsx() -> Result<(), String> {
     return <></>;
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
 }
 export default MDXContent;
@@ -128,7 +128,7 @@ function _createMdxContent(props) {
     return React.createElement(React.Fragment);
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? React.createElement(MDXLayout, props, React.createElement(_createMdxContent, props)) : _createMdxContent(props);
 }
 export default MDXContent;
@@ -154,7 +154,7 @@ function _createMdxContent(props) {
     return _jsx(_Fragment, {});
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
         children: _jsx(_createMdxContent, props)
     })) : _createMdxContent(props);
@@ -182,7 +182,7 @@ function _createMdxContent(props) {
     return a.b(a.c);
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? a.b(MDXLayout, props, a.b(_createMdxContent, props)) : _createMdxContent(props);
 }
 export default MDXContent;
@@ -225,7 +225,7 @@ function _createMdxContent(props) {
     });
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
         children: _jsx(_createMdxContent, props)
     })) : _createMdxContent(props);
@@ -255,7 +255,7 @@ function _createMdxContent(props) {
     });
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
         children: _jsx(_createMdxContent, props)
     })) : _createMdxContent(props);
@@ -295,7 +295,7 @@ function _createMdxContent(props) {
     });
 }
 function MDXContent(props = {}) {
-    const { wrapper: MDXLayout  } = props.components || {};
+    const { wrapper: MDXLayout } = props.components || {};
     return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {
         children: _jsx(_createMdxContent, props)
     })) : _createMdxContent(props);
