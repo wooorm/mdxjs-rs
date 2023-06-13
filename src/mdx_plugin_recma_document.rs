@@ -484,7 +484,6 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
                     })),
                     right: Box::new(create_object_expression(vec![])),
                     span: swc_core::common::DUMMY_SP,
-                    type_ann: None,
                 }),
                 decorators: vec![],
                 span: swc_core::common::DUMMY_SP,
