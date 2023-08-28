@@ -869,7 +869,7 @@ fn create_import_provider(source: &str) -> ModuleItem {
         })],
         src: Box::new(create_str(source)),
         type_only: false,
-        asserts: None,
+        with: None,
         span: DUMMY_SP,
     }))
 }

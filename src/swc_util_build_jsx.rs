@@ -120,7 +120,7 @@ pub fn swc_util_build_jsx(
                     }
                 ))),
                 type_only: false,
-                asserts: None,
+                with: None,
                 span: swc_core::common::DUMMY_SP,
             })),
         );
