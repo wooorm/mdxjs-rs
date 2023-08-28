@@ -341,7 +341,7 @@ fn err_expression_broken_multiline_comment_b() {
 #[test]
 fn err_expression_broken_multiline_comment_c() {
     assert!(
-        matches!(compile("{/*a*/}", &Default::default()), Ok(_)),
+        compile("{/*a*/}", &Default::default()).is_ok(),
         "should support a valid multiline comment",
     );
 }
@@ -367,7 +367,7 @@ fn err_expression_broken_line_comment_b() {
 #[test]
 fn err_expression_broken_line_comment_c() {
     assert!(
-        matches!(compile("{//a\n}", &Default::default()), Ok(_)),
+        compile("{//a\n}", &Default::default()).is_ok(),
         "should support a valid line comment",
     );
 }
@@ -402,7 +402,7 @@ fn err_expression_multi() {
 #[test]
 fn err_expression_empty() {
     assert!(
-        matches!(compile("a {} b", &Default::default()), Ok(_)),
+        compile("a {} b", &Default::default()).is_ok(),
         "should support an empty expression",
     );
 }
@@ -410,7 +410,7 @@ fn err_expression_empty() {
 #[test]
 fn err_expression_comment() {
     assert!(
-        matches!(compile("a { /* b */ } c", &Default::default()), Ok(_)),
+        compile("a { /* b */ } c", &Default::default()).is_ok(),
         "should support a comment in an empty expression",
     );
 }
@@ -445,7 +445,7 @@ fn err_expression_value_comment() {
 #[test]
 fn err_expression_value_extra_comment() {
     assert!(
-        matches!(compile("<a b={1 /*c*/ } />", &Default::default()), Ok(_)),
+        compile("<a b={1 /*c*/ } />", &Default::default()).is_ok(),
         "should support a value expression with a comment",
     );
 }
@@ -498,7 +498,7 @@ fn err_expression_spread_invalid() {
 #[test]
 fn err_expression_spread_extra_comment() {
     assert!(
-        matches!(compile("<a {...b /*c*/ } />", &Default::default()), Ok(_)),
+        compile("<a {...b /*c*/ } />", &Default::default()).is_ok(),
         "should support a spread expression with a comment",
     );
 }
