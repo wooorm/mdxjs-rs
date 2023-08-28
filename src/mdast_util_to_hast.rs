@@ -554,7 +554,7 @@ fn transform_image(_state: &mut State, _node: &mdast::Node, image: &mdast::Image
 
 /// [`ImageReference`][mdast::ImageReference].
 fn transform_image_reference(
-    state: &mut State,
+    state: &State,
     _node: &mdast::Node,
     image_reference: &mdast::ImageReference,
 ) -> Result {
