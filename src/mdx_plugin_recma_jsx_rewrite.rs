@@ -463,7 +463,7 @@ impl<'a> State<'a> {
 
         // Add statements to functions.
         if !statements.is_empty() {
-            let mut body: &mut BlockStmt = match func {
+            let body: &mut BlockStmt = match func {
                 Func::Expr(expr) => {
                     // Always exists if we have components in it.
                     expr.function.body.as_mut().unwrap()

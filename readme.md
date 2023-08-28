@@ -144,7 +144,7 @@ The following bash scripts are useful when working on this project:
     ```
 *   format:
     ```sh
-    cargo fmt
+    cargo fmt && cargo clippy --examples --tests --benches --fix
     ```
 *   lint:
     ```sh
