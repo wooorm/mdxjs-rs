@@ -1373,7 +1373,7 @@ mod tests {
                             raw: Some("\'b\'".into()),
                         }),
                         type_only: false,
-                        asserts: None,
+                        with: None,
                         span: swc_core::common::DUMMY_SP,
                     }))],
                     span: swc_core::common::DUMMY_SP,

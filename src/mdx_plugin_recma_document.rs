@@ -160,7 +160,7 @@ pub fn mdx_plugin_recma_document(
                 },
             )),
             type_only: false,
-            asserts: None,
+            with: None,
             span: swc_core::common::DUMMY_SP,
         })));
     }
@@ -282,7 +282,7 @@ pub fn mdx_plugin_recma_document(
                             })],
                             src: source,
                             type_only: false,
-                            asserts: None,
+                            with: None,
                             span: swc_core::common::DUMMY_SP,
                         })));
                     }
