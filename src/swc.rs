@@ -215,9 +215,7 @@ pub fn serialize(module: &mut Module, comments: Option<&Vec<Comment>>) -> String
     let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
     {
         let mut emitter = Emitter {
-            cfg: swc_core::ecma::codegen::Config {
-                ..Default::default()
-            },
+            cfg: swc_core::ecma::codegen::Config::default(),
             cm: cm.clone(),
             comments: Some(&single_threaded_comments),
             wr: JsWriter::new(cm, "\n", &mut buf, None),
