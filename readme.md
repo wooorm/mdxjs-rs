@@ -144,11 +144,11 @@ The following bash scripts are useful when working on this project:
     ```
 *   format:
     ```sh
-    cargo fmt && cargo clippy --examples --tests --benches --fix
+    cargo fmt && cargo fix
     ```
 *   lint:
     ```sh
-    cargo fmt --check && cargo clippy --examples --tests --benches
+    cargo fmt --check && cargo clippy --all-targets
     ```
 *   test:
     ```sh
