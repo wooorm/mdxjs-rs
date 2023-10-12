@@ -1,6 +1,6 @@
 [package]
 name = "mdxjs"
-version = "0.1.17"
+version = "0.1.18"
 authors = ["Titus Wormer <tituswormer@gmail.com>"]
 edition = "2018"
 rust-version = "1.56"
