@@ -17,10 +17,10 @@ use swc_core::ecma::ast::{
     ArrowExpr, AssignPatProp, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Callee,
     CatchClause, ClassDecl, CondExpr, Decl, DoWhileStmt, Expr, ExprOrSpread, ExprStmt, FnDecl,
     FnExpr, ForInStmt, ForOfStmt, ForStmt, Function, IfStmt, ImportDecl, ImportNamedSpecifier,
-    ImportSpecifier, JSXElement, JSXElementName, KeyValuePatProp, KeyValueProp, MemberExpr,
-    MemberProp, ModuleDecl, ModuleExportName, ModuleItem, NewExpr, ObjectPat, ObjectPatProp, Param,
-    ParenExpr, Pat, Prop, PropOrSpread, ReturnStmt, Stmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl,
-    VarDeclKind, VarDeclarator, WhileStmt,
+    ImportPhase, ImportSpecifier, JSXElement, JSXElementName, KeyValuePatProp, KeyValueProp,
+    MemberExpr, MemberProp, ModuleDecl, ModuleExportName, ModuleItem, NewExpr, ObjectPat,
+    ObjectPatProp, Param, ParenExpr, Pat, Prop, PropOrSpread, ReturnStmt, Stmt, ThrowStmt,
+    UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
 };
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
@@ -870,6 +870,7 @@ fn create_import_provider(source: &str) -> ModuleItem {
         src: Box::new(create_str(source)),
         type_only: false,
         with: None,
+        phase: ImportPhase::default(),
         span: DUMMY_SP,
     }))
 }

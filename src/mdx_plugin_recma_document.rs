@@ -16,9 +16,9 @@ use markdown::{
 use swc_core::ecma::ast::{
     AssignPat, BindingIdent, BlockStmt, Callee, CondExpr, Decl, DefaultDecl, ExportDefaultExpr,
     ExportSpecifier, Expr, ExprOrSpread, FnDecl, Function, ImportDecl, ImportDefaultSpecifier,
-    ImportNamedSpecifier, ImportSpecifier, JSXAttrOrSpread, JSXClosingElement, JSXElement,
-    JSXElementChild, JSXElementName, JSXOpeningElement, ModuleDecl, ModuleExportName, ModuleItem,
-    Param, Pat, ReturnStmt, SpreadElement, Stmt, VarDecl, VarDeclKind, VarDeclarator,
+    ImportNamedSpecifier, ImportPhase, ImportSpecifier, JSXAttrOrSpread, JSXClosingElement,
+    JSXElement, JSXElementChild, JSXElementName, JSXOpeningElement, ModuleDecl, ModuleExportName,
+    ModuleItem, Param, Pat, ReturnStmt, SpreadElement, Stmt, VarDecl, VarDeclKind, VarDeclarator,
 };
 /// JSX runtimes (default: `JsxRuntime::Automatic`).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -161,6 +161,7 @@ pub fn mdx_plugin_recma_document(
             )),
             type_only: false,
             with: None,
+            phase: ImportPhase::default(),
             span: swc_core::common::DUMMY_SP,
         })));
     }
@@ -283,6 +284,7 @@ pub fn mdx_plugin_recma_document(
                             src: source,
                             type_only: false,
                             with: None,
+                            phase: ImportPhase::default(),
                             span: swc_core::common::DUMMY_SP,
                         })));
                     }

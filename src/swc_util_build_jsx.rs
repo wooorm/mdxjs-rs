@@ -16,7 +16,7 @@ use swc_core::common::{
     util::take::Take,
 };
 use swc_core::ecma::ast::{
-    ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, ImportDecl, ImportNamedSpecifier,
+    ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, ImportDecl, ImportNamedSpecifier, ImportPhase,
     ImportSpecifier, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXElement, JSXElementChild,
     JSXExpr, JSXFragment, KeyValueProp, Lit, ModuleDecl, ModuleExportName, ModuleItem, Prop,
     PropName, PropOrSpread, ThisExpr,
@@ -121,6 +121,7 @@ pub fn swc_util_build_jsx(
                 ))),
                 type_only: false,
                 with: None,
+                phase: ImportPhase::default(),
                 span: swc_core::common::DUMMY_SP,
             })),
         );

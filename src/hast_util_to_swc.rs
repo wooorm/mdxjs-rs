@@ -673,8 +673,8 @@ mod tests {
     use crate::swc::serialize;
     use pretty_assertions::assert_eq;
     use swc_core::ecma::ast::{
-        Ident, ImportDecl, ImportDefaultSpecifier, ImportSpecifier, JSXAttrName, JSXElementName,
-        ModuleDecl,
+        Ident, ImportDecl, ImportDefaultSpecifier, ImportPhase, ImportSpecifier, JSXAttrName,
+        JSXElementName, ModuleDecl,
     };
 
     #[test]
@@ -1374,6 +1374,7 @@ mod tests {
                         }),
                         type_only: false,
                         with: None,
+                        phase: ImportPhase::default(),
                         span: swc_core::common::DUMMY_SP,
                     }))],
                     span: swc_core::common::DUMMY_SP,
