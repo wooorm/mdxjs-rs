@@ -361,7 +361,7 @@ impl<'a> State<'a> {
                     } else {
                         // `MyComponent`
                         let prop = AssignPatProp {
-                            key: create_ident(&reference.name),
+                            key: create_ident(&reference.name).into(),
                             value: None,
                             span: DUMMY_SP,
                         };
