@@ -3,12 +3,14 @@
 //! Port of <https://github.com/mdx-js/mdx/blob/main/packages/mdx/lib/plugin/recma-document.js>,
 //! by the same author.
 
+use crate::error::ErrorKind;
 use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
     bytepos_to_point, create_call_expression, create_ident, create_ident_expression,
     create_null_expression, create_object_expression, create_str, position_opt_to_string,
     prefix_error_with_point, span_to_position,
 };
+use crate::Error;
 use markdown::{
     unist::{Point, Position},
     Location,
@@ -84,7 +86,7 @@ pub fn mdx_plugin_recma_document(
     program: &mut Program,
     options: &Options,
     location: Option<&Location>,
-) -> Result<(), String> {
+) -> Result<(), Error> {
     // New body children.
     let mut replacements = vec![];
 
@@ -199,12 +201,10 @@ pub fn mdx_plugin_recma_document(
                         replacements.push(create_layout_decl(Expr::Fn(func)));
                     }
                     DefaultDecl::TsInterfaceDecl(_) => {
-                        return Err(
-                            prefix_error_with_point(
-                                "Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component",
-                                bytepos_to_point(decl.span.lo, location).as_ref()
-                            )
-                        );
+                        return Err(prefix_error_with_point(
+                            ErrorKind::CannotExportTsInterfaceAsDefault.into(),
+                            bytepos_to_point(decl.span.lo, location).as_ref(),
+                        ));
                     }
                 }
             }
@@ -535,13 +535,13 @@ fn err_for_double_layout(
     layout: bool,
     previous: Option<&Position>,
     at: Option<&Point>,
-) -> Result<(), String> {
+) -> Result<(), Error> {
     if layout {
         Err(prefix_error_with_point(
-            &format!(
-                "Cannot specify multiple layouts (previous: {})",
-                position_opt_to_string(previous)
-            ),
+            ErrorKind::CannotSpecifyMultipleLayouts {
+                previous: previous.cloned(),
+            }
+            .into(),
             at,
         ))
     } else {
@@ -557,6 +557,7 @@ mod tests {
     use crate::mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions};
     use crate::swc::{parse_esm, parse_expression, serialize};
     use crate::swc_utils::create_bool_expression;
+    use crate::Error;
     use markdown::{to_mdast, ParseOptions};
     use pretty_assertions::assert_eq;
     use swc_core::ecma::ast::{
@@ -564,7 +565,7 @@ mod tests {
         JSXOpeningFragment, JSXText, Module, TsInterfaceBody, TsInterfaceDecl, WhileStmt,
     };
 
-    fn compile(value: &str) -> Result<String, String> {
+    fn compile(value: &str) -> Result<String, Error> {
         let location = Location::new(value.as_bytes());
         let mdast = to_mdast(
             value,
@@ -581,14 +582,16 @@ mod tests {
     }
 
     #[test]
-    fn small() -> Result<(), String> {
+    fn small() -> Result<(), Error> {
         assert_eq!(
             compile("# hi\n\nAlpha *bravo* **charlie**.")?,
             "function _createMdxContent(props) {
-    return <><h1>{\"hi\"}</h1>{\"\\n\"}<p>{\"Alpha \"}<em>{\"bravo\"}</em>{\" \"}<strong>{\"charlie\"}</strong>{\".\"}</p></>;
+    return <><h1>{\"hi\"}</h1>{\"\\n\"}<p>{\"Alpha \"}<em>{\"bravo\"}</em>{\" \
+             \"}<strong>{\"charlie\"}</strong>{\".\"}</p></>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -599,7 +602,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn import() -> Result<(), String> {
+    fn import() -> Result<(), Error> {
         assert_eq!(
             compile("import a from 'b'\n\n# {a}")?,
             "import a from 'b';
@@ -607,7 +610,8 @@ function _createMdxContent(props) {
     return <h1>{a}</h1>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -618,7 +622,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn export() -> Result<(), String> {
+    fn export() -> Result<(), Error> {
         assert_eq!(
             compile("export * from 'a'\n\n# b")?,
             "export * from 'a';
@@ -626,12 +630,13 @@ function _createMdxContent(props) {
     return <h1>{\"b\"}</h1>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
-        "should support an export all",
-    );
+            "should support an export all",
+        );
 
         assert_eq!(
             compile("export function a() {}")?,
@@ -640,7 +645,8 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -655,7 +661,8 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -666,7 +673,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn export_default() -> Result<(), String> {
+    fn export_default() -> Result<(), Error> {
         assert_eq!(
             compile("export default a")?,
             "const MDXLayout = a;
@@ -714,7 +721,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn named_exports() -> Result<(), String> {
+    fn named_exports() -> Result<(), Error> {
         assert_eq!(
             compile("export {a, b as default}")?,
             "export { a };
@@ -737,7 +744,8 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -751,7 +759,8 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -780,7 +789,8 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -794,7 +804,8 @@ function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -809,7 +820,8 @@ export default MDXContent;
         assert_eq!(
             compile("export default a = 1\n\nexport default b = 2")
                 .err()
-                .unwrap(),
+                .unwrap()
+                .to_string(),
             "3:1: Cannot specify multiple layouts (previous: 1:1-1:21)",
             "should crash on multiple layouts"
         );
@@ -825,40 +837,38 @@ export default MDXContent;
                     module: Module {
                         span: swc_core::common::DUMMY_SP,
                         shebang: None,
-                        body: vec![ModuleItem::ModuleDecl(
-                            ModuleDecl::ExportDefaultDecl(
-                                ExportDefaultDecl {
+                        body: vec![ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultDecl(
+                            ExportDefaultDecl {
+                                span: swc_core::common::DUMMY_SP,
+                                decl: DefaultDecl::TsInterfaceDecl(Box::new(TsInterfaceDecl {
                                     span: swc_core::common::DUMMY_SP,
-                                    decl: DefaultDecl::TsInterfaceDecl(Box::new(
-                                        TsInterfaceDecl {
-                                            span: swc_core::common::DUMMY_SP,
-                                            id: create_ident("a"),
-                                            declare: true,
-                                            type_params: None,
-                                            extends: vec![],
-                                            body: TsInterfaceBody {
-                                                span: swc_core::common::DUMMY_SP,
-                                                body: vec![]
-                                            }
-                                        }
-                                    ))
-                                }
-                            )
-                        )]
+                                    id: create_ident("a"),
+                                    declare: true,
+                                    type_params: None,
+                                    extends: vec![],
+                                    body: TsInterfaceBody {
+                                        span: swc_core::common::DUMMY_SP,
+                                        body: vec![]
+                                    }
+                                }))
+                            }
+                        ))]
                     }
                 },
                 &Options::default(),
                 None
             )
             .err()
-            .unwrap(),
-            "0:0: Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component",
+            .unwrap()
+            .to_string(),
+            "0:0: Cannot use TypeScript interface declarations as default export in MDX files. \
+             The default export is reserved for a layout, which must be a component",
             "should crash on a TypeScript default interface declaration"
         );
     }
 
     #[test]
-    fn statement_pass_through() -> Result<(), String> {
+    fn statement_pass_through() -> Result<(), Error> {
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -884,7 +894,8 @@ function _createMdxContent(props) {
     return null;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -895,7 +906,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn expression_pass_through() -> Result<(), String> {
+    fn expression_pass_through() -> Result<(), Error> {
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -918,7 +929,8 @@ function _createMdxContent(props) {
     return null;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -929,7 +941,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn fragment_non_element_single_child() -> Result<(), String> {
+    fn fragment_non_element_single_child() -> Result<(), Error> {
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -964,7 +976,8 @@ export default MDXContent;
     return <>a</>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -975,7 +988,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn element() -> Result<(), String> {
+    fn element() -> Result<(), Error> {
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -1015,7 +1028,8 @@ export default MDXContent;
     return <a>b</a>;
 }
 function MDXContent(props = {}) {
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+             _createMdxContent(props);
 }
 export default MDXContent;
 ",

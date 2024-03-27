@@ -2,8 +2,13 @@
 
 extern crate markdown;
 
-use crate::swc_utils::{
-    create_span, prefix_error_with_point, DropContext, RewritePrefixContext, RewriteStopsContext,
+use crate::{
+    error::ErrorKind,
+    swc_utils::{
+        create_span, prefix_error_with_point, DropContext, RewritePrefixContext,
+        RewriteStopsContext,
+    },
+    Error,
 };
 use markdown::{mdast::Stop, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
@@ -35,7 +40,7 @@ pub fn parse_esm_to_tree(
     value: &str,
     stops: &[Stop],
     location: Option<&Location>,
-) -> Result<Module, String> {
+) -> Result<Module, Error> {
     let result = parse_esm_core(value);
     let mut rewrite_context = RewriteStopsContext { stops, location };
 
@@ -49,19 +54,13 @@ pub fn parse_esm_to_tree(
 }
 
 /// Core to parse ESM.
-fn parse_esm_core(value: &str) -> Result<Module, (Span, String)> {
+fn parse_esm_core(value: &str) -> Result<Module, (Span, Error)> {
     let (file, syntax, version) = create_config(value.into());
     let mut errors = vec![];
     let result = parse_file_as_module(&file, syntax, version, None, &mut errors);
 
     match result {
-        Err(error) => Err((
-            fix_span(error.span(), 1),
-            format!(
-                "Could not parse esm with swc: {}",
-                swc_error_to_string(&error)
-            ),
-        )),
+        Err(error) => Err((fix_span(error.span(), 1), Error::from(error))),
         Ok(module) => {
             if errors.is_empty() {
                 let mut index = 0;
@@ -69,11 +68,7 @@ fn parse_esm_core(value: &str) -> Result<Module, (Span, String)> {
                     let node = &module.body[index];
 
                     if !node.is_module_decl() {
-                        return Err((
-                            fix_span(node.span(), 1),
-                            "Unexpected statement in code: only import/exports are supported"
-                                .into(),
-                        ));
+                        return Err((fix_span(node.span(), 1), ErrorKind::OnlyImportExport.into()));
                     }
 
                     index += 1;
@@ -83,10 +78,7 @@ fn parse_esm_core(value: &str) -> Result<Module, (Span, String)> {
             } else {
                 Err((
                     fix_span(errors[0].span(), 1),
-                    format!(
-                        "Could not parse esm with swc: {}",
-                        swc_error_to_string(&errors[0])
-                    ),
+                    Error::from(errors[0].clone()),
                 ))
             }
         }
@@ -96,7 +88,7 @@ fn parse_esm_core(value: &str) -> Result<Module, (Span, String)> {
 fn parse_expression_core(
     value: &str,
     kind: &MdxExpressionKind,
-) -> Result<Option<Box<Expr>>, (Span, String)> {
+) -> Result<Option<Box<Expr>>, (Span, Error)> {
     // Empty expressions are OK.
     if matches!(kind, MdxExpressionKind::Expression) && whitespace_and_comments(0, value).is_ok() {
         return Ok(None);
@@ -118,10 +110,7 @@ fn parse_expression_core(
     match result {
         Err(error) => Err((
             fix_span(error.span(), prefix.len() + 1),
-            format!(
-                "Could not parse expression with swc: {}",
-                swc_error_to_string(&error)
-            ),
+            Error::from(ErrorKind::Parser(error)),
         )),
         Ok(mut expr) => {
             if errors.is_empty() {
@@ -140,7 +129,10 @@ fn parse_expression_core(
                     if let Expr::Paren(d) = *expr {
                         if let Expr::Object(mut obj) = *d.expr {
                             if obj.props.len() > 1 {
-                                return Err((obj.span, "Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`)".into()));
+                                return Err((
+                                    obj.span,
+                                    ErrorKind::UnexpectedExtraContentInSpread.into(),
+                                ));
                             }
 
                             if let Some(PropOrSpread::Spread(d)) = obj.props.pop() {
@@ -149,20 +141,14 @@ fn parse_expression_core(
                         }
                     };
 
-                    return Err((
-                        expr_span,
-                        "Unexpected prop in spread (such as `{x}`): only a spread is supported (such as `{...x}`)".into(),
-                    ));
+                    return Err((expr_span, ErrorKind::UnexpectedPropertyInSpread.into()));
                 }
 
                 Ok(Some(expr))
             } else {
                 Err((
                     fix_span(errors[0].span(), prefix.len() + 1),
-                    format!(
-                        "Could not parse expression with swc: {}",
-                        swc_error_to_string(&errors[0])
-                    ),
+                    Error::from(ErrorKind::Parser(errors[0].clone())),
                 ))
             }
         }
@@ -174,7 +160,7 @@ pub fn parse_expression(value: &str, kind: &MdxExpressionKind) -> MdxSignal {
     let result = parse_expression_core(value, kind);
 
     match result {
-        Err((span, message)) => swc_error_to_signal(span, &message, value.len()),
+        Err((span, message)) => swc_error_to_signal(span, message, value.len()),
         Ok(_) => MdxSignal::Ok,
     }
 }
@@ -185,12 +171,12 @@ pub fn parse_expression_to_tree(
     kind: &MdxExpressionKind,
     stops: &[Stop],
     location: Option<&Location>,
-) -> Result<Option<Box<Expr>>, String> {
+) -> Result<Option<Box<Expr>>, Error> {
     let result = parse_expression_core(value, kind);
     let mut rewrite_context = RewriteStopsContext { stops, location };
 
     match result {
-        Err((span, reason)) => Err(swc_error_to_error(span, &reason, &rewrite_context)),
+        Err((span, reason)) => Err(swc_error_to_error(span, reason, &rewrite_context)),
         Ok(expr_opt) => {
             if let Some(mut expr) = expr_opt {
                 expr.visit_mut_with(&mut rewrite_context);
@@ -249,18 +235,20 @@ pub fn flat_comments(single_threaded_comments: SingleThreadedComments) -> Vec<Co
 ///
 /// * If the error happens at `value_len`, yields `MdxSignal::Eof`
 /// * Else, yields `MdxSignal::Error`.
-fn swc_error_to_signal(span: Span, reason: &str, value_len: usize) -> MdxSignal {
+fn swc_error_to_signal(span: Span, reason: Error, value_len: usize) -> MdxSignal {
     let error_end = span.hi.to_usize();
 
     if error_end >= value_len {
         MdxSignal::Eof(reason.into())
     } else {
-        MdxSignal::Error(reason.into(), span.lo.to_usize())
+        crate::error::set_error(crate::Error::from(reason));
+
+        MdxSignal::Error(String::new(), span.lo.to_usize())
     }
 }
 
 /// Turn an SWC error into a flat error.
-fn swc_error_to_error(span: Span, reason: &str, context: &RewriteStopsContext) -> String {
+fn swc_error_to_error(span: Span, reason: Error, context: &RewriteStopsContext) -> Error {
     let point = context
         .location
         .and_then(|location| location.relative_to_point(context.stops, span.lo.to_usize()));
@@ -278,7 +266,7 @@ fn swc_error_to_string(error: &SwcError) -> String {
 /// This is needed because for expressions, we use an API that parses up to
 /// a valid expression, but there may be more expressions after it, which we
 /// don’t alow.
-fn whitespace_and_comments(mut index: usize, value: &str) -> Result<(), (Span, String)> {
+fn whitespace_and_comments(mut index: usize, value: &str) -> Result<(), (Span, Error)> {
     let bytes = value.as_bytes();
     let len = bytes.len();
     let mut in_multiline = false;
@@ -316,7 +304,7 @@ fn whitespace_and_comments(mut index: usize, value: &str) -> Result<(), (Span, S
         else {
             return Err((
                 create_span(index as u32, value.len() as u32),
-                "Could not parse expression with swc: Unexpected content after expression".into(),
+                ErrorKind::UnexpectedContentAfterExpr.into(),
             ));
         }
 
@@ -325,13 +313,22 @@ fn whitespace_and_comments(mut index: usize, value: &str) -> Result<(), (Span, S
 
     if in_multiline {
         return Err((
-            create_span(index as u32, value.len() as u32), "Could not parse expression with swc: Unexpected unclosed multiline comment, expected closing: `*/`".into()));
+            create_span(index as u32, value.len() as u32),
+            "Could not parse expression with swc: Unexpected unclosed multiline comment, expected \
+             closing: `*/`"
+                .into(),
+        ));
     }
 
     if in_line {
         // EOF instead of EOL is specifically not allowed, because that would
         // mean the closing brace is on the commented-out line
-        return Err((create_span(index as u32, value.len() as u32), "Could not parse expression with swc: Unexpected unclosed line comment, expected line ending: `\\n`".into()));
+        return Err((
+            create_span(index as u32, value.len() as u32),
+            "Could not parse expression with swc: Unexpected unclosed line comment, expected line \
+             ending: `\\n`"
+                .into(),
+        ));
     }
 
     Ok(())

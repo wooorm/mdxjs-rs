@@ -16,6 +16,8 @@ use swc_core::ecma::ast::{
 };
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut};
 
+use crate::Error;
+
 /// Turn a unist position, into an SWC span, of two byte positions.
 ///
 /// > 👉 **Note**: SWC byte positions are offset by one: they are `0` when they
@@ -78,8 +80,9 @@ pub fn bytepos_to_point(bytepos: BytePos, location: Option<&Location>) -> Option
 }
 
 /// Prefix an error message with an optional point.
-pub fn prefix_error_with_point(reason: &str, point: Option<&Point>) -> String {
-    format!("{}: {}", point_opt_to_string(point), reason)
+pub fn prefix_error_with_point(mut reason: Error, point: Option<&Point>) -> Error {
+    reason.point = point.cloned();
+    reason
 }
 
 /// Serialize a unist position for humans.
