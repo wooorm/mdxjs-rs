@@ -32,9 +32,9 @@ impl From<Cow<'_, str>> for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(point) = &self.point {
-            write!(f, "{}:{} ", point.line, point.column)?;
+            write!(f, "{}:{}: ", point.line, point.column)?;
         } else {
-            write!(f, "0:0 ")?;
+            write!(f, "0:0: ")?;
         }
 
         write!(f, "{}", self.msg)
