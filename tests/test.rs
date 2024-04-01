@@ -1,5 +1,5 @@
 extern crate mdxjs;
-use mdxjs::{compile, JsxRuntime, Options};
+use mdxjs::{compile, error::Error, JsxRuntime, Options};
 use pretty_assertions::assert_eq;
 
 #[test]
