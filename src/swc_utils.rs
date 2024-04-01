@@ -665,7 +665,7 @@ mod tests {
     #[test]
     fn prefix_error_with_point_test() {
         assert_eq!(
-            prefix_error_with_point("aaa", None),
+            prefix_error_with_point("aaa", None).to_string(),
             "0:0: aaa",
             "should support no point"
         );

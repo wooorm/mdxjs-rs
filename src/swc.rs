@@ -2,23 +2,31 @@
 
 extern crate markdown;
 
-use crate::swc_utils::{
-    create_span, prefix_error_with_point, DropContext, RewritePrefixContext, RewriteStopsContext,
+use crate::{
+    error::Error,
+    swc_utils::{
+        create_span, prefix_error_with_point, DropContext, RewritePrefixContext,
+        RewriteStopsContext,
+    },
 };
 use markdown::{mdast::Stop, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
-use swc_core::common::{
-    comments::{Comment, Comments, SingleThreadedComments, SingleThreadedCommentsMap},
-    source_map::Pos,
-    sync::Lrc,
-    BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Span, Spanned,
+use swc_core::{
+    common::{
+        comments::{Comment, Comments, SingleThreadedComments, SingleThreadedCommentsMap},
+        source_map::Pos,
+        sync::Lrc,
+        BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Span, Spanned,
+    },
+    ecma::{
+        ast::{EsVersion, Expr, Module, PropOrSpread},
+        codegen::{text_writer::JsWriter, Emitter},
+        parser::{
+            error::Error as SwcError, parse_file_as_expr, parse_file_as_module, EsConfig, Syntax,
+        },
+        visit::VisitMutWith,
+    },
 };
-use swc_core::ecma::ast::{EsVersion, Expr, Module, PropOrSpread};
-use swc_core::ecma::codegen::{text_writer::JsWriter, Emitter};
-use swc_core::ecma::parser::{
-    error::Error as SwcError, parse_file_as_expr, parse_file_as_module, EsConfig, Syntax,
-};
-use swc_core::ecma::visit::VisitMutWith;
 
 /// Lex ESM in MDX with SWC.
 pub fn parse_esm(value: &str) -> MdxSignal {
@@ -35,7 +43,7 @@ pub fn parse_esm_to_tree(
     value: &str,
     stops: &[Stop],
     location: Option<&Location>,
-) -> Result<Module, String> {
+) -> Result<Module, Error> {
     let result = parse_esm_core(value);
     let mut rewrite_context = RewriteStopsContext { stops, location };
 
@@ -140,7 +148,12 @@ fn parse_expression_core(
                     if let Expr::Paren(d) = *expr {
                         if let Expr::Object(mut obj) = *d.expr {
                             if obj.props.len() > 1 {
-                                return Err((obj.span, "Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`)".into()));
+                                return Err((
+                                    obj.span,
+                                    "Unexpected extra content in spread (such as `{...x,y}`): \
+                                     only a single spread is supported (such as `{...x}`)"
+                                        .into(),
+                                ));
                             }
 
                             if let Some(PropOrSpread::Spread(d)) = obj.props.pop() {
@@ -151,7 +164,9 @@ fn parse_expression_core(
 
                     return Err((
                         expr_span,
-                        "Unexpected prop in spread (such as `{x}`): only a spread is supported (such as `{...x}`)".into(),
+                        "Unexpected prop in spread (such as `{x}`): only a spread is supported \
+                         (such as `{...x}`)"
+                            .into(),
                     ));
                 }
 
@@ -260,7 +275,7 @@ fn swc_error_to_signal(span: Span, reason: &str, value_len: usize) -> MdxSignal 
 }
 
 /// Turn an SWC error into a flat error.
-fn swc_error_to_error(span: Span, reason: &str, context: &RewriteStopsContext) -> String {
+fn swc_error_to_error(span: Span, reason: &str, context: &RewriteStopsContext) -> Error {
     let point = context
         .location
         .and_then(|location| location.relative_to_point(context.stops, span.lo.to_usize()));
@@ -325,13 +340,22 @@ fn whitespace_and_comments(mut index: usize, value: &str) -> Result<(), (Span, S
 
     if in_multiline {
         return Err((
-            create_span(index as u32, value.len() as u32), "Could not parse expression with swc: Unexpected unclosed multiline comment, expected closing: `*/`".into()));
+            create_span(index as u32, value.len() as u32),
+            "Could not parse expression with swc: Unexpected unclosed multiline comment, expected \
+             closing: `*/`"
+                .into(),
+        ));
     }
 
     if in_line {
         // EOF instead of EOL is specifically not allowed, because that would
         // mean the closing brace is on the commented-out line
-        return Err((create_span(index as u32, value.len() as u32), "Could not parse expression with swc: Unexpected unclosed line comment, expected line ending: `\\n`".into()));
+        return Err((
+            create_span(index as u32, value.len() as u32),
+            "Could not parse expression with swc: Unexpected unclosed line comment, expected line \
+             ending: `\\n`"
+                .into(),
+        ));
     }
 
     Ok(())

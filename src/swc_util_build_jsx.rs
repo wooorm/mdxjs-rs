@@ -1381,7 +1381,8 @@ _jsx(\"a\", {
         assert_eq!(
             swc_util_build_jsx(&mut program, &Options::default(), None)
                 .err()
-                .unwrap(),
+                .unwrap()
+                .to_string(),
             "0:0: Unexpected spread child, which is not supported in Babel, SWC, or React",
             "should not support a spread child"
         );
@@ -1514,7 +1515,8 @@ _jsx(\"a\", {
         assert_eq!(
             compile("<a {...b} key='c' />", &Options::default())
                 .err()
-                .unwrap(),
+                .unwrap()
+                .to_string(),
             "1:11: Expected `key` to come before any spread expressions",
             "should crash on a key after a spread in the automatic runtime"
         );
