@@ -791,6 +791,7 @@ fn jsx_text_to_value(value: &str) -> String {
 mod tests {
     use super::*;
     use crate::{
+        error::Error,
         hast_util_to_swc::Program,
         swc::{flat_comments, serialize},
     };

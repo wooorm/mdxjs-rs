@@ -4,6 +4,7 @@
 //! by the same author.
 
 use crate::{
+    error::Error,
     hast_util_to_swc::Program,
     swc_utils::{
         bytepos_to_point, create_call_expression, create_ident, create_ident_expression,

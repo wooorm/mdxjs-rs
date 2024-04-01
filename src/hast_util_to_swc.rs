@@ -670,6 +670,7 @@ const PROP_TO_ATTR_EXCEPTIONS_SHARED: [(&str, &str); 48] = [
 mod tests {
     use super::*;
     use crate::{
+        error::Error,
         hast,
         hast_util_to_swc::{hast_util_to_swc, Program},
         markdown::mdast,
