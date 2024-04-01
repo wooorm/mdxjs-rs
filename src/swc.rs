@@ -200,7 +200,7 @@ pub fn parse_expression_to_tree(
     kind: &MdxExpressionKind,
     stops: &[Stop],
     location: Option<&Location>,
-) -> Result<Option<Box<Expr>>, String> {
+) -> Result<Option<Box<Expr>>, Error> {
     let result = parse_expression_core(value, kind);
     let mut rewrite_context = RewriteStopsContext { stops, location };
 
