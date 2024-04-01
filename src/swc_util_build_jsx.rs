@@ -184,7 +184,7 @@ impl<'a> State<'a> {
     fn jsx_attribute_value_to_expression(
         &mut self,
         value: Option<JSXAttrValue>,
-    ) -> Result<Expr, String> {
+    ) -> Result<Expr, Error> {
         match value {
             // Boolean prop.
             None => Ok(create_bool_expression(true)),
@@ -256,7 +256,7 @@ impl<'a> State<'a> {
         &mut self,
         attributes: Option<Vec<JSXAttrOrSpread>>,
         children: Option<Vec<Expr>>,
-    ) -> Result<(Option<Expr>, Option<Expr>), String> {
+    ) -> Result<(Option<Expr>, Option<Expr>), Error> {
         let mut objects = vec![];
         let mut fields = vec![];
         let mut spread = false;
@@ -382,7 +382,7 @@ impl<'a> State<'a> {
         name: Expr,
         attributes: Option<Vec<JSXAttrOrSpread>>,
         mut children: Vec<Expr>,
-    ) -> Result<Expr, String> {
+    ) -> Result<Expr, Error> {
         let (callee, parameters) = if self.automatic {
             let is_static_children = children.len() > 1;
             let (props, key) = self.jsx_attributes_to_expressions(attributes, Some(children))?;
@@ -556,7 +556,7 @@ impl<'a> State<'a> {
     }
 
     /// Turn a JSX element into an expression.
-    fn jsx_element_to_expression(&mut self, element: JSXElement) -> Result<Expr, String> {
+    fn jsx_element_to_expression(&mut self, element: JSXElement) -> Result<Expr, Error> {
         let children = self.jsx_children_to_expressions(element.children)?;
         let mut name = jsx_element_name_to_expression(element.opening.name);
 
@@ -573,7 +573,7 @@ impl<'a> State<'a> {
     }
 
     /// Turn a JSX fragment into an expression.
-    fn jsx_fragment_to_expression(&mut self, fragment: JSXFragment) -> Result<Expr, String> {
+    fn jsx_fragment_to_expression(&mut self, fragment: JSXFragment) -> Result<Expr, Error> {
         let name = if self.automatic {
             self.import_fragment = true;
             create_ident_expression("_Fragment")
@@ -621,7 +621,7 @@ impl<'a> VisitMut for State<'a> {
 fn find_directives(
     comments: &Vec<Comment>,
     location: Option<&Location>,
-) -> Result<Directives, String> {
+) -> Result<Directives, Error> {
     let mut directives = Directives::default();
 
     for comment in comments {
@@ -903,7 +903,8 @@ mod tests {
                 &Options::default()
             )
             .err()
-            .unwrap(),
+            .unwrap()
+            .to_string(),
             "1:1: Runtime must be either `automatic` or `classic`, not unknown",
             "should crash on a non-automatic, non-classic `@jsxRuntime` directive"
         );
