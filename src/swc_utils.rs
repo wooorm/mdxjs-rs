@@ -8,13 +8,19 @@ use markdown::{
     Location,
 };
 
-use swc_core::common::{BytePos, Span, SyntaxContext, DUMMY_SP};
-use swc_core::ecma::ast::{
-    BinExpr, BinaryOp, Bool, CallExpr, Callee, ComputedPropName, Expr, ExprOrSpread, Ident,
-    JSXAttrName, JSXElementName, JSXMemberExpr, JSXNamespacedName, JSXObject, Lit, MemberExpr,
-    MemberProp, Null, Number, ObjectLit, PropName, PropOrSpread, Str,
+use swc_core::{
+    common::{BytePos, Span, SyntaxContext, DUMMY_SP},
+    ecma::{
+        ast::{
+            BinExpr, BinaryOp, Bool, CallExpr, Callee, ComputedPropName, Expr, ExprOrSpread, Ident,
+            JSXAttrName, JSXElementName, JSXMemberExpr, JSXNamespacedName, JSXObject, Lit,
+            MemberExpr, MemberProp, Null, Number, ObjectLit, PropName, PropOrSpread, Str,
+        },
+        visit::{noop_visit_mut_type, VisitMut},
+    },
 };
-use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut};
+
+use crate::error::Error;
 
 /// Turn a unist position, into an SWC span, of two byte positions.
 ///
@@ -78,8 +84,11 @@ pub fn bytepos_to_point(bytepos: BytePos, location: Option<&Location>) -> Option
 }
 
 /// Prefix an error message with an optional point.
-pub fn prefix_error_with_point(reason: &str, point: Option<&Point>) -> String {
-    format!("{}: {}", point_opt_to_string(point), reason)
+pub fn prefix_error_with_point(reason: &str, point: Option<&Point>) -> Error {
+    Error {
+        msg: reason.to_string(),
+        point: point.cloned(),
+    }
 }
 
 /// Serialize a unist position for humans.
@@ -630,7 +639,7 @@ pub fn inter_element_whitespace(value: &str) -> bool {
 
     while index < bytes.len() {
         match bytes[index] {
-            b'\t' | 0x0C | b'\r' | b'\n' | b' ' => {}
+            b'\t' | 0x0c | b'\r' | b'\n' | b' ' => {}
             _ => return false,
         }
         index += 1;

@@ -1,6 +1,6 @@
 use markdown::unist::Point;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Error {
     pub msg: String,
     pub point: Option<Point>,

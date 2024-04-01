@@ -156,7 +156,7 @@ struct State<'a> {
     /// Location info.
     location: Option<&'a Location>,
     /// Whether walking the tree produced an error.
-    error: Option<String>,
+    error: Option<Error>,
     /// Path to file.
     filepath: Option<String>,
     /// Whether the user is in development mode.
