@@ -3,7 +3,7 @@ use mdxjs::{compile, JsxRuntime, Options};
 use pretty_assertions::assert_eq;
 
 #[test]
-fn simple() -> Result<(), String> {
+fn simple() -> Result<(), Error> {
     assert_eq!(
         compile("", &Options::default())?,
         "import { Fragment as _Fragment, jsx as _jsx } from \"react/jsx-runtime\";
@@ -25,13 +25,16 @@ export default MDXContent;
 }
 
 #[test]
-fn development() -> Result<(), String> {
+fn development() -> Result<(), Error> {
     assert_eq!(
-        compile("<A />", &Options {
-            development: true,
-            filepath: Some("example.mdx".into()),
-            ..Default::default()
-        })?,
+        compile(
+            "<A />",
+            &Options {
+                development: true,
+                filepath: Some("example.mdx".into()),
+                ..Default::default()
+            }
+        )?,
         "import { jsxDEV as _jsxDEV } from \"react/jsx-dev-runtime\";
 function _createMdxContent(props) {
     const { A } = props.components || {};
@@ -54,7 +57,9 @@ function MDXContent(props = {}) {
 }
 export default MDXContent;
 function _missingMdxReference(id, component, place) {
-    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\" + (place ? \"\\nIt’s referenced in your code at `\" + place + \"` in `example.mdx`\" : \"\"));
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` \
+         to be defined: you likely forgot to import, pass, or provide it.\" + (place ? \"\\nIt’s \
+         referenced in your code at `\" + place + \"` in `example.mdx`\" : \"\"));
 }
 ",
         "should support `options.development: true`",
@@ -64,12 +69,15 @@ function _missingMdxReference(id, component, place) {
 }
 
 #[test]
-fn provider() -> Result<(), String> {
+fn provider() -> Result<(), Error> {
     assert_eq!(
-        compile("<A />",  &Options {
-            provider_import_source: Some("@mdx-js/react".into()),
-            ..Default::default()
-        })?,
+        compile(
+            "<A />",
+            &Options {
+                provider_import_source: Some("@mdx-js/react".into()),
+                ..Default::default()
+            }
+        )?,
         "import { jsx as _jsx } from \"react/jsx-runtime\";
 import { useMDXComponents as _provideComponents } from \"@mdx-js/react\";
 function _createMdxContent(props) {
@@ -85,7 +93,8 @@ function MDXContent(props = {}) {
 }
 export default MDXContent;
 function _missingMdxReference(id, component) {
-    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` to be defined: you likely forgot to import, pass, or provide it.\");
+    throw new Error(\"Expected \" + (component ? \"component\" : \"object\") + \" `\" + id + \"` \
+         to be defined: you likely forgot to import, pass, or provide it.\");
 }
 ",
         "should support `options.provider_import_source`",
@@ -95,18 +104,22 @@ function _missingMdxReference(id, component) {
 }
 
 #[test]
-fn jsx() -> Result<(), String> {
+fn jsx() -> Result<(), Error> {
     assert_eq!(
-        compile("", &Options {
-            jsx: true,
-            ..Default::default()
-        })?,
+        compile(
+            "",
+            &Options {
+                jsx: true,
+                ..Default::default()
+            }
+        )?,
         "function _createMdxContent(props) {
     return <></>;
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout } = props.components || {};
-    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : _createMdxContent(props);
+    return MDXLayout ? <MDXLayout {...props}><_createMdxContent {...props}/></MDXLayout> : \
+         _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -117,19 +130,23 @@ export default MDXContent;
 }
 
 #[test]
-fn classic() -> Result<(), String> {
+fn classic() -> Result<(), Error> {
     assert_eq!(
-        compile("", &Options {
-            jsx_runtime: Some(JsxRuntime::Classic),
-            ..Default::default()
-        })?,
+        compile(
+            "",
+            &Options {
+                jsx_runtime: Some(JsxRuntime::Classic),
+                ..Default::default()
+            }
+        )?,
         "import React from \"react\";
 function _createMdxContent(props) {
     return React.createElement(React.Fragment);
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout } = props.components || {};
-    return MDXLayout ? React.createElement(MDXLayout, props, React.createElement(_createMdxContent, props)) : _createMdxContent(props);
+    return MDXLayout ? React.createElement(MDXLayout, props, \
+         React.createElement(_createMdxContent, props)) : _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -140,7 +157,7 @@ export default MDXContent;
 }
 
 #[test]
-fn import_source() -> Result<(), String> {
+fn import_source() -> Result<(), Error> {
     assert_eq!(
         compile(
             "",
@@ -168,22 +185,26 @@ export default MDXContent;
 }
 
 #[test]
-fn pragmas() -> Result<(), String> {
+fn pragmas() -> Result<(), Error> {
     assert_eq!(
-        compile("", &Options {
-            jsx_runtime: Some(JsxRuntime::Classic),
-            pragma: Some("a.b".into()),
-            pragma_frag: Some("a.c".into()),
-            pragma_import_source: Some("d".into()),
-            ..Default::default()
-        })?,
+        compile(
+            "",
+            &Options {
+                jsx_runtime: Some(JsxRuntime::Classic),
+                pragma: Some("a.b".into()),
+                pragma_frag: Some("a.c".into()),
+                pragma_import_source: Some("d".into()),
+                ..Default::default()
+            }
+        )?,
         "import a from \"d\";
 function _createMdxContent(props) {
     return a.b(a.c);
 }
 function MDXContent(props = {}) {
     const { wrapper: MDXLayout } = props.components || {};
-    return MDXLayout ? a.b(MDXLayout, props, a.b(_createMdxContent, props)) : _createMdxContent(props);
+    return MDXLayout ? a.b(MDXLayout, props, a.b(_createMdxContent, props)) : \
+         _createMdxContent(props);
 }
 export default MDXContent;
 ",
@@ -194,7 +215,7 @@ export default MDXContent;
 }
 
 #[test]
-fn unravel_elements() -> Result<(), String> {
+fn unravel_elements() -> Result<(), Error> {
     assert_eq!(
         compile(
             "<x>a</x>
@@ -239,7 +260,7 @@ export default MDXContent;
 }
 
 #[test]
-fn unravel_expressions() -> Result<(), String> {
+fn unravel_expressions() -> Result<(), Error> {
     assert_eq!(
         compile("{1} {2}", &Default::default())?,
         "import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from \"react/jsx-runtime\";
@@ -269,7 +290,7 @@ export default MDXContent;
 }
 
 #[test]
-fn explicit_jsx() -> Result<(), String> {
+fn explicit_jsx() -> Result<(), Error> {
     assert_eq!(
         compile(
             "<h1>asd</h1>
@@ -350,7 +371,11 @@ fn err_expression_broken_multiline_comment_c() {
 fn err_expression_broken_line_comment_a() {
     assert_eq!(
         compile("{x//}", &Default::default()),
-        Err("1:6: Could not parse expression with swc: Unexpected unclosed line comment, expected line ending: `\\n`".into()),
+        Err(
+            "1:6: Could not parse expression with swc: Unexpected unclosed line comment, expected \
+             line ending: `\\n`"
+                .into()
+        ),
         "should crash on an unclosed line comment after an expression",
     );
 }
@@ -454,7 +479,11 @@ fn err_expression_value_extra_comment() {
 fn err_expression_spread_none() {
     assert_eq!(
         compile("<a {x} />", &Default::default()),
-        Err("1:5: Unexpected prop in spread (such as `{x}`): only a spread is supported (such as `{...x}`)".into()),
+        Err(
+            "1:5: Unexpected prop in spread (such as `{x}`): only a spread is supported (such as \
+             `{...x}`)"
+                .into()
+        ),
         "should crash on a non-spread",
     );
 }
@@ -472,7 +501,11 @@ fn err_expression_spread_multi_1() {
 fn err_expression_spread_multi_2() {
     assert_eq!(
         compile("<a {...x, y} />", &Default::default()),
-        Err("1:5: Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`)".into()),
+        Err(
+            "1:5: Unexpected extra content in spread (such as `{...x,y}`): only a single spread \
+             is supported (such as `{...x}`)"
+                .into()
+        ),
         "should crash on more content after a (spread) expression (2)",
     );
 }

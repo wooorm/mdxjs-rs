@@ -1,8 +1,10 @@
 extern crate mdxjs;
 
+use mdxjs::error::Error;
+
 /// Example that compiles the example MDX document from <https://mdxjs.com>
 /// to JavaScript.
-fn main() -> Result<(), String> {
+fn main() -> Result<(), Error> {
     println!(
         "{}",
         mdxjs::compile(
