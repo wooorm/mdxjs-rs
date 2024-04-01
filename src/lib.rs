@@ -2,8 +2,7 @@
 //!
 //! This module exposes primarily [`compile()`][].
 //!
-//! *   [`compile()`][]
-//!     — turn MDX into JavaScript
+//! * [`compile()`][] — turn MDX into JavaScript
 #![deny(clippy::pedantic)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::too_many_lines)]
@@ -13,6 +12,7 @@
 
 extern crate markdown;
 mod configuration;
+pub mod error;
 mod hast;
 mod hast_util_to_swc;
 mod mdast_util_to_hast;
@@ -23,6 +23,7 @@ mod swc_util_build_jsx;
 mod swc_utils;
 
 use crate::{
+    error::Error,
     hast_util_to_swc::hast_util_to_swc,
     mdast_util_to_hast::mdast_util_to_hast,
     mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions},
@@ -32,8 +33,10 @@ use crate::{
 };
 use markdown::{to_mdast, Constructs, Location, ParseOptions};
 
-pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
-pub use crate::mdx_plugin_recma_document::JsxRuntime;
+pub use crate::{
+    configuration::{MdxConstructs, MdxParseOptions, Options},
+    mdx_plugin_recma_document::JsxRuntime,
+};
 
 /// Turn MDX into JavaScript.
 ///
@@ -52,7 +55,7 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 ///
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
-pub fn compile(value: &str, options: &Options) -> Result<String, String> {
+pub fn compile(value: &str, options: &Options) -> Result<String, Error> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,
