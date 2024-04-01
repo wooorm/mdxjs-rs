@@ -1,6 +1,7 @@
 //! Turn JSX into function calls.
 
 use crate::{
+    error::Error,
     hast_util_to_swc::Program,
     mdx_plugin_recma_document::JsxRuntime,
     swc_utils::{

@@ -1010,6 +1010,7 @@ fn is_props_receiving_fn(name: &Option<String>) -> bool {
 mod tests {
     use super::*;
     use crate::{
+        error::Error,
         hast_util_to_swc::hast_util_to_swc,
         mdast_util_to_hast::mdast_util_to_hast,
         mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions},
