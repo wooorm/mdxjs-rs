@@ -213,7 +213,7 @@ impl<'a> State<'a> {
     fn jsx_children_to_expressions(
         &mut self,
         mut children: Vec<JSXElementChild>,
-    ) -> Result<Vec<Expr>, String> {
+    ) -> Result<Vec<Expr>, Error> {
         let mut result = vec![];
         children.reverse();
         while let Some(child) = children.pop() {

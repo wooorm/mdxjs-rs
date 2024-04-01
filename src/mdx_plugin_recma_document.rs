@@ -825,7 +825,8 @@ export default MDXContent;
         assert_eq!(
             compile("export default a = 1\n\nexport default b = 2")
                 .err()
-                .unwrap(),
+                .unwrap()
+                .to_string(),
             "3:1: Cannot specify multiple layouts (previous: 1:1-1:21)",
             "should crash on multiple layouts"
         );
@@ -863,7 +864,8 @@ export default MDXContent;
                 None
             )
             .err()
-            .unwrap(),
+            .unwrap()
+            .to_string(),
             "0:0: Cannot use TypeScript interface declarations as default export in MDX files. \
              The default export is reserved for a layout, which must be a component",
             "should crash on a TypeScript default interface declaration"
