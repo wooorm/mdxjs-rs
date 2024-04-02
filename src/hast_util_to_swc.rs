@@ -1244,7 +1244,8 @@ mod tests {
                 }),
                 None,
                 None
-            ),
+            )
+            .map_err(|err| err.to_string()),
             Err("0:0: Could not parse expression with swc: Unexpected eof".into()),
             "should support an `MdxElement` (element, attribute w/ broken expression value)",
         );
@@ -1412,7 +1413,8 @@ mod tests {
                 }),
                 None,
                 None
-            ),
+            )
+            .map_err(|err| err.to_string()),
             Err(
                 "0:0: Could not parse esm with swc: Expected 'from', got 'numeric literal (1, 1)'"
                     .into()
