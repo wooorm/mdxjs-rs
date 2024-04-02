@@ -43,6 +43,7 @@ pub use crate::{
 /// ## Examples
 ///
 /// ```
+/// # use mdxjs::Error;
 /// use mdxjs::compile;
 /// # fn main() -> Result<(), Error> {
 ///

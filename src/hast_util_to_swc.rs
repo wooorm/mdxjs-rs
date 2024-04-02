@@ -1285,7 +1285,8 @@ mod tests {
                 }),
                 None,
                 None
-            ),
+            )
+            .map_err(|err| err.to_string()),
             Err(
                 "0:0: Unexpected extra content in spread (such as `{...x,y}`): only a single \
                  spread is supported (such as `{...x}`)"
