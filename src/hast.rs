@@ -5,7 +5,9 @@
 
 extern crate alloc;
 extern crate markdown;
-pub use markdown::mdast::{AttributeContent, AttributeValue, MdxJsxAttribute, Stop};
+#[allow(unused_imports)]
+pub use markdown::mdast::MdxJsxAttribute;
+pub use markdown::mdast::{AttributeContent, AttributeValue, Stop};
 use markdown::unist::Position;
 
 /// Nodes.
