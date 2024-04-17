@@ -43,7 +43,7 @@ use swc_core::ecma::ast::{
 pub const MAGIC_EXPLICIT_MARKER: u32 = 1337;
 
 /// Result.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Program {
     /// File path.
     pub path: Option<String>,

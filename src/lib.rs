@@ -12,8 +12,9 @@
 #![allow(clippy::cast_precision_loss)]
 
 extern crate markdown;
+
 mod configuration;
-mod hast;
+pub mod hast;
 mod hast_util_to_swc;
 mod mdast_util_to_hast;
 mod mdx_plugin_recma_document;
@@ -32,7 +33,9 @@ use crate::{
 };
 use markdown::{to_mdast, Constructs, Location, ParseOptions};
 
-pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
+pub use crate::configuration::{
+    HastNode, MdastNode, MdxConstructs, MdxParseOptions, Options, PluginOptions, RecmaProgram,
+};
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
 /// Turn MDX into JavaScript.
@@ -53,6 +56,20 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
 pub fn compile(value: &str, options: &Options) -> Result<String, String> {
+    compile_with_plugins(value, options, &PluginOptions::default())
+}
+
+/// Turn MDX into JavaScript using the specified Plugins
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
+pub fn compile_with_plugins(
+    value: &str,
+    options: &Options,
+    plugins: &PluginOptions,
+) -> Result<String, String> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,
@@ -111,11 +128,32 @@ pub fn compile(value: &str, options: &Options) -> Result<String, String> {
     };
 
     let location = Location::new(value.as_bytes());
-    let mdast = to_mdast(value, &parse_options)?;
-    let hast = mdast_util_to_hast(&mdast);
+    let mut mdast = to_mdast(value, &parse_options)?;
+
+    if let Some(mdast_plugins) = &plugins.experimental_mdast_transforms {
+        for plugin in mdast_plugins {
+            plugin(&mut mdast)?;
+        }
+    }
+
+    let mut hast = mdast_util_to_hast(&mdast);
+
+    if let Some(hast_plugins) = &plugins.experimental_hast_transforms {
+        for plugin in hast_plugins {
+            plugin(&mut hast)?;
+        }
+    }
+
     let mut program = hast_util_to_swc(&hast, options.filepath.clone(), Some(&location))?;
+
     mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
     mdx_plugin_recma_jsx_rewrite(&mut program, &rewrite_options, Some(&location));
+
+    if let Some(recma_plugins) = &plugins.experimental_recma_transforms {
+        for plugin in recma_plugins {
+            plugin(&mut program)?;
+        }
+    }
 
     if !options.jsx {
         swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
