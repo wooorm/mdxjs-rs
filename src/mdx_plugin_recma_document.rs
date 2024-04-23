@@ -7,7 +7,7 @@ use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
     bytepos_to_point, create_call_expression, create_ident, create_ident_expression,
     create_null_expression, create_object_expression, create_str, position_opt_to_string,
-    prefix_error_with_point, span_to_position,
+    span_to_position,
 };
 use markdown::{
     unist::{Point, Position},
@@ -84,7 +84,7 @@ pub fn mdx_plugin_recma_document(
     program: &mut Program,
     options: &Options,
     location: Option<&Location>,
-) -> Result<(), String> {
+) -> Result<(), markdown::message::Message> {
     // New body children.
     let mut replacements = vec![];
 
@@ -200,10 +200,12 @@ pub fn mdx_plugin_recma_document(
                     }
                     DefaultDecl::TsInterfaceDecl(_) => {
                         return Err(
-                            prefix_error_with_point(
-                                "Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component",
-                                bytepos_to_point(decl.span.lo, location).as_ref()
-                            )
+                            markdown::message::Message {
+                                reason: "Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component".into(),
+                                place: bytepos_to_point(decl.span.lo, location).map(|p| Box::new(markdown::message::Place::Point(p))),
+                                source: Box::new("mdxjs-rs".into()),
+                                rule_id: Box::new("ts-interface".into()),
+                            }
                         );
                     }
                 }
@@ -535,15 +537,17 @@ fn err_for_double_layout(
     layout: bool,
     previous: Option<&Position>,
     at: Option<&Point>,
-) -> Result<(), String> {
+) -> Result<(), markdown::message::Message> {
     if layout {
-        Err(prefix_error_with_point(
-            &format!(
+        Err(markdown::message::Message {
+            reason: format!(
                 "Cannot specify multiple layouts (previous: {})",
                 position_opt_to_string(previous)
             ),
-            at,
-        ))
+            place: at.map(|p| Box::new(markdown::message::Place::Point(p.clone()))),
+            source: Box::new("mdxjs-rs".into()),
+            rule_id: Box::new("double-layout".into()),
+        })
     } else {
         Ok(())
     }
@@ -564,7 +568,7 @@ mod tests {
         JSXOpeningFragment, JSXText, Module, TsInterfaceBody, TsInterfaceDecl, WhileStmt,
     };
 
-    fn compile(value: &str) -> Result<String, String> {
+    fn compile(value: &str) -> Result<String, markdown::message::Message> {
         let location = Location::new(value.as_bytes());
         let mdast = to_mdast(
             value,
@@ -581,7 +585,7 @@ mod tests {
     }
 
     #[test]
-    fn small() -> Result<(), String> {
+    fn small() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("# hi\n\nAlpha *bravo* **charlie**.")?,
             "function _createMdxContent(props) {
@@ -599,7 +603,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn import() -> Result<(), String> {
+    fn import() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("import a from 'b'\n\n# {a}")?,
             "import a from 'b';
@@ -618,7 +622,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn export() -> Result<(), String> {
+    fn export() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("export * from 'a'\n\n# b")?,
             "export * from 'a';
@@ -666,7 +670,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn export_default() -> Result<(), String> {
+    fn export_default() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("export default a")?,
             "const MDXLayout = a;
@@ -714,7 +718,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn named_exports() -> Result<(), String> {
+    fn named_exports() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("export {a, b as default}")?,
             "export { a };
@@ -809,8 +813,9 @@ export default MDXContent;
         assert_eq!(
             compile("export default a = 1\n\nexport default b = 2")
                 .err()
-                .unwrap(),
-            "3:1: Cannot specify multiple layouts (previous: 1:1-1:21)",
+                .unwrap()
+                .to_string(),
+            "3:1: Cannot specify multiple layouts (previous: 1:1-1:21) (mdxjs-rs:double-layout)",
             "should crash on multiple layouts"
         );
     }
@@ -851,14 +856,14 @@ export default MDXContent;
                 None
             )
             .err()
-            .unwrap(),
-            "0:0: Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component",
+            .unwrap().to_string(),
+            "Cannot use TypeScript interface declarations as default export in MDX files. The default export is reserved for a layout, which must be a component (mdxjs-rs:ts-interface)",
             "should crash on a TypeScript default interface declaration"
         );
     }
 
     #[test]
-    fn statement_pass_through() -> Result<(), String> {
+    fn statement_pass_through() -> Result<(), markdown::message::Message> {
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -895,7 +900,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn expression_pass_through() -> Result<(), String> {
+    fn expression_pass_through() -> Result<(), markdown::message::Message> {
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -929,7 +934,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn fragment_non_element_single_child() -> Result<(), String> {
+    fn fragment_non_element_single_child() -> Result<(), markdown::message::Message> {
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -975,7 +980,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn element() -> Result<(), String> {
+    fn element() -> Result<(), markdown::message::Message> {
         let mut program = Program {
             path: None,
             comments: vec![],

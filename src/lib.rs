@@ -30,7 +30,7 @@ use crate::{
     swc::{parse_esm, parse_expression, serialize},
     swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
 };
-use markdown::{to_mdast, Constructs, Location, ParseOptions};
+use markdown::{message, to_mdast, Constructs, Location, ParseOptions};
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
@@ -41,7 +41,7 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 ///
 /// ```
 /// use mdxjs::compile;
-/// # fn main() -> Result<(), String> {
+/// # fn main() -> Result<(), markdown::message::Message> {
 ///
 /// assert_eq!(compile("# Hi!", &Default::default())?, "import { jsx as _jsx } from \"react/jsx-runtime\";\nfunction _createMdxContent(props) {\n    const _components = Object.assign({\n        h1: \"h1\"\n    }, props.components);\n    return _jsx(_components.h1, {\n        children: \"Hi!\"\n    });\n}\nfunction MDXContent(props = {}) {\n    const { wrapper: MDXLayout } = props.components || {};\n    return MDXLayout ? _jsx(MDXLayout, Object.assign({}, props, {\n        children: _jsx(_createMdxContent, props)\n    })) : _createMdxContent(props);\n}\nexport default MDXContent;\n");
 /// # Ok(())
@@ -52,7 +52,7 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 ///
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
-pub fn compile(value: &str, options: &Options) -> Result<String, String> {
+pub fn compile(value: &str, options: &Options) -> Result<String, message::Message> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,

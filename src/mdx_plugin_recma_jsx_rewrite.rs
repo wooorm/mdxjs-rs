@@ -1006,7 +1006,11 @@ mod tests {
     use pretty_assertions::assert_eq;
     use swc_core::ecma::ast::{Invalid, JSXOpeningElement, Module};
 
-    fn compile(value: &str, options: &Options, named: bool) -> Result<String, String> {
+    fn compile(
+        value: &str,
+        options: &Options,
+        named: bool,
+    ) -> Result<String, markdown::message::Message> {
         let location = Location::new(value.as_bytes());
         let mdast = to_mdast(
             value,
@@ -1029,7 +1033,7 @@ mod tests {
     }
 
     #[test]
-    fn empty() -> Result<(), String> {
+    fn empty() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("", &Options::default(), true)?,
             "function _createMdxContent(props) {
@@ -1048,7 +1052,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn pass_literal() -> Result<(), String> {
+    fn pass_literal() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("# hi", &Options::default(), true)?,
             "function _createMdxContent(props) {
@@ -1070,7 +1074,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn pass_namespace() -> Result<(), String> {
+    fn pass_namespace() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("<a:b />", &Options::default(), true)?,
             "function _createMdxContent(props) {
@@ -1092,7 +1096,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn pass_scope_defined_layout_import_named() -> Result<(), String> {
+    fn pass_scope_defined_layout_import_named() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export {MyLayout as default} from './a.js'\n\n# hi",
@@ -1118,7 +1122,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn pass_scope_missing_component() -> Result<(), String> {
+    fn pass_scope_missing_component() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("# <Hi />", &Options::default(), true)?,
             "function _createMdxContent(props) {
@@ -1144,7 +1148,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn pass_scope_missing_objects_in_component() -> Result<(), String> {
+    fn pass_scope_missing_objects_in_component() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("<X />, <X.y />, <Y.Z />, <a.b.c.d />, <a.b />", &Options::default(), true)?,
           "function _createMdxContent(props) {
@@ -1177,7 +1181,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn pass_scope_missing_non_js_identifiers() -> Result<(), String> {
+    fn pass_scope_missing_non_js_identifiers() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("# <a-b />, <qwe-rty />, <a-b />, <c-d.e-f />", &Options::default(), true)?,
             "function _createMdxContent(props) {
@@ -1206,7 +1210,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn pass_scope_defined_import_named() -> Result<(), String> {
+    fn pass_scope_defined_import_named() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("import {Hi} from './a.js'\n\n# <Hi />", &Options::default(), true)?,
             "import { Hi } from './a.js';
@@ -1229,7 +1233,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn pass_scope_defined_import_namespace() -> Result<(), String> {
+    fn pass_scope_defined_import_namespace() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "import * as X from './a.js'\n\n<X />",
@@ -1252,7 +1256,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn pass_scope_defined_function() -> Result<(), String> {
+    fn pass_scope_defined_function() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export function A() {
@@ -1282,7 +1286,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn pass_scope_defined_class() -> Result<(), String> {
+    fn pass_scope_defined_class() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export class A {}
@@ -1309,7 +1313,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn provide() -> Result<(), String> {
+    fn provide() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "# <Hi />",
@@ -1342,7 +1346,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn provide_empty() -> Result<(), String> {
+    fn provide_empty() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "",
@@ -1368,7 +1372,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn provide_local() -> Result<(), String> {
+    fn provide_local() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export function A() {
@@ -1407,7 +1411,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn provide_local_scope_defined() -> Result<(), String> {
+    fn provide_local_scope_defined() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export function X(x) {
@@ -1455,7 +1459,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn provide_local_scope_missing() -> Result<(), String> {
+    fn provide_local_scope_missing() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export function A() {
@@ -1568,7 +1572,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn provide_local_scope_missing_objects() -> Result<(), String> {
+    fn provide_local_scope_missing_objects() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "<X />, <X.y />, <Y.Z />",
@@ -1604,7 +1608,8 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn provide_local_scope_missing_objects_in_component() -> Result<(), String> {
+    fn provide_local_scope_missing_objects_in_component() -> Result<(), markdown::message::Message>
+    {
         assert_eq!(
             compile(
                 "export function A() {
@@ -1646,7 +1651,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn provide_local_arrow_function_component() -> Result<(), String> {
+    fn provide_local_arrow_function_component() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export const A = () => <B />",
@@ -1680,7 +1685,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn provide_local_function_declaration_component() -> Result<(), String> {
+    fn provide_local_function_declaration_component() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export const A = function B() { return <C /> }",
@@ -1714,7 +1719,7 @@ function _missingMdxReference(id, component) {
     }
 
     #[test]
-    fn provide_local_non_js_identifiers() -> Result<(), String> {
+    fn provide_local_non_js_identifiers() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile(
                 "export function A() {
@@ -1751,7 +1756,7 @@ export default MDXContent;
     }
 
     #[test]
-    fn development() -> Result<(), String> {
+    fn development() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("# <Hi />", &Options {
                 development: true,
@@ -1780,7 +1785,7 @@ function _missingMdxReference(id, component, place) {
     }
 
     #[test]
-    fn development_no_filepath() -> Result<(), String> {
+    fn development_no_filepath() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("# <Hi />", &Options {
                 development: true,

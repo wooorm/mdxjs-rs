@@ -2,9 +2,7 @@
 
 extern crate markdown;
 
-use crate::swc_utils::{
-    create_span, prefix_error_with_point, DropContext, RewritePrefixContext, RewriteStopsContext,
-};
+use crate::swc_utils::{create_span, DropContext, RewritePrefixContext, RewriteStopsContext};
 use markdown::{mdast::Stop, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
 use swc_core::common::{
@@ -35,7 +33,7 @@ pub fn parse_esm_to_tree(
     value: &str,
     stops: &[Stop],
     location: Option<&Location>,
-) -> Result<Module, String> {
+) -> Result<Module, markdown::message::Message> {
     let result = parse_esm_core(value);
     let mut rewrite_context = RewriteStopsContext { stops, location };
 
@@ -185,7 +183,7 @@ pub fn parse_expression_to_tree(
     kind: &MdxExpressionKind,
     stops: &[Stop],
     location: Option<&Location>,
-) -> Result<Option<Box<Expr>>, String> {
+) -> Result<Option<Box<Expr>>, markdown::message::Message> {
     let result = parse_expression_core(value, kind);
     let mut rewrite_context = RewriteStopsContext { stops, location };
 
@@ -251,20 +249,32 @@ pub fn flat_comments(single_threaded_comments: SingleThreadedComments) -> Vec<Co
 /// * Else, yields `MdxSignal::Error`.
 fn swc_error_to_signal(span: Span, reason: &str, value_len: usize) -> MdxSignal {
     let error_end = span.hi.to_usize();
+    let source = Box::new("mdxjs-rs".into());
+    let rule_id = Box::new("swc".into());
 
     if error_end >= value_len {
-        MdxSignal::Eof(reason.into())
+        MdxSignal::Eof(reason.into(), source, rule_id)
     } else {
-        MdxSignal::Error(reason.into(), span.lo.to_usize())
+        MdxSignal::Error(reason.into(), span.lo.to_usize(), source, rule_id)
     }
 }
 
 /// Turn an SWC error into a flat error.
-fn swc_error_to_error(span: Span, reason: &str, context: &RewriteStopsContext) -> String {
+fn swc_error_to_error(
+    span: Span,
+    reason: &str,
+    context: &RewriteStopsContext,
+) -> markdown::message::Message {
     let point = context
         .location
         .and_then(|location| location.relative_to_point(context.stops, span.lo.to_usize()));
-    prefix_error_with_point(reason, point.as_ref())
+
+    markdown::message::Message {
+        reason: reason.into(),
+        place: point.map(|point| Box::new(markdown::message::Place::Point(point))),
+        source: Box::new("mdxjs-rs".into()),
+        rule_id: Box::new("swc".into()),
+    }
 }
 
 /// Turn an SWC error into a string.

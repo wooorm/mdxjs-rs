@@ -2,7 +2,7 @@ extern crate mdxjs;
 
 /// Example that compiles the example MDX document from <https://mdxjs.com>
 /// to JavaScript.
-fn main() -> Result<(), String> {
+fn main() -> Result<(), markdown::message::Message> {
     println!(
         "{}",
         mdxjs::compile(

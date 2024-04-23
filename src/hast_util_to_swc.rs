@@ -82,7 +82,7 @@ pub fn hast_util_to_swc(
     tree: &hast::Node,
     path: Option<String>,
     location: Option<&Location>,
-) -> Result<Program, String> {
+) -> Result<Program, markdown::message::Message> {
     let mut context = Context {
         space: Space::Html,
         comments: vec![],
@@ -119,7 +119,10 @@ pub fn hast_util_to_swc(
 }
 
 /// Transform one node.
-fn one(context: &mut Context, node: &hast::Node) -> Result<Option<JSXElementChild>, String> {
+fn one(
+    context: &mut Context,
+    node: &hast::Node,
+) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let value = match node {
         hast::Node::Comment(x) => Some(transform_comment(context, node, x)),
         hast::Node::Element(x) => transform_element(context, node, x)?,
@@ -135,7 +138,10 @@ fn one(context: &mut Context, node: &hast::Node) -> Result<Option<JSXElementChil
 }
 
 /// Transform children of `parent`.
-fn all(context: &mut Context, parent: &hast::Node) -> Result<Vec<JSXElementChild>, String> {
+fn all(
+    context: &mut Context,
+    parent: &hast::Node,
+) -> Result<Vec<JSXElementChild>, markdown::message::Message> {
     let mut result = vec![];
     if let Some(children) = parent.children() {
         let mut index = 0;
@@ -182,7 +188,7 @@ fn transform_element(
     context: &mut Context,
     node: &hast::Node,
     element: &hast::Element,
-) -> Result<Option<JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let space = context.space;
 
     if space == Space::Html && element.tag_name == "svg" {
@@ -255,7 +261,7 @@ fn transform_mdx_jsx_element(
     context: &mut Context,
     node: &hast::Node,
     element: &hast::MdxJsxElement,
-) -> Result<Option<JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let space = context.space;
 
     if let Some(name) = &element.name {
@@ -335,7 +341,7 @@ fn transform_mdx_expression(
     context: &mut Context,
     node: &hast::Node,
     expression: &hast::MdxExpression,
-) -> Result<Option<JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let expr = parse_expression_to_tree(
         &expression.value,
         &MdxExpressionKind::Expression,
@@ -360,7 +366,7 @@ fn transform_mdxjs_esm(
     context: &mut Context,
     _node: &hast::Node,
     esm: &hast::MdxjsEsm,
-) -> Result<Option<JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let mut module = parse_esm_to_tree(&esm.value, &esm.stops, context.location)?;
     context.esm.append(&mut module.body);
     Ok(None)
@@ -371,7 +377,7 @@ fn transform_root(
     context: &mut Context,
     node: &hast::Node,
     _root: &hast::Root,
-) -> Result<Option<JSXElementChild>, String> {
+) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let mut children = all(context, node)?;
     let mut queue = vec![];
     let mut nodes = vec![];
@@ -678,7 +684,7 @@ mod tests {
     };
 
     #[test]
-    fn comments() -> Result<(), String> {
+    fn comments() -> Result<(), markdown::message::Message> {
         let mut comment_ast = hast_util_to_swc(
             &hast::Node::Comment(hast::Comment {
                 value: "a".into(),
@@ -734,7 +740,7 @@ mod tests {
     }
 
     #[test]
-    fn elements() -> Result<(), String> {
+    fn elements() -> Result<(), markdown::message::Message> {
         let mut element_ast = hast_util_to_swc(
             &hast::Node::Element(hast::Element {
                 tag_name: "a".into(),
@@ -844,7 +850,7 @@ mod tests {
     }
 
     #[test]
-    fn element_attributes() -> Result<(), String> {
+    fn element_attributes() -> Result<(), markdown::message::Message> {
         assert_eq!(
             serialize(
                 &mut hast_util_to_swc(
@@ -976,7 +982,7 @@ mod tests {
     }
 
     #[test]
-    fn mdx_element() -> Result<(), String> {
+    fn mdx_element() -> Result<(), markdown::message::Message> {
         let mut mdx_element_ast = hast_util_to_swc(
             &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                 name: None,
@@ -1064,7 +1070,7 @@ mod tests {
     }
 
     #[test]
-    fn mdx_element_name() -> Result<(), String> {
+    fn mdx_element_name() -> Result<(), markdown::message::Message> {
         assert_eq!(
             serialize(
                 &mut hast_util_to_swc(
@@ -1126,7 +1132,7 @@ mod tests {
     }
 
     #[test]
-    fn mdx_element_attributes() -> Result<(), String> {
+    fn mdx_element_attributes() -> Result<(), markdown::message::Message> {
         assert_eq!(
             serialize(
                 &mut hast_util_to_swc(
@@ -1238,8 +1244,11 @@ mod tests {
                 }),
                 None,
                 None
-            ),
-            Err("0:0: Could not parse expression with swc: Unexpected eof".into()),
+            )
+            .err()
+            .unwrap()
+            .to_string(),
+            "Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
             "should support an `MdxElement` (element, attribute w/ broken expression value)",
         );
 
@@ -1275,8 +1284,8 @@ mod tests {
                 }),
                 None,
                 None
-            ),
-            Err("0:0: Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`)".into()),
+            ).err().unwrap().to_string(),
+            "Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`) (mdxjs-rs:swc)",
             "should support an `MdxElement` (element, broken expression attribute)",
         );
 
@@ -1284,7 +1293,7 @@ mod tests {
     }
 
     #[test]
-    fn mdx_expression() -> Result<(), String> {
+    fn mdx_expression() -> Result<(), markdown::message::Message> {
         let mut mdx_expression_ast = hast_util_to_swc(
             &hast::Node::MdxExpression(hast::MdxExpression {
                 value: "a".into(),
@@ -1341,7 +1350,7 @@ mod tests {
     }
 
     #[test]
-    fn mdx_esm() -> Result<(), String> {
+    fn mdx_esm() -> Result<(), markdown::message::Message> {
         let mut mdxjs_esm_ast = hast_util_to_swc(
             &hast::Node::MdxjsEsm(hast::MdxjsEsm {
                 value: "import a from 'b'".into(),
@@ -1399,11 +1408,11 @@ mod tests {
                 }),
                 None,
                 None
-            ),
-            Err(
-                "0:0: Could not parse esm with swc: Expected 'from', got 'numeric literal (1, 1)'"
-                    .into()
-            ),
+            )
+            .err()
+            .unwrap()
+            .to_string(),
+            "Could not parse esm with swc: Expected 'from', got 'numeric literal (1, 1)' (mdxjs-rs:swc)",
             "should support an `MdxjsEsm` (w/ broken content)",
         );
 
@@ -1411,7 +1420,7 @@ mod tests {
     }
 
     #[test]
-    fn root() -> Result<(), String> {
+    fn root() -> Result<(), markdown::message::Message> {
         let mut root_ast = hast_util_to_swc(
             &hast::Node::Root(hast::Root {
                 children: vec![hast::Node::Text(hast::Text {
@@ -1467,7 +1476,7 @@ mod tests {
     }
 
     #[test]
-    fn text() -> Result<(), String> {
+    fn text() -> Result<(), markdown::message::Message> {
         let mut text_ast = hast_util_to_swc(
             &hast::Node::Text(hast::Text {
                 value: "a".into(),
@@ -1520,7 +1529,7 @@ mod tests {
     }
 
     #[test]
-    fn text_empty() -> Result<(), String> {
+    fn text_empty() -> Result<(), markdown::message::Message> {
         let text_ast = hast_util_to_swc(
             &hast::Node::Text(hast::Text {
                 value: String::new(),
@@ -1548,7 +1557,7 @@ mod tests {
     }
 
     #[test]
-    fn doctype() -> Result<(), String> {
+    fn doctype() -> Result<(), markdown::message::Message> {
         let mut doctype_ast = hast_util_to_swc(
             &hast::Node::Doctype(hast::Doctype { position: None }),
             None,
