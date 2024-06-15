@@ -2,6 +2,7 @@
 //!
 //! [hast]: https://github.com/syntax-tree/hast
 #![allow(dead_code)]
+#![allow(clippy::to_string_trait_impl)]
 
 extern crate alloc;
 extern crate markdown;

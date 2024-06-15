@@ -437,7 +437,7 @@ impl<'a> State<'a> {
                 let mut path = split.map(String::from).collect::<Vec<_>>();
                 let alias = info.aliases.iter().find(|d| d.original == path[0]);
                 if let Some(alias) = alias {
-                    path[0] = alias.safe.clone();
+                    path[0].clone_from(&alias.safe);
                     name = path.join(".");
                 }
                 let test = UnaryExpr {
