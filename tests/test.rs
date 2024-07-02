@@ -327,7 +327,7 @@ fn err_expression_broken_multiline_comment_a() {
             .err()
             .unwrap()
             .to_string(),
-        "1:6: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
+        "1:6: Could not parse expression with swc: Unterminated block comment (mdxjs-rs:swc)",
         "should crash on an unclosed block comment after an expression",
     );
 }
@@ -339,7 +339,7 @@ fn err_expression_broken_multiline_comment_b() {
             .err()
             .unwrap()
             .to_string(),
-        "1:6: Could not parse expression with swc: Unterminated block comment (mdxjs-rs:swc)",
+        "1:2: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
         "should crash on an unclosed block comment in an empty expression",
     );
 }
