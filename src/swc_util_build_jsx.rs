@@ -807,7 +807,7 @@ mod tests {
         EsVersion, ExprStmt, JSXClosingElement, JSXElementName, JSXOpeningElement, JSXSpreadChild,
         Module, Stmt,
     };
-    use swc_core::ecma::parser::{parse_file_as_module, EsConfig, Syntax};
+    use swc_core::ecma::parser::{parse_file_as_module, EsSyntax, Syntax};
 
     fn compile(value: &str, options: &Options) -> Result<String, markdown::message::Message> {
         let location = Location::new(value.as_bytes());
@@ -821,9 +821,9 @@ mod tests {
                 value.into(),
                 BytePos::from_usize(1),
             ),
-            Syntax::Es(EsConfig {
+            Syntax::Es(EsSyntax {
                 jsx: true,
-                ..EsConfig::default()
+                ..EsSyntax::default()
             }),
             EsVersion::Es2022,
             Some(&comments),

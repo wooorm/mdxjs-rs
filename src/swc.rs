@@ -14,7 +14,7 @@ use swc_core::common::{
 use swc_core::ecma::ast::{EsVersion, Expr, Module, PropOrSpread};
 use swc_core::ecma::codegen::{text_writer::JsWriter, Emitter};
 use swc_core::ecma::parser::{
-    error::Error as SwcError, parse_file_as_expr, parse_file_as_module, EsConfig, Syntax,
+    error::Error as SwcError, parse_file_as_expr, parse_file_as_module, EsSyntax, Syntax,
 };
 use swc_core::ecma::visit::VisitMutWith;
 
@@ -361,9 +361,9 @@ fn create_config(source: String) -> (SourceFile, Syntax, EsVersion) {
             BytePos::from_usize(1),
         ),
         // Syntax.
-        Syntax::Es(EsConfig {
+        Syntax::Es(EsSyntax {
             jsx: true,
-            ..EsConfig::default()
+            ..EsSyntax::default()
         }),
         // Version.
         EsVersion::Es2022,
