@@ -678,9 +678,10 @@ mod tests {
     use crate::markdown::mdast;
     use crate::swc::serialize;
     use pretty_assertions::assert_eq;
+    use swc_core::common::SyntaxContext;
     use swc_core::ecma::ast::{
-        Ident, ImportDecl, ImportDefaultSpecifier, ImportPhase, ImportSpecifier, JSXAttrName,
-        JSXElementName, ModuleDecl,
+        Ident, IdentName, ImportDecl, ImportDefaultSpecifier, ImportPhase, ImportSpecifier,
+        JSXAttrName, JSXElementName, ModuleDecl,
     };
 
     #[test]
@@ -768,12 +769,12 @@ mod tests {
                                     span: swc_core::common::DUMMY_SP,
                                     sym: "a".into(),
                                     optional: false,
+                                    ctxt: SyntaxContext::empty()
                                 }),
                                 attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
-                                    name: JSXAttrName::Ident(Ident {
+                                    name: JSXAttrName::Ident(IdentName {
                                         sym: "className".into(),
                                         span: swc_core::common::DUMMY_SP,
-                                        optional: false,
                                     }),
                                     value: Some(JSXAttrValue::Lit(Lit::Str(Str {
                                         value: "b".into(),
@@ -1323,6 +1324,7 @@ mod tests {
                                     sym: "a".into(),
                                     span: swc_core::common::DUMMY_SP,
                                     optional: false,
+                                    ctxt: SyntaxContext::empty()
                                 }))),
                                 span: swc_core::common::DUMMY_SP,
                             },)],
@@ -1373,6 +1375,7 @@ mod tests {
                                 sym: "a".into(),
                                 optional: false,
                                 span: swc_core::common::DUMMY_SP,
+                                ctxt: SyntaxContext::empty()
                             },
                             span: swc_core::common::DUMMY_SP,
                         })],
