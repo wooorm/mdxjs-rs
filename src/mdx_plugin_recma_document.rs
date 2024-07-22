@@ -150,7 +150,7 @@ pub fn mdx_plugin_recma_document(
 
         replacements.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
             specifiers: vec![ImportSpecifier::Default(ImportDefaultSpecifier {
-                local: create_ident(sym),
+                local: create_ident(sym).into(),
                 span: swc_core::common::DUMMY_SP,
             })],
             src: Box::new(create_str(
@@ -279,7 +279,7 @@ pub fn mdx_plugin_recma_document(
                     if let Some(source) = source {
                         replacements.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
                             specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
-                                local: create_ident("MDXLayout"),
+                                local: create_ident("MDXLayout").into(),
                                 imported: Some(ModuleExportName::Ident(id)),
                                 span: swc_core::common::DUMMY_SP,
                                 is_type_only: false,
@@ -387,7 +387,7 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
     // ```
     let mut result = Expr::JSXElement(Box::new(JSXElement {
         opening: JSXOpeningElement {
-            name: JSXElementName::Ident(create_ident("MDXLayout")),
+            name: JSXElementName::Ident(create_ident("MDXLayout").into()),
             attrs: vec![JSXAttrOrSpread::SpreadElement(SpreadElement {
                 dot3_token: swc_core::common::DUMMY_SP,
                 expr: Box::new(create_ident_expression("props")),
@@ -397,7 +397,7 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
             span: swc_core::common::DUMMY_SP,
         },
         closing: Some(JSXClosingElement {
-            name: JSXElementName::Ident(create_ident("MDXLayout")),
+            name: JSXElementName::Ident(create_ident("MDXLayout").into()),
             span: swc_core::common::DUMMY_SP,
         }),
         // ```jsx
@@ -405,7 +405,7 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
         // ```
         children: vec![JSXElementChild::JSXElement(Box::new(JSXElement {
             opening: JSXOpeningElement {
-                name: JSXElementName::Ident(create_ident("_createMdxContent")),
+                name: JSXElementName::Ident(create_ident("_createMdxContent").into()),
                 attrs: vec![JSXAttrOrSpread::SpreadElement(SpreadElement {
                     dot3_token: swc_core::common::DUMMY_SP,
                     expr: Box::new(create_ident_expression("props")),
@@ -445,12 +445,12 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
     // }
     // ```
     let create_mdx_content = ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
-        ident: create_ident("_createMdxContent"),
+        ident: create_ident("_createMdxContent").into(),
         declare: false,
         function: Box::new(Function {
             params: vec![Param {
                 pat: Pat::Ident(BindingIdent {
-                    id: create_ident("props"),
+                    id: create_ident("props").into(),
                     type_ann: None,
                 }),
                 decorators: vec![],
@@ -480,13 +480,13 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
     // }
     // ```
     let mdx_content = ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
-        ident: create_ident("MDXContent"),
+        ident: create_ident("MDXContent").into(),
         declare: false,
         function: Box::new(Function {
             params: vec![Param {
                 pat: Pat::Assign(AssignPat {
                     left: Box::new(Pat::Ident(BindingIdent {
-                        id: create_ident("props"),
+                        id: create_ident("props").into(),
                         type_ann: None,
                     })),
                     right: Box::new(create_object_expression(vec![])),
@@ -526,7 +526,7 @@ fn create_layout_decl(expr: Expr) -> ModuleItem {
         declare: false,
         decls: vec![VarDeclarator {
             name: Pat::Ident(BindingIdent {
-                id: create_ident("MDXLayout"),
+                id: create_ident("MDXLayout").into(),
                 type_ann: None,
             }),
             init: Some(Box::new(expr)),
@@ -843,7 +843,7 @@ export default MDXContent;
                                     decl: DefaultDecl::TsInterfaceDecl(Box::new(
                                         TsInterfaceDecl {
                                             span: swc_core::common::DUMMY_SP,
-                                            id: create_ident("a"),
+                                            id: create_ident("a").into(),
                                             declare: true,
                                             type_params: None,
                                             extends: vec![],
@@ -998,14 +998,14 @@ export default MDXContent;
                     expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
                         span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningElement {
-                            name: JSXElementName::Ident(create_ident("a")),
+                            name: JSXElementName::Ident(create_ident("a").into()),
                             attrs: vec![],
                             self_closing: false,
                             type_args: None,
                             span: swc_core::common::DUMMY_SP,
                         },
                         closing: Some(JSXClosingElement {
-                            name: JSXElementName::Ident(create_ident("a")),
+                            name: JSXElementName::Ident(create_ident("a").into()),
                             span: swc_core::common::DUMMY_SP,
                         }),
                         children: vec![JSXElementChild::JSXText(JSXText {

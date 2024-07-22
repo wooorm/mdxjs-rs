@@ -202,7 +202,7 @@ pub fn create_ident(sym: &str) -> IdentName {
 /// a
 /// ```
 pub fn create_ident_expression(sym: &str) -> Expr {
-    Expr::Ident(create_ident(sym))
+    Expr::Ident(create_ident(sym).into())
 }
 
 /// Generate a null.
@@ -654,6 +654,7 @@ mod tests {
     fn jsx_member_to_parts_test() {
         assert_eq!(
             jsx_member_to_parts(&JSXMemberExpr {
+                span: DUMMY_SP,
                 prop: create_ident("a"),
                 obj: JSXObject::Ident(create_ident("b"))
             }),
@@ -663,12 +664,15 @@ mod tests {
 
         assert_eq!(
             jsx_member_to_parts(&JSXMemberExpr {
+                span: DUMMY_SP,
                 prop: create_ident("a"),
                 obj: JSXObject::JSXMemberExpr(Box::new(JSXMemberExpr {
+                    span: DUMMY_SP,
                     prop: create_ident("b"),
                     obj: JSXObject::JSXMemberExpr(Box::new(JSXMemberExpr {
+                        span: DUMMY_SP,
                         prop: create_ident("c"),
-                        obj: JSXObject::Ident(create_ident("d"))
+                        obj: JSXObject::Ident(create_ident("d").into())
                     }))
                 }))
             }),

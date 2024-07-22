@@ -12,6 +12,7 @@ use crate::swc_utils::{
     jsx_member_to_parts, position_to_string, span_to_position,
 };
 use markdown::{unist::Position, Location};
+use swc_core::common::SyntaxContext;
 use swc_core::common::{util::take::Take, Span, DUMMY_SP};
 use swc_core::ecma::ast::{
     ArrowExpr, AssignPatProp, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Callee,
@@ -292,7 +293,7 @@ impl<'a> State<'a> {
                 let declarator = VarDeclarator {
                     span: DUMMY_SP,
                     name: Pat::Ident(BindingIdent {
-                        id: create_ident("_components"),
+                        id: create_ident("_components").into(),
                         type_ann: None,
                     }),
                     init: Some(Box::new(components_init)),
@@ -316,7 +317,7 @@ impl<'a> State<'a> {
                     let declarator = VarDeclarator {
                         span: DUMMY_SP,
                         name: Pat::Ident(BindingIdent {
-                            id: create_ident(&alias.safe),
+                            id: create_ident(&alias.safe).into(),
                             type_ann: None,
                         }),
                         init: Some(Box::new(Expr::Member(create_member(
@@ -350,7 +351,7 @@ impl<'a> State<'a> {
                     // `wrapper: MDXLayout`
                     if reference.name == "MDXLayout" {
                         let binding = BindingIdent {
-                            id: create_ident(&reference.name),
+                            id: create_ident(&reference.name).into(),
                             type_ann: None,
                         };
                         let prop = KeyValuePatProp {
@@ -392,6 +393,7 @@ impl<'a> State<'a> {
                 decls: declarators,
                 span: DUMMY_SP,
                 declare: false,
+                ctxt: SyntaxContext::empty(),
             };
             let var_decl = Decl::Var(Box::new(decl));
             statements.push(Stmt::Decl(var_decl));
