@@ -11,6 +11,7 @@ use crate::swc_utils::{
 };
 use core::str;
 use markdown::{message::Message, Location};
+use swc_core::common::SyntaxContext;
 use swc_core::common::{
     comments::{Comment, CommentKind},
     util::take::Take,
@@ -99,7 +100,7 @@ pub fn swc_util_build_jsx(
     if state.import_jsx_dev {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
             local: create_ident("_jsxDEV").into(),
-            imported: Some(ModuleExportName::Ident(create_ident("jsxDEV"))),
+            imported: Some(ModuleExportName::Ident(create_ident("jsxDEV").into())),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
@@ -547,6 +548,7 @@ impl<'a> State<'a> {
             args: parameters,
             type_args: None,
             span: *span,
+            ctxt: SyntaxContext::empty(),
         };
 
         Ok(Expr::Call(call_expression))
@@ -801,7 +803,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use swc_core::common::Spanned;
     use swc_core::common::{
-        comments::SingleThreadedComments, source_map::Pos, BytePos, FileName, SourceFile,
+        comments::SingleThreadedComments, source_map::SmallPos, BytePos, FileName, SourceFile,
     };
     use swc_core::ecma::ast::{
         EsVersion, ExprStmt, JSXClosingElement, JSXElementName, JSXOpeningElement, JSXSpreadChild,
@@ -815,9 +817,9 @@ mod tests {
         let comments = SingleThreadedComments::default();
         let result = parse_file_as_module(
             &SourceFile::new(
-                FileName::Anon,
+                FileName::Anon.into(),
                 false,
-                FileName::Anon,
+                FileName::Anon.into(),
                 value.into(),
                 BytePos::from_usize(1),
             ),
@@ -1569,7 +1571,7 @@ _jsxDEV(_Fragment, {
                     expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
                         span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningElement {
-                            name: JSXElementName::Ident(create_ident("a")),
+                            name: JSXElementName::Ident(create_ident("a").into()),
                             attrs: vec![],
                             self_closing: true,
                             type_args: None,
