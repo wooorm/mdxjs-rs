@@ -27,7 +27,6 @@ pub fn position_to_span(position: Option<&Position>) -> Span {
     position.map_or(DUMMY_SP, |d| Span {
         lo: point_to_bytepos(&d.start),
         hi: point_to_bytepos(&d.end),
-        ctxt: SyntaxContext::empty(),
     })
 }
 
@@ -180,7 +179,6 @@ pub fn create_span(lo: u32, hi: u32) -> Span {
     Span {
         lo: BytePos(lo),
         hi: BytePos(hi),
-        ctxt: SyntaxContext::default(),
     }
 }
 
@@ -287,6 +285,7 @@ pub fn create_call(callee: Callee, args: Vec<ExprOrSpread>) -> CallExpr {
         args,
         span: DUMMY_SP,
         type_args: None,
+        ctxt: SyntaxContext::empty(),
     }
 }
 

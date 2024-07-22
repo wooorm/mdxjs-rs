@@ -482,6 +482,7 @@ impl<'a> State<'a> {
                                 span: DUMMY_SP,
                             })],
                             span: DUMMY_SP,
+                            ctxt: SyntaxContext::empty(),
                         };
                         arr.body = Box::new(BlockStmtOrExpr::BlockStmt(block));
                     }
