@@ -7,7 +7,7 @@ use markdown::{mdast::Stop, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
 use swc_core::common::{
     comments::{Comment, Comments, SingleThreadedComments, SingleThreadedCommentsMap},
-    source_map::Pos,
+    source_map::SmallPos,
     sync::Lrc,
     BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Span, Spanned,
 };
@@ -354,7 +354,7 @@ fn create_config(source: String) -> (SourceFile, Syntax, EsVersion) {
     (
         // File.
         SourceFile::new(
-            FileName::Anon,
+            FileName::Anon.into(),
             false,
             FileName::Anon,
             source,

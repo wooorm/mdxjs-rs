@@ -8,13 +8,16 @@ use markdown::{
     Location,
 };
 
-use swc_core::common::{BytePos, Span, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     BinExpr, BinaryOp, Bool, CallExpr, Callee, ComputedPropName, Expr, ExprOrSpread, Ident,
     JSXAttrName, JSXElementName, JSXMemberExpr, JSXNamespacedName, JSXObject, Lit, MemberExpr,
     MemberProp, Null, Number, ObjectLit, PropName, PropOrSpread, Str,
 };
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut};
+use swc_core::{
+    common::{BytePos, Span, SyntaxContext, DUMMY_SP},
+    ecma::ast::IdentName,
+};
 
 /// Turn a unist position, into an SWC span, of two byte positions.
 ///
@@ -186,10 +189,9 @@ pub fn create_span(lo: u32, hi: u32) -> Span {
 /// ```js
 /// a
 /// ```
-pub fn create_ident(sym: &str) -> Ident {
-    Ident {
+pub fn create_ident(sym: &str) -> IdentName {
+    IdentName {
         sym: sym.into(),
-        optional: false,
         span: DUMMY_SP,
     }
 }
@@ -405,7 +407,7 @@ pub fn create_jsx_name_from_str(name: &str) -> JSXElementName {
 }
 
 /// Generate a member expression from an object and prop.
-pub fn create_jsx_member(obj: JSXObject, prop: Ident) -> JSXMemberExpr {
+pub fn create_jsx_member(obj: JSXObject, prop: IdentName) -> JSXMemberExpr {
     JSXMemberExpr { obj, prop }
 }
 
