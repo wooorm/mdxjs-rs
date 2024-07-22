@@ -71,8 +71,8 @@ pub fn swc_util_build_jsx(
 
     if state.import_fragment {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_Fragment"),
-            imported: Some(ModuleExportName::Ident(create_ident("Fragment"))),
+            local: create_ident("_Fragment").into(),
+            imported: Some(ModuleExportName::Ident(create_ident("Fragment").into())),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
@@ -80,8 +80,8 @@ pub fn swc_util_build_jsx(
 
     if state.import_jsx {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_jsx"),
-            imported: Some(ModuleExportName::Ident(create_ident("jsx"))),
+            local: create_ident("_jsx").into(),
+            imported: Some(ModuleExportName::Ident(create_ident("jsx").into())),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
@@ -89,8 +89,8 @@ pub fn swc_util_build_jsx(
 
     if state.import_jsxs {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_jsxs"),
-            imported: Some(ModuleExportName::Ident(create_ident("jsxs"))),
+            local: create_ident("_jsxs").into(),
+            imported: Some(ModuleExportName::Ident(create_ident("jsxs").into())),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
@@ -98,7 +98,7 @@ pub fn swc_util_build_jsx(
 
     if state.import_jsx_dev {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_jsxDEV"),
+            local: create_ident("_jsxDEV").into(),
             imported: Some(ModuleExportName::Ident(create_ident("jsxDEV"))),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
@@ -1357,14 +1357,14 @@ _jsx(\"a\", {
                     expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
                         span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningElement {
-                            name: JSXElementName::Ident(create_ident("a")),
+                            name: JSXElementName::Ident(create_ident("a").into()),
                             attrs: vec![],
                             self_closing: false,
                             type_args: None,
                             span: swc_core::common::DUMMY_SP,
                         },
                         closing: Some(JSXClosingElement {
-                            name: JSXElementName::Ident(create_ident("a")),
+                            name: JSXElementName::Ident(create_ident("a").into()),
                             span: swc_core::common::DUMMY_SP,
                         }),
                         children: vec![JSXElementChild::JSXSpreadChild(JSXSpreadChild {

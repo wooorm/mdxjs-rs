@@ -356,7 +356,7 @@ fn create_config(source: String) -> (SourceFile, Syntax, EsVersion) {
         SourceFile::new(
             FileName::Anon.into(),
             false,
-            FileName::Anon,
+            FileName::Anon.into(),
             source,
             BytePos::from_usize(1),
         ),

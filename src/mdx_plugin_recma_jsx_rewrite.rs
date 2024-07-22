@@ -865,8 +865,10 @@ impl<'a> VisitMut for State<'a> {
 fn create_import_provider(source: &str) -> ModuleItem {
     ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
         specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_provideComponents"),
-            imported: Some(ModuleExportName::Ident(create_ident("useMDXComponents"))),
+            local: create_ident("_provideComponents").into(),
+            imported: Some(ModuleExportName::Ident(
+                create_ident("useMDXComponents").into(),
+            )),
             span: DUMMY_SP,
             is_type_only: false,
         })],
@@ -889,7 +891,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
     let mut parameters = vec![
         Param {
             pat: Pat::Ident(BindingIdent {
-                id: create_ident("id"),
+                id: create_ident("id").into(),
                 type_ann: None,
             }),
             decorators: vec![],
@@ -897,7 +899,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
         },
         Param {
             pat: Pat::Ident(BindingIdent {
-                id: create_ident("component"),
+                id: create_ident("component").into(),
                 type_ann: None,
             }),
             decorators: vec![],
@@ -909,7 +911,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
     if development {
         parameters.push(Param {
             pat: Pat::Ident(BindingIdent {
-                id: create_ident("place"),
+                id: create_ident("place").into(),
                 type_ann: None,
             }),
             decorators: vec![],
@@ -959,7 +961,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
     }
 
     ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
-        ident: create_ident("_missingMdxReference"),
+        ident: create_ident("_missingMdxReference").into(),
         declare: false,
         function: Box::new(Function {
             params: parameters,
@@ -974,16 +976,19 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
                         }]),
                         span: DUMMY_SP,
                         type_args: None,
+                        ctxt: SyntaxContext::empty(),
                     })),
                     span: DUMMY_SP,
                 })],
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
             }),
             is_generator: false,
             is_async: false,
             type_params: None,
             return_type: None,
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
         }),
     })))
 }
@@ -1829,7 +1834,7 @@ function _missingMdxReference(id, component, place) {
                     decls: vec![VarDeclarator {
                         span: DUMMY_SP,
                         name: Pat::Ident(BindingIdent {
-                            id: create_ident("a"),
+                            id: create_ident("a").into(),
                             type_ann: None,
                         }),
                         init: Some(Box::new(Expr::JSXElement(Box::new(JSXElement {
@@ -1847,6 +1852,7 @@ function _missingMdxReference(id, component, place) {
                         definite: false,
                     }],
                     span: DUMMY_SP,
+                    ctxt: SyntaxContext::empty(),
                     declare: false,
                 }))))],
             },
@@ -1877,6 +1883,7 @@ function _missingMdxReference(id, component, place) {
                     }],
                     span: DUMMY_SP,
                     declare: false,
+                    ctxt: SyntaxContext::empty(),
                 }))))],
             },
         };
@@ -1900,12 +1907,13 @@ function _missingMdxReference(id, component, place) {
                     kind: VarDeclKind::Let,
                     decls: vec![VarDeclarator {
                         span: DUMMY_SP,
-                        name: Pat::Expr(Box::new(Expr::Ident(create_ident("a")))),
+                        name: Pat::Expr(Box::new(Expr::Ident(create_ident("a").into()))),
                         init: None,
                         definite: false,
                     }],
                     span: DUMMY_SP,
                     declare: false,
+                    ctxt: SyntaxContext::empty(),
                 }))))],
             },
         };
