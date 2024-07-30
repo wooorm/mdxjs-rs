@@ -31,6 +31,7 @@ use crate::{
     swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
 };
 use markdown::{message, to_mdast, Constructs, Location, ParseOptions};
+use swc_core::alloc::collections::FxHashSet;
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
@@ -110,12 +111,24 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
         development: options.development,
     };
 
+    let mut explicit_jsxs = FxHashSet::default();
+
     let location = Location::new(value.as_bytes());
     let mdast = to_mdast(value, &parse_options)?;
     let hast = mdast_util_to_hast(&mdast);
-    let mut program = hast_util_to_swc(&hast, options.filepath.clone(), Some(&location))?;
+    let mut program = hast_util_to_swc(
+        &hast,
+        options.filepath.clone(),
+        Some(&location),
+        &mut explicit_jsxs,
+    )?;
     mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
-    mdx_plugin_recma_jsx_rewrite(&mut program, &rewrite_options, Some(&location));
+    mdx_plugin_recma_jsx_rewrite(
+        &mut program,
+        &rewrite_options,
+        Some(&location),
+        explicit_jsxs,
+    );
 
     if !options.jsx {
         swc_util_build_jsx(&mut program, &build_options, Some(&location))?;

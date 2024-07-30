@@ -191,7 +191,7 @@ pub fn mdx_plugin_recma_document(
                     bytepos_to_point(decl.span.lo, location).as_ref(),
                 )?;
                 layout = true;
-                layout_position = span_to_position(&decl.span, location);
+                layout_position = span_to_position(decl.span, location);
                 match decl.decl {
                     DefaultDecl::Class(cls) => {
                         replacements.push(create_layout_decl(Expr::Class(cls)));
@@ -218,7 +218,7 @@ pub fn mdx_plugin_recma_document(
                     bytepos_to_point(expr.span.lo, location).as_ref(),
                 )?;
                 layout = true;
-                layout_position = span_to_position(&expr.span, location);
+                layout_position = span_to_position(expr.span, location);
                 replacements.push(create_layout_decl(*expr.expr));
             }
             // ```js
@@ -249,7 +249,7 @@ pub fn mdx_plugin_recma_document(
                                         bytepos_to_point(ident.span.lo, location).as_ref(),
                                     )?;
                                     layout = true;
-                                    layout_position = span_to_position(&ident.span, location);
+                                    layout_position = span_to_position(ident.span, location);
                                     take = true;
                                     id = Some(ident.clone());
                                 }
@@ -569,6 +569,7 @@ mod tests {
     use crate::swc_utils::create_bool_expression;
     use markdown::{to_mdast, ParseOptions};
     use pretty_assertions::assert_eq;
+    use swc_core::alloc::collections::FxHashSet;
     use swc_core::ecma::ast::{
         EmptyStmt, ExportDefaultDecl, ExprStmt, JSXClosingFragment, JSXFragment,
         JSXOpeningFragment, JSXText, Module, TsInterfaceBody, TsInterfaceDecl, WhileStmt,
@@ -585,7 +586,8 @@ mod tests {
             },
         )?;
         let hast = mdast_util_to_hast(&mdast);
-        let mut program = hast_util_to_swc(&hast, None, Some(&location))?;
+        let mut program =
+            hast_util_to_swc(&hast, None, Some(&location), &mut FxHashSet::default())?;
         mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
         Ok(serialize(&mut program.module, Some(&program.comments)))
     }

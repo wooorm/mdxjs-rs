@@ -36,7 +36,7 @@ pub fn position_to_span(position: Option<&Position>) -> Span {
 ///
 /// > 👉 **Note**: SWC byte positions are offset by one: they are `0` when they
 /// > are missing or incremented by `1` when valid.
-pub fn span_to_position(span: &Span, location: Option<&Location>) -> Option<Position> {
+pub fn span_to_position(span: Span, location: Option<&Location>) -> Option<Position> {
     let lo = span.lo.0 as usize;
     let hi = span.hi.0 as usize;
 

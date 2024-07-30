@@ -376,7 +376,7 @@ impl<'a> State<'a> {
     /// Turn the parsed parts from fragments or elements into a call.
     fn jsx_expressions_to_call(
         &mut self,
-        span: &swc_core::common::Span,
+        span: swc_core::common::Span,
         name: Expr,
         attributes: Option<Vec<JSXAttrOrSpread>>,
         mut children: Vec<Expr>,
@@ -547,7 +547,7 @@ impl<'a> State<'a> {
             callee: Callee::Expr(Box::new(callee)),
             args: parameters,
             type_args: None,
-            span: *span,
+            span,
             ctxt: SyntaxContext::empty(),
         };
 
@@ -571,7 +571,7 @@ impl<'a> State<'a> {
             }
         }
 
-        self.jsx_expressions_to_call(&element.span, name, Some(element.opening.attrs), children)
+        self.jsx_expressions_to_call(element.span, name, Some(element.opening.attrs), children)
     }
 
     /// Turn a JSX fragment into an expression.
@@ -586,7 +586,7 @@ impl<'a> State<'a> {
             self.fragment_expression.clone()
         };
         let children = self.jsx_children_to_expressions(fragment.children)?;
-        self.jsx_expressions_to_call(&fragment.span, name, None, children)
+        self.jsx_expressions_to_call(fragment.span, name, None, children)
     }
 }
 
