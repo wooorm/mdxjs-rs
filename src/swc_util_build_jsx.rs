@@ -14,6 +14,7 @@ use markdown::{message::Message, Location};
 use swc_core::common::{
     comments::{Comment, CommentKind},
     util::take::Take,
+    SyntaxContext,
 };
 use swc_core::ecma::ast::{
     ArrayLit, CallExpr, Callee, Expr, ExprOrSpread, ImportDecl, ImportNamedSpecifier, ImportPhase,
@@ -440,7 +441,7 @@ impl<'a> State<'a> {
                     create_str_expression("<source.js>")
                 };
                 let prop = PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(create_ident("fileName")),
+                    key: PropName::Ident(create_ident("fileName").into()),
                     value: Box::new(filename),
                 })));
                 let mut meta_fields = vec![prop];
@@ -547,6 +548,7 @@ impl<'a> State<'a> {
             args: parameters,
             type_args: None,
             span: *span,
+            ctxt: SyntaxContext::empty(),
         };
 
         Ok(Expr::Call(call_expression))
@@ -801,7 +803,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use swc_core::common::Spanned;
     use swc_core::common::{
-        comments::SingleThreadedComments, source_map::Pos, BytePos, FileName, SourceFile,
+        comments::SingleThreadedComments, source_map::SmallPos, BytePos, FileName, SourceFile,
     };
     use swc_core::ecma::ast::{
         EsVersion, ExprStmt, JSXClosingElement, JSXElementName, JSXOpeningElement, JSXSpreadChild,
@@ -815,9 +817,9 @@ mod tests {
         let comments = SingleThreadedComments::default();
         let result = parse_file_as_module(
             &SourceFile::new(
-                FileName::Anon,
+                FileName::Anon.into(),
                 false,
-                FileName::Anon,
+                FileName::Anon.into(),
                 value.into(),
                 BytePos::from_usize(1),
             ),
@@ -866,7 +868,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxRuntime automatic */\nlet a = <b />",
-                &Options::default()
+                &Options::default(),
             )?,
             "import { jsx as _jsx } from \"react/jsx-runtime\";\nlet a = _jsx(\"b\", {});\n",
             "should support a `@jsxRuntime automatic` directive"
@@ -880,7 +882,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxRuntime classic */\nlet a = <b />",
-                &Options::default()
+                &Options::default(),
             )?,
             "let a = React.createElement(\"b\");\n",
             "should support a `@jsxRuntime classic` directive"
@@ -905,7 +907,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxRuntime unknown */\nlet a = <b />",
-                &Options::default()
+                &Options::default(),
             )
             .err()
             .unwrap()
@@ -920,7 +922,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxImportSource aaa */\nlet a = <b />",
-                &Options::default()
+                &Options::default(),
             )?,
             "import { jsx as _jsx } from \"aaa/jsx-runtime\";\nlet a = _jsx(\"b\", {});\n",
             "should support a `@jsxImportSource` directive"
@@ -934,7 +936,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxRuntime classic @jsx a */\nlet b = <c />",
-                &Options::default()
+                &Options::default(),
             )?,
             "let b = a(\"c\");\n",
             "should support a `@jsx` directive"
@@ -948,7 +950,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxRuntime classic @jsx */\nlet a = <b />",
-                &Options::default()
+                &Options::default(),
             )?,
             "let a = React.createElement(\"b\");\n",
             "should support an empty `@jsx` directive"
@@ -962,7 +964,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxRuntime classic @jsx a.b-c.d! */\n<x />",
-                &Options::default()
+                &Options::default(),
             )?,
             "a[\"b-c\"][\"d!\"](\"x\");\n",
             "should support an `@jsx` directive set to an invalid identifier"
@@ -976,7 +978,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxRuntime classic @jsxFrag a */\nlet b = <></>",
-                &Options::default()
+                &Options::default(),
             )?,
             "let b = React.createElement(a);\n",
             "should support a `@jsxFrag` directive"
@@ -990,7 +992,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/* @jsxRuntime classic @jsxFrag */\nlet a = <></>",
-                &Options::default()
+                &Options::default(),
             )?,
             "let a = React.createElement(React.Fragment);\n",
             "should support an empty `@jsxFrag` directive"
@@ -1004,7 +1006,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/*\n first line\n @jsxRuntime classic\n */\n<b />",
-                &Options::default()
+                &Options::default(),
             )?,
             "React.createElement(\"b\");\n",
             "should support a directive on a non-first line"
@@ -1018,7 +1020,7 @@ mod tests {
         assert_eq!(
             compile(
                 "/*\n * first line\n * @jsxRuntime classic\n */\n<b />",
-                &Options::default()
+                &Options::default(),
             )?,
             "React.createElement(\"b\");\n",
             "should support a directive on an asterisk’ed line"
@@ -1054,7 +1056,7 @@ mod tests {
         assert_eq!(
             compile(
                 "<a>b</a>",
-                &Options::default()
+                &Options::default(),
             )?,
             "import { jsx as _jsx } from \"react/jsx-runtime\";\n_jsx(\"a\", {\n    children: \"b\"\n});\n",
             "should support a closed element"
@@ -1495,7 +1497,7 @@ _jsx(\"a\", {
         assert_eq!(
             compile(
                 "/* @jsxRuntime classic */\n<a b key='c' d />",
-                &Options::default()
+                &Options::default(),
             )?,
             "React.createElement(\"a\", {
     b: true,

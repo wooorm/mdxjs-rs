@@ -13,6 +13,7 @@ use markdown::{
     unist::{Point, Position},
     Location,
 };
+use swc_core::common::SyntaxContext;
 use swc_core::ecma::ast::{
     AssignPat, BindingIdent, BlockStmt, Callee, CondExpr, Decl, DefaultDecl, ExportDefaultExpr,
     ExportSpecifier, Expr, ExprOrSpread, FnDecl, Function, ImportDecl, ImportDefaultSpecifier,
@@ -462,12 +463,14 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
                     span: swc_core::common::DUMMY_SP,
                 })],
                 span: swc_core::common::DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
             }),
             is_generator: false,
             is_async: false,
             type_params: None,
             return_type: None,
             span: swc_core::common::DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
         }),
     })));
 
@@ -499,12 +502,14 @@ fn create_mdx_content(expr: Option<Expr>, has_internal_layout: bool) -> Vec<Modu
                     span: swc_core::common::DUMMY_SP,
                 })],
                 span: swc_core::common::DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
             }),
             is_generator: false,
             is_async: false,
             type_params: None,
             return_type: None,
             span: swc_core::common::DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
         }),
     })));
 
@@ -529,6 +534,7 @@ fn create_layout_decl(expr: Expr) -> ModuleItem {
             definite: false,
         }],
         span: swc_core::common::DUMMY_SP,
+        ctxt: SyntaxContext::empty(),
     }))))
 }
 
@@ -634,8 +640,8 @@ function MDXContent(props = {}) {
 }
 export default MDXContent;
 ",
-        "should support an export all",
-    );
+            "should support an export all",
+        );
 
         assert_eq!(
             compile("export function a() {}")?,

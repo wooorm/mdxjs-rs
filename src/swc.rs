@@ -2,21 +2,24 @@
 
 extern crate markdown;
 
+use crate::hast_util_to_swc::MAGIC_EXPLICIT_JSX_ATTR;
 use crate::swc_utils::{create_span, DropContext, RewritePrefixContext, RewriteStopsContext};
 use markdown::{mdast::Stop, Location, MdxExpressionKind, MdxSignal};
 use std::rc::Rc;
 use swc_core::common::{
     comments::{Comment, Comments, SingleThreadedComments, SingleThreadedCommentsMap},
-    source_map::Pos,
+    source_map::SmallPos,
     sync::Lrc,
     BytePos, FileName, FilePathMapping, SourceFile, SourceMap, Span, Spanned,
 };
-use swc_core::ecma::ast::{EsVersion, Expr, Module, PropOrSpread};
+use swc_core::ecma::ast::{
+    EsVersion, Expr, IdentName, JSXAttr, JSXAttrName, JSXAttrOrSpread, Module, PropOrSpread,
+};
 use swc_core::ecma::codegen::{text_writer::JsWriter, Emitter};
 use swc_core::ecma::parser::{
     error::Error as SwcError, parse_file_as_expr, parse_file_as_module, EsSyntax, Syntax,
 };
-use swc_core::ecma::visit::VisitMutWith;
+use swc_core::ecma::visit::{VisitMut, VisitMutWith};
 
 /// Lex ESM in MDX with SWC.
 pub fn parse_esm(value: &str) -> MdxSignal {
@@ -208,6 +211,7 @@ pub fn serialize(module: &mut Module, comments: Option<&Vec<Comment>>) -> String
             single_threaded_comments.add_leading(c.span.lo, c.clone());
         }
     }
+    module.visit_mut_with(&mut MagicExplicitAttrRemover {});
     module.visit_mut_with(&mut DropContext {});
     let mut buf = vec![];
     let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
@@ -223,6 +227,20 @@ pub fn serialize(module: &mut Module, comments: Option<&Vec<Comment>>) -> String
     }
 
     String::from_utf8_lossy(&buf).into()
+}
+
+pub struct MagicExplicitAttrRemover {}
+
+impl VisitMut for MagicExplicitAttrRemover {
+    fn visit_mut_jsx_attr_or_spreads(&mut self, attrs: &mut Vec<JSXAttrOrSpread>) {
+        attrs.retain(|attr| match attr {
+            JSXAttrOrSpread::JSXAttr(JSXAttr {
+                name: JSXAttrName::Ident(IdentName { sym, .. }),
+                ..
+            }) if sym.eq(MAGIC_EXPLICIT_JSX_ATTR) => false,
+            _ => true,
+        });
+    }
 }
 
 // To do: remove this attribute, use it somewhere.
@@ -354,9 +372,9 @@ fn create_config(source: String) -> (SourceFile, Syntax, EsVersion) {
     (
         // File.
         SourceFile::new(
-            FileName::Anon,
+            FileName::Anon.into(),
             false,
-            FileName::Anon,
+            FileName::Anon.into(),
             source,
             BytePos::from_usize(1),
         ),

@@ -40,7 +40,7 @@ use swc_core::ecma::ast::{
     JSXOpeningElement, JSXOpeningFragment, Lit, Module, ModuleItem, SpreadElement, Stmt, Str,
 };
 
-pub const MAGIC_EXPLICIT_MARKER: u32 = 1337;
+pub const MAGIC_EXPLICIT_JSX_ATTR: &str = "__1337_explicit__";
 
 /// Result.
 #[derive(Debug, PartialEq, Eq)]
@@ -442,18 +442,20 @@ fn transform_text(
 /// Creates a void one if there are no children.
 fn create_element(
     name: &str,
-    attrs: Vec<JSXAttrOrSpread>,
+    mut attrs: Vec<JSXAttrOrSpread>,
     children: Vec<JSXElementChild>,
     node: &hast::Node,
     explicit: bool,
 ) -> JSXElement {
-    let mut span = position_to_span(node.position());
+    let span = position_to_span(node.position());
 
-    span.ctxt = if explicit {
-        swc_core::common::SyntaxContext::from_u32(MAGIC_EXPLICIT_MARKER)
-    } else {
-        swc_core::common::SyntaxContext::empty()
-    };
+    if explicit {
+        attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+            name: create_jsx_attr_name_from_str(MAGIC_EXPLICIT_JSX_ATTR),
+            value: None,
+            span: swc_core::common::DUMMY_SP,
+        }));
+    }
 
     JSXElement {
         opening: JSXOpeningElement {
@@ -677,7 +679,9 @@ mod tests {
     use crate::hast_util_to_swc::{hast_util_to_swc, Program};
     use crate::markdown::mdast;
     use crate::swc::serialize;
+    use crate::swc_utils::create_ident_name;
     use pretty_assertions::assert_eq;
+    use swc_core::common::SyntaxContext;
     use swc_core::ecma::ast::{
         Ident, ImportDecl, ImportDefaultSpecifier, ImportPhase, ImportSpecifier, JSXAttrName,
         JSXElementName, ModuleDecl,
@@ -766,15 +770,12 @@ mod tests {
                             opening: JSXOpeningElement {
                                 name: JSXElementName::Ident(Ident {
                                     span: swc_core::common::DUMMY_SP,
+                                    ctxt: SyntaxContext::empty(),
                                     sym: "a".into(),
                                     optional: false,
                                 }),
                                 attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
-                                    name: JSXAttrName::Ident(Ident {
-                                        sym: "className".into(),
-                                        span: swc_core::common::DUMMY_SP,
-                                        optional: false,
-                                    }),
+                                    name: JSXAttrName::Ident(create_ident_name("className")),
                                     value: Some(JSXAttrValue::Lit(Lit::Str(Str {
                                         value: "b".into(),
                                         span: swc_core::common::DUMMY_SP,
@@ -1278,7 +1279,7 @@ mod tests {
             hast_util_to_swc(
                 &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                     name: Some("a".into()),
-                    attributes: vec![hast::AttributeContent::Expression { value: "...b,c".into(), stops: vec![] } ],
+                    attributes: vec![hast::AttributeContent::Expression { value: "...b,c".into(), stops: vec![] }],
                     children: vec![],
                     position: None,
                 }),
@@ -1322,6 +1323,7 @@ mod tests {
                                 expr: JSXExpr::Expr(Box::new(Expr::Ident(Ident {
                                     sym: "a".into(),
                                     span: swc_core::common::DUMMY_SP,
+                                    ctxt: SyntaxContext::empty(),
                                     optional: false,
                                 }))),
                                 span: swc_core::common::DUMMY_SP,
@@ -1373,6 +1375,7 @@ mod tests {
                                 sym: "a".into(),
                                 optional: false,
                                 span: swc_core::common::DUMMY_SP,
+                                ctxt: SyntaxContext::empty(),
                             },
                             span: swc_core::common::DUMMY_SP,
                         })],
@@ -1410,8 +1413,8 @@ mod tests {
                 None
             )
             .err()
-            .unwrap()
-            .to_string(),
+                .unwrap()
+                .to_string(),
             "Could not parse esm with swc: Expected 'from', got 'numeric literal (1, 1)' (mdxjs-rs:swc)",
             "should support an `MdxjsEsm` (w/ broken content)",
         );

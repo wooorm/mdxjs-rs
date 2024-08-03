@@ -3,24 +3,26 @@
 //! Port of <https://github.com/mdx-js/mdx/blob/main/packages/mdx/lib/plugin/recma-jsx-rewrite.js>,
 //! by the same author.
 
-use crate::hast_util_to_swc::{Program, MAGIC_EXPLICIT_MARKER};
+use crate::hast_util_to_swc::{Program, MAGIC_EXPLICIT_JSX_ATTR};
+use crate::swc::MagicExplicitAttrRemover;
 use crate::swc_utils::{
     create_binary_expression, create_bool_expression, create_call_expression, create_ident,
-    create_ident_expression, create_jsx_name_from_str, create_member,
+    create_ident_expression, create_ident_name, create_jsx_name_from_str, create_member,
     create_member_expression_from_str, create_member_prop_from_str, create_object_expression,
     create_prop_name, create_str, create_str_expression, is_identifier_name, is_literal_name,
     jsx_member_to_parts, position_to_string, span_to_position,
 };
 use markdown::{unist::Position, Location};
-use swc_core::common::{util::take::Take, Span, DUMMY_SP};
+use swc_core::common::{util::take::Take, Span, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     ArrowExpr, AssignPatProp, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Callee,
     CatchClause, ClassDecl, CondExpr, Decl, DoWhileStmt, Expr, ExprOrSpread, ExprStmt, FnDecl,
-    FnExpr, ForInStmt, ForOfStmt, ForStmt, Function, IfStmt, ImportDecl, ImportNamedSpecifier,
-    ImportPhase, ImportSpecifier, JSXElement, JSXElementName, KeyValuePatProp, KeyValueProp,
-    MemberExpr, MemberProp, ModuleDecl, ModuleExportName, ModuleItem, NewExpr, ObjectPat,
-    ObjectPatProp, Param, ParenExpr, Pat, Prop, PropOrSpread, ReturnStmt, Stmt, ThrowStmt,
-    UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
+    FnExpr, ForInStmt, ForOfStmt, ForStmt, Function, IdentName, IfStmt, ImportDecl,
+    ImportNamedSpecifier, ImportPhase, ImportSpecifier, JSXAttr, JSXAttrName, JSXAttrOrSpread,
+    JSXElement, JSXElementName, KeyValuePatProp, KeyValueProp, MemberExpr, MemberProp, ModuleDecl,
+    ModuleExportName, ModuleItem, NewExpr, ObjectPat, ObjectPatProp, Param, ParenExpr, Pat, Prop,
+    PropOrSpread, ReturnStmt, Stmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind,
+    VarDeclarator, WhileStmt,
 };
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 
@@ -199,7 +201,7 @@ impl<'a> State<'a> {
             if is_props_receiving_fn(&info.name) {
                 let member = MemberExpr {
                     obj: Box::new(create_ident_expression("props")),
-                    prop: MemberProp::Ident(create_ident("components")),
+                    prop: MemberProp::Ident(create_ident_name("components")),
                     span: DUMMY_SP,
                 };
                 parameters.push(Expr::Member(member));
@@ -311,6 +313,7 @@ impl<'a> State<'a> {
             // ```
             if !info.aliases.is_empty() {
                 let mut index = 0;
+
                 while index < info.aliases.len() {
                     let alias = &info.aliases[index];
                     let declarator = VarDeclarator {
@@ -391,6 +394,7 @@ impl<'a> State<'a> {
                 kind: VarDeclKind::Const,
                 decls: declarators,
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
                 declare: false,
             };
             let var_decl = Decl::Var(Box::new(decl));
@@ -480,6 +484,7 @@ impl<'a> State<'a> {
                                 span: DUMMY_SP,
                             })],
                             span: DUMMY_SP,
+                            ctxt: SyntaxContext::empty(),
                         };
                         arr.body = Box::new(BlockStmtOrExpr::BlockStmt(block));
                     }
@@ -580,13 +585,17 @@ impl<'a> State<'a> {
         }
     }
 
-    fn ref_ids(&mut self, ids: &[String], span: &Span) -> Option<JSXElementName> {
+    fn ref_ids(
+        &mut self,
+        ids: &[String],
+        span: &Span,
+        explicit_jsx: bool,
+    ) -> Option<JSXElementName> {
         // If there is a top-level, non-global, scope which is a function:
         if let Some(info) = self.current_top_level_info() {
             // Rewrite only if we can rewrite.
             if is_props_receiving_fn(&info.name) || self.provider {
                 debug_assert!(!ids.is_empty(), "expected non-empty ids");
-                let explicit_jsx = span.ctxt.as_u32() == MAGIC_EXPLICIT_MARKER;
                 let mut path = ids.to_owned();
                 let position = span_to_position(span, self.location);
 
@@ -702,12 +711,24 @@ impl<'a> VisitMut for State<'a> {
             }
         };
 
-        if let Some(name) = self.ref_ids(&parts, &node.span) {
+        let explicit = node.opening.attrs.iter().any(|attr| match attr {
+            JSXAttrOrSpread::JSXAttr(JSXAttr {
+                name: JSXAttrName::Ident(IdentName { sym, .. }),
+                ..
+            }) if sym == MAGIC_EXPLICIT_JSX_ATTR => true,
+            _ => false,
+        });
+
+        if let Some(name) = self.ref_ids(&parts, &node.span, explicit) {
             if let Some(closing) = node.closing.as_mut() {
                 closing.name = name.clone();
             }
 
             node.opening.name = name;
+        }
+
+        if explicit {
+            node.visit_mut_with(&mut MagicExplicitAttrRemover {});
         }
 
         node.visit_mut_children_with(self);
@@ -970,17 +991,20 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
                             expr: Box::new(create_binary_expression(message, BinaryOp::Add)),
                         }]),
                         span: DUMMY_SP,
+                        ctxt: SyntaxContext::empty(),
                         type_args: None,
                     })),
                     span: DUMMY_SP,
                 })],
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
             }),
             is_generator: false,
             is_async: false,
             type_params: None,
             return_type: None,
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
         }),
     })))
 }
@@ -1101,7 +1125,7 @@ export default MDXContent;
             compile(
                 "export {MyLayout as default} from './a.js'\n\n# hi",
                 &Options::default(),
-                true
+                true,
             )?,
             "import { MyLayout as MDXLayout } from './a.js';
 function _createMdxContent(props) {
@@ -1151,7 +1175,7 @@ function _missingMdxReference(id, component) {
     fn pass_scope_missing_objects_in_component() -> Result<(), markdown::message::Message> {
         assert_eq!(
             compile("<X />, <X.y />, <Y.Z />, <a.b.c.d />, <a.b />", &Options::default(), true)?,
-          "function _createMdxContent(props) {
+            "function _createMdxContent(props) {
     const _components = Object.assign({
         p: \"p\"
     }, props.components), { X, Y, a } = _components;
@@ -1237,7 +1261,7 @@ export default MDXContent;
         assert_eq!(
             compile(
                 "import * as X from './a.js'\n\n<X />",
-                &Options::default(), true
+                &Options::default(), true,
             )?,
             "import * as X from './a.js';
 function _createMdxContent(props) {
@@ -1265,8 +1289,8 @@ export default MDXContent;
 
 <A />
 ",
-            &Options::default(), true
-        )?,
+                &Options::default(), true,
+            )?,
             "export function A() {
     return <B/>;
 }
@@ -1293,8 +1317,8 @@ export default MDXContent;
 
 <A />
 ",
-            &Options::default(), true
-        )?,
+                &Options::default(), true,
+            )?,
             "export class A {
 }
 function _createMdxContent(props) {
@@ -1320,7 +1344,7 @@ export default MDXContent;
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 function _createMdxContent(props) {
@@ -1353,7 +1377,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 function _createMdxContent(props) {
@@ -1384,7 +1408,7 @@ export default MDXContent;
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
@@ -1426,7 +1450,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function X(x) {
@@ -1511,7 +1535,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
@@ -1579,7 +1603,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 function _createMdxContent(props) {
@@ -1621,7 +1645,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
@@ -1658,7 +1682,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export const A = ()=>{
@@ -1692,7 +1716,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export const A = function B() {
@@ -1731,7 +1755,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true
+                }, true,
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
@@ -1844,6 +1868,7 @@ function _missingMdxReference(id, component, place) {
                         definite: false,
                     }],
                     span: DUMMY_SP,
+                    ctxt: SyntaxContext::empty(),
                     declare: false,
                 }))))],
             },
@@ -1873,6 +1898,7 @@ function _missingMdxReference(id, component, place) {
                         definite: false,
                     }],
                     span: DUMMY_SP,
+                    ctxt: SyntaxContext::empty(),
                     declare: false,
                 }))))],
             },
@@ -1902,6 +1928,7 @@ function _missingMdxReference(id, component, place) {
                         definite: false,
                     }],
                     span: DUMMY_SP,
+                    ctxt: SyntaxContext::empty(),
                     declare: false,
                 }))))],
             },
