@@ -1125,7 +1125,7 @@ export default MDXContent;
             compile(
                 "export {MyLayout as default} from './a.js'\n\n# hi",
                 &Options::default(),
-                true,
+                true
             )?,
             "import { MyLayout as MDXLayout } from './a.js';
 function _createMdxContent(props) {
@@ -1261,7 +1261,7 @@ export default MDXContent;
         assert_eq!(
             compile(
                 "import * as X from './a.js'\n\n<X />",
-                &Options::default(), true,
+                &Options::default(), true
             )?,
             "import * as X from './a.js';
 function _createMdxContent(props) {
@@ -1289,8 +1289,8 @@ export default MDXContent;
 
 <A />
 ",
-                &Options::default(), true,
-            )?,
+            &Options::default(), true
+        )?,
             "export function A() {
     return <B/>;
 }
@@ -1317,8 +1317,8 @@ export default MDXContent;
 
 <A />
 ",
-                &Options::default(), true,
-            )?,
+            &Options::default(), true
+        )?,
             "export class A {
 }
 function _createMdxContent(props) {
@@ -1344,7 +1344,7 @@ export default MDXContent;
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 function _createMdxContent(props) {
@@ -1377,7 +1377,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 function _createMdxContent(props) {
@@ -1408,7 +1408,7 @@ export default MDXContent;
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
@@ -1450,7 +1450,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function X(x) {
@@ -1535,7 +1535,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
@@ -1603,7 +1603,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 function _createMdxContent(props) {
@@ -1645,7 +1645,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
@@ -1682,7 +1682,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export const A = ()=>{
@@ -1716,7 +1716,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export const A = function B() {
@@ -1755,7 +1755,7 @@ function _missingMdxReference(id, component) {
                 &Options {
                     provider_import_source: Some("x".into()),
                     ..Options::default()
-                }, true,
+                }, true
             )?,
             "import { useMDXComponents as _provideComponents } from \"x\";
 export function A() {
