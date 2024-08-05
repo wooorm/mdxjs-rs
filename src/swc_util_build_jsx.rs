@@ -11,6 +11,7 @@ use crate::swc_utils::{
 };
 use core::str;
 use markdown::{message::Message, Location};
+use swc_core::common::SyntaxContext;
 use swc_core::common::{
     comments::{Comment, CommentKind},
     util::take::Take,
@@ -71,8 +72,8 @@ pub fn swc_util_build_jsx(
 
     if state.import_fragment {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_Fragment"),
-            imported: Some(ModuleExportName::Ident(create_ident("Fragment"))),
+            local: create_ident("_Fragment").into(),
+            imported: Some(ModuleExportName::Ident(create_ident("Fragment").into())),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
@@ -80,8 +81,8 @@ pub fn swc_util_build_jsx(
 
     if state.import_jsx {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_jsx"),
-            imported: Some(ModuleExportName::Ident(create_ident("jsx"))),
+            local: create_ident("_jsx").into(),
+            imported: Some(ModuleExportName::Ident(create_ident("jsx").into())),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
@@ -89,8 +90,8 @@ pub fn swc_util_build_jsx(
 
     if state.import_jsxs {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_jsxs"),
-            imported: Some(ModuleExportName::Ident(create_ident("jsxs"))),
+            local: create_ident("_jsxs").into(),
+            imported: Some(ModuleExportName::Ident(create_ident("jsxs").into())),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
@@ -98,8 +99,8 @@ pub fn swc_util_build_jsx(
 
     if state.import_jsx_dev {
         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_jsxDEV"),
-            imported: Some(ModuleExportName::Ident(create_ident("jsxDEV"))),
+            local: create_ident("_jsxDEV").into(),
+            imported: Some(ModuleExportName::Ident(create_ident("jsxDEV").into())),
             span: swc_core::common::DUMMY_SP,
             is_type_only: false,
         }));
@@ -375,7 +376,7 @@ impl<'a> State<'a> {
     /// Turn the parsed parts from fragments or elements into a call.
     fn jsx_expressions_to_call(
         &mut self,
-        span: &swc_core::common::Span,
+        span: swc_core::common::Span,
         name: Expr,
         attributes: Option<Vec<JSXAttrOrSpread>>,
         mut children: Vec<Expr>,
@@ -546,7 +547,8 @@ impl<'a> State<'a> {
             callee: Callee::Expr(Box::new(callee)),
             args: parameters,
             type_args: None,
-            span: *span,
+            span,
+            ctxt: SyntaxContext::empty(),
         };
 
         Ok(Expr::Call(call_expression))
@@ -569,7 +571,7 @@ impl<'a> State<'a> {
             }
         }
 
-        self.jsx_expressions_to_call(&element.span, name, Some(element.opening.attrs), children)
+        self.jsx_expressions_to_call(element.span, name, Some(element.opening.attrs), children)
     }
 
     /// Turn a JSX fragment into an expression.
@@ -584,7 +586,7 @@ impl<'a> State<'a> {
             self.fragment_expression.clone()
         };
         let children = self.jsx_children_to_expressions(fragment.children)?;
-        self.jsx_expressions_to_call(&fragment.span, name, None, children)
+        self.jsx_expressions_to_call(fragment.span, name, None, children)
     }
 }
 
@@ -801,7 +803,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use swc_core::common::Spanned;
     use swc_core::common::{
-        comments::SingleThreadedComments, source_map::Pos, BytePos, FileName, SourceFile,
+        comments::SingleThreadedComments, source_map::SmallPos, BytePos, FileName, SourceFile,
     };
     use swc_core::ecma::ast::{
         EsVersion, ExprStmt, JSXClosingElement, JSXElementName, JSXOpeningElement, JSXSpreadChild,
@@ -815,9 +817,9 @@ mod tests {
         let comments = SingleThreadedComments::default();
         let result = parse_file_as_module(
             &SourceFile::new(
-                FileName::Anon,
+                FileName::Anon.into(),
                 false,
-                FileName::Anon,
+                FileName::Anon.into(),
                 value.into(),
                 BytePos::from_usize(1),
             ),
@@ -1357,14 +1359,14 @@ _jsx(\"a\", {
                     expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
                         span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningElement {
-                            name: JSXElementName::Ident(create_ident("a")),
+                            name: JSXElementName::Ident(create_ident("a").into()),
                             attrs: vec![],
                             self_closing: false,
                             type_args: None,
                             span: swc_core::common::DUMMY_SP,
                         },
                         closing: Some(JSXClosingElement {
-                            name: JSXElementName::Ident(create_ident("a")),
+                            name: JSXElementName::Ident(create_ident("a").into()),
                             span: swc_core::common::DUMMY_SP,
                         }),
                         children: vec![JSXElementChild::JSXSpreadChild(JSXSpreadChild {
@@ -1569,7 +1571,7 @@ _jsxDEV(_Fragment, {
                     expr: Box::new(Expr::JSXElement(Box::new(JSXElement {
                         span: swc_core::common::DUMMY_SP,
                         opening: JSXOpeningElement {
-                            name: JSXElementName::Ident(create_ident("a")),
+                            name: JSXElementName::Ident(create_ident("a").into()),
                             attrs: vec![],
                             self_closing: true,
                             type_args: None,

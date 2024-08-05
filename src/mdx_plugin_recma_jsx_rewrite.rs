@@ -3,7 +3,7 @@
 //! Port of <https://github.com/mdx-js/mdx/blob/main/packages/mdx/lib/plugin/recma-jsx-rewrite.js>,
 //! by the same author.
 
-use crate::hast_util_to_swc::{Program, MAGIC_EXPLICIT_MARKER};
+use crate::hast_util_to_swc::Program;
 use crate::swc_utils::{
     create_binary_expression, create_bool_expression, create_call_expression, create_ident,
     create_ident_expression, create_jsx_name_from_str, create_member,
@@ -12,6 +12,8 @@ use crate::swc_utils::{
     jsx_member_to_parts, position_to_string, span_to_position,
 };
 use markdown::{unist::Position, Location};
+use swc_core::alloc::collections::FxHashSet;
+use swc_core::common::SyntaxContext;
 use swc_core::common::{util::take::Take, Span, DUMMY_SP};
 use swc_core::ecma::ast::{
     ArrowExpr, AssignPatProp, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Callee,
@@ -41,6 +43,7 @@ pub fn mdx_plugin_recma_jsx_rewrite(
     program: &mut Program,
     options: &Options,
     location: Option<&Location>,
+    explicit_jsxs: FxHashSet<Span>,
 ) {
     let mut state = State {
         scopes: vec![],
@@ -50,6 +53,7 @@ pub fn mdx_plugin_recma_jsx_rewrite(
         development: options.development,
         create_provider_import: false,
         create_error_helper: false,
+        explicit_jsxs,
     };
     state.enter(Some(Info::default()));
     program.module.visit_mut_with(&mut state);
@@ -152,6 +156,8 @@ struct State<'a> {
     /// When things are referenced that might not be defined, we reference a
     /// helper function to throw when they are missing.
     create_error_helper: bool,
+
+    explicit_jsxs: FxHashSet<Span>,
 }
 
 impl<'a> State<'a> {
@@ -292,7 +298,7 @@ impl<'a> State<'a> {
                 let declarator = VarDeclarator {
                     span: DUMMY_SP,
                     name: Pat::Ident(BindingIdent {
-                        id: create_ident("_components"),
+                        id: create_ident("_components").into(),
                         type_ann: None,
                     }),
                     init: Some(Box::new(components_init)),
@@ -316,7 +322,7 @@ impl<'a> State<'a> {
                     let declarator = VarDeclarator {
                         span: DUMMY_SP,
                         name: Pat::Ident(BindingIdent {
-                            id: create_ident(&alias.safe),
+                            id: create_ident(&alias.safe).into(),
                             type_ann: None,
                         }),
                         init: Some(Box::new(Expr::Member(create_member(
@@ -350,7 +356,7 @@ impl<'a> State<'a> {
                     // `wrapper: MDXLayout`
                     if reference.name == "MDXLayout" {
                         let binding = BindingIdent {
-                            id: create_ident(&reference.name),
+                            id: create_ident(&reference.name).into(),
                             type_ann: None,
                         };
                         let prop = KeyValuePatProp {
@@ -392,6 +398,7 @@ impl<'a> State<'a> {
                 decls: declarators,
                 span: DUMMY_SP,
                 declare: false,
+                ctxt: SyntaxContext::empty(),
             };
             let var_decl = Decl::Var(Box::new(decl));
             statements.push(Stmt::Decl(var_decl));
@@ -480,6 +487,7 @@ impl<'a> State<'a> {
                                 span: DUMMY_SP,
                             })],
                             span: DUMMY_SP,
+                            ctxt: SyntaxContext::empty(),
                         };
                         arr.body = Box::new(BlockStmtOrExpr::BlockStmt(block));
                     }
@@ -580,13 +588,13 @@ impl<'a> State<'a> {
         }
     }
 
-    fn ref_ids(&mut self, ids: &[String], span: &Span) -> Option<JSXElementName> {
+    fn ref_ids(&mut self, ids: &[String], span: Span) -> Option<JSXElementName> {
         // If there is a top-level, non-global, scope which is a function:
         if let Some(info) = self.current_top_level_info() {
             // Rewrite only if we can rewrite.
             if is_props_receiving_fn(&info.name) || self.provider {
                 debug_assert!(!ids.is_empty(), "expected non-empty ids");
-                let explicit_jsx = span.ctxt.as_u32() == MAGIC_EXPLICIT_MARKER;
+                let explicit_jsx = self.explicit_jsxs.contains(&span);
                 let mut path = ids.to_owned();
                 let position = span_to_position(span, self.location);
 
@@ -702,7 +710,7 @@ impl<'a> VisitMut for State<'a> {
             }
         };
 
-        if let Some(name) = self.ref_ids(&parts, &node.span) {
+        if let Some(name) = self.ref_ids(&parts, node.span) {
             if let Some(closing) = node.closing.as_mut() {
                 closing.name = name.clone();
             }
@@ -862,8 +870,10 @@ impl<'a> VisitMut for State<'a> {
 fn create_import_provider(source: &str) -> ModuleItem {
     ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
         specifiers: vec![ImportSpecifier::Named(ImportNamedSpecifier {
-            local: create_ident("_provideComponents"),
-            imported: Some(ModuleExportName::Ident(create_ident("useMDXComponents"))),
+            local: create_ident("_provideComponents").into(),
+            imported: Some(ModuleExportName::Ident(
+                create_ident("useMDXComponents").into(),
+            )),
             span: DUMMY_SP,
             is_type_only: false,
         })],
@@ -886,7 +896,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
     let mut parameters = vec![
         Param {
             pat: Pat::Ident(BindingIdent {
-                id: create_ident("id"),
+                id: create_ident("id").into(),
                 type_ann: None,
             }),
             decorators: vec![],
@@ -894,7 +904,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
         },
         Param {
             pat: Pat::Ident(BindingIdent {
-                id: create_ident("component"),
+                id: create_ident("component").into(),
                 type_ann: None,
             }),
             decorators: vec![],
@@ -906,7 +916,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
     if development {
         parameters.push(Param {
             pat: Pat::Ident(BindingIdent {
-                id: create_ident("place"),
+                id: create_ident("place").into(),
                 type_ann: None,
             }),
             decorators: vec![],
@@ -956,7 +966,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
     }
 
     ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
-        ident: create_ident("_missingMdxReference"),
+        ident: create_ident("_missingMdxReference").into(),
         declare: false,
         function: Box::new(Function {
             params: parameters,
@@ -971,16 +981,19 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
                         }]),
                         span: DUMMY_SP,
                         type_args: None,
+                        ctxt: SyntaxContext::empty(),
                     })),
                     span: DUMMY_SP,
                 })],
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
             }),
             is_generator: false,
             is_async: false,
             type_params: None,
             return_type: None,
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
         }),
     })))
 }
@@ -1026,9 +1039,12 @@ mod tests {
         } else {
             None
         };
-        let mut program = hast_util_to_swc(&hast, filepath, Some(&location))?;
+
+        let mut explicit_jsxs = FxHashSet::default();
+
+        let mut program = hast_util_to_swc(&hast, filepath, Some(&location), &mut explicit_jsxs)?;
         mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
-        mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location));
+        mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location), explicit_jsxs);
         Ok(serialize(&mut program.module, Some(&program.comments)))
     }
 
@@ -1815,6 +1831,8 @@ function _missingMdxReference(id, component, place) {
 
     #[test]
     fn jsx_outside_components() {
+        let explicit_jsxs = FxHashSet::default();
+
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -1826,7 +1844,7 @@ function _missingMdxReference(id, component, place) {
                     decls: vec![VarDeclarator {
                         span: DUMMY_SP,
                         name: Pat::Ident(BindingIdent {
-                            id: create_ident("a"),
+                            id: create_ident("a").into(),
                             type_ann: None,
                         }),
                         init: Some(Box::new(Expr::JSXElement(Box::new(JSXElement {
@@ -1844,11 +1862,12 @@ function _missingMdxReference(id, component, place) {
                         definite: false,
                     }],
                     span: DUMMY_SP,
+                    ctxt: SyntaxContext::empty(),
                     declare: false,
                 }))))],
             },
         };
-        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None);
+        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, explicit_jsxs);
         assert_eq!(
             serialize(&mut program.module, None),
             "let a = <b/>;\n",
@@ -1858,6 +1877,8 @@ function _missingMdxReference(id, component, place) {
 
     #[test]
     fn invalid_patterns() {
+        let explicit_jsxs = FxHashSet::default();
+
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -1874,10 +1895,11 @@ function _missingMdxReference(id, component, place) {
                     }],
                     span: DUMMY_SP,
                     declare: false,
+                    ctxt: SyntaxContext::empty(),
                 }))))],
             },
         };
-        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None);
+        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, explicit_jsxs);
         assert_eq!(
             serialize(&mut program.module, None),
             "let <invalid>;\n",
@@ -1887,6 +1909,8 @@ function _missingMdxReference(id, component, place) {
 
     #[test]
     fn expr_patterns() {
+        let explicit_jsxs = FxHashSet::default();
+
         let mut program = Program {
             path: None,
             comments: vec![],
@@ -1897,16 +1921,17 @@ function _missingMdxReference(id, component, place) {
                     kind: VarDeclKind::Let,
                     decls: vec![VarDeclarator {
                         span: DUMMY_SP,
-                        name: Pat::Expr(Box::new(Expr::Ident(create_ident("a")))),
+                        name: Pat::Expr(Box::new(Expr::Ident(create_ident("a").into()))),
                         init: None,
                         definite: false,
                     }],
                     span: DUMMY_SP,
                     declare: false,
+                    ctxt: SyntaxContext::empty(),
                 }))))],
             },
         };
-        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None);
+        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, explicit_jsxs);
         assert_eq!(
             serialize(&mut program.module, None),
             "let a;\n",

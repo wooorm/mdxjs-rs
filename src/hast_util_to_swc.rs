@@ -34,13 +34,13 @@ use crate::swc_utils::{
 };
 use core::str;
 use markdown::{Location, MdxExpressionKind};
+use swc_core::alloc::collections::FxHashSet;
+use swc_core::common::Span;
 use swc_core::ecma::ast::{
     Expr, ExprStmt, JSXAttr, JSXAttrOrSpread, JSXAttrValue, JSXClosingElement, JSXClosingFragment,
     JSXElement, JSXElementChild, JSXEmptyExpr, JSXExpr, JSXExprContainer, JSXFragment,
     JSXOpeningElement, JSXOpeningFragment, Lit, Module, ModuleItem, SpreadElement, Stmt, Str,
 };
-
-pub const MAGIC_EXPLICIT_MARKER: u32 = 1337;
 
 /// Result.
 #[derive(Debug, PartialEq, Eq)]
@@ -82,6 +82,7 @@ pub fn hast_util_to_swc(
     tree: &hast::Node,
     path: Option<String>,
     location: Option<&Location>,
+    explicit_jsxs: &mut FxHashSet<Span>,
 ) -> Result<Program, markdown::message::Message> {
     let mut context = Context {
         space: Space::Html,
@@ -89,7 +90,7 @@ pub fn hast_util_to_swc(
         esm: vec![],
         location,
     };
-    let expr = match one(&mut context, tree)? {
+    let expr = match one(&mut context, tree, explicit_jsxs)? {
         Some(JSXElementChild::JSXFragment(x)) => Some(Expr::JSXFragment(x)),
         Some(JSXElementChild::JSXElement(x)) => Some(Expr::JSXElement(x)),
         Some(child) => Some(Expr::JSXFragment(create_fragment(vec![child], tree))),
@@ -122,14 +123,15 @@ pub fn hast_util_to_swc(
 fn one(
     context: &mut Context,
     node: &hast::Node,
+    explicit_jsxs: &mut FxHashSet<Span>,
 ) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let value = match node {
         hast::Node::Comment(x) => Some(transform_comment(context, node, x)),
-        hast::Node::Element(x) => transform_element(context, node, x)?,
-        hast::Node::MdxJsxElement(x) => transform_mdx_jsx_element(context, node, x)?,
+        hast::Node::Element(x) => transform_element(context, node, x, explicit_jsxs)?,
+        hast::Node::MdxJsxElement(x) => transform_mdx_jsx_element(context, node, x, explicit_jsxs)?,
         hast::Node::MdxExpression(x) => transform_mdx_expression(context, node, x)?,
         hast::Node::MdxjsEsm(x) => transform_mdxjs_esm(context, node, x)?,
-        hast::Node::Root(x) => transform_root(context, node, x)?,
+        hast::Node::Root(x) => transform_root(context, node, x, explicit_jsxs)?,
         hast::Node::Text(x) => transform_text(context, node, x),
         // Ignore:
         hast::Node::Doctype(_) => None,
@@ -141,6 +143,7 @@ fn one(
 fn all(
     context: &mut Context,
     parent: &hast::Node,
+    explicit_jsxs: &mut FxHashSet<Span>,
 ) -> Result<Vec<JSXElementChild>, markdown::message::Message> {
     let mut result = vec![];
     if let Some(children) = parent.children() {
@@ -149,7 +152,7 @@ fn all(
             let child = &children[index];
             // To do: remove line endings between table elements?
             // <https://github.com/syntax-tree/hast-util-to-estree/blob/6c45f166d106ea3a165c14ec50c35ed190055e65/lib/index.js>
-            if let Some(child) = one(context, child)? {
+            if let Some(child) = one(context, child, explicit_jsxs)? {
                 result.push(child);
             }
             index += 1;
@@ -188,6 +191,7 @@ fn transform_element(
     context: &mut Context,
     node: &hast::Node,
     element: &hast::Element,
+    explicit_jsxs: &mut FxHashSet<Span>,
 ) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let space = context.space;
 
@@ -195,7 +199,7 @@ fn transform_element(
         context.space = Space::Svg;
     }
 
-    let children = all(context, node)?;
+    let children = all(context, node, explicit_jsxs)?;
 
     context.space = space;
 
@@ -252,7 +256,6 @@ fn transform_element(
         attrs,
         children,
         node,
-        false,
     )))))
 }
 
@@ -261,6 +264,7 @@ fn transform_mdx_jsx_element(
     context: &mut Context,
     node: &hast::Node,
     element: &hast::MdxJsxElement,
+    explicit_jsxs: &mut FxHashSet<Span>,
 ) -> Result<Option<JSXElementChild>, markdown::message::Message> {
     let space = context.space;
 
@@ -270,7 +274,7 @@ fn transform_mdx_jsx_element(
         }
     }
 
-    let children = all(context, node)?;
+    let children = all(context, node, explicit_jsxs)?;
 
     context.space = space;
 
@@ -330,7 +334,8 @@ fn transform_mdx_jsx_element(
     }
 
     Ok(Some(if let Some(name) = &element.name {
-        JSXElementChild::JSXElement(Box::new(create_element(name, attrs, children, node, true)))
+        explicit_jsxs.insert(position_to_span(node.position()));
+        JSXElementChild::JSXElement(Box::new(create_element(name, attrs, children, node)))
     } else {
         JSXElementChild::JSXFragment(create_fragment(children, node))
     }))
@@ -377,8 +382,9 @@ fn transform_root(
     context: &mut Context,
     node: &hast::Node,
     _root: &hast::Root,
+    explicit_jsxs: &mut FxHashSet<Span>,
 ) -> Result<Option<JSXElementChild>, markdown::message::Message> {
-    let mut children = all(context, node)?;
+    let mut children = all(context, node, explicit_jsxs)?;
     let mut queue = vec![];
     let mut nodes = vec![];
     let mut seen = false;
@@ -445,15 +451,8 @@ fn create_element(
     attrs: Vec<JSXAttrOrSpread>,
     children: Vec<JSXElementChild>,
     node: &hast::Node,
-    explicit: bool,
 ) -> JSXElement {
-    let mut span = position_to_span(node.position());
-
-    span.ctxt = if explicit {
-        swc_core::common::SyntaxContext::from_u32(MAGIC_EXPLICIT_MARKER)
-    } else {
-        swc_core::common::SyntaxContext::empty()
-    };
+    let span = position_to_span(node.position());
 
     JSXElement {
         opening: JSXOpeningElement {
@@ -678,13 +677,16 @@ mod tests {
     use crate::markdown::mdast;
     use crate::swc::serialize;
     use pretty_assertions::assert_eq;
+    use swc_core::common::SyntaxContext;
     use swc_core::ecma::ast::{
-        Ident, ImportDecl, ImportDefaultSpecifier, ImportPhase, ImportSpecifier, JSXAttrName,
-        JSXElementName, ModuleDecl,
+        Ident, IdentName, ImportDecl, ImportDefaultSpecifier, ImportPhase, ImportSpecifier,
+        JSXAttrName, JSXElementName, ModuleDecl,
     };
 
     #[test]
     fn comments() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let mut comment_ast = hast_util_to_swc(
             &hast::Node::Comment(hast::Comment {
                 value: "a".into(),
@@ -692,6 +694,7 @@ mod tests {
             }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(
@@ -741,6 +744,8 @@ mod tests {
 
     #[test]
     fn elements() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let mut element_ast = hast_util_to_swc(
             &hast::Node::Element(hast::Element {
                 tag_name: "a".into(),
@@ -753,6 +758,7 @@ mod tests {
             }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(
@@ -768,12 +774,12 @@ mod tests {
                                     span: swc_core::common::DUMMY_SP,
                                     sym: "a".into(),
                                     optional: false,
+                                    ctxt: SyntaxContext::empty()
                                 }),
                                 attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
-                                    name: JSXAttrName::Ident(Ident {
+                                    name: JSXAttrName::Ident(IdentName {
                                         sym: "className".into(),
                                         span: swc_core::common::DUMMY_SP,
-                                        optional: false,
                                     }),
                                     value: Some(JSXAttrValue::Lit(Lit::Str(Str {
                                         value: "b".into(),
@@ -818,10 +824,11 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs,
                 )?
                 .module,
-                None
+                None,
             ),
             "<a>{\"a\"}</a>;\n",
             "should support an `Element` w/ children",
@@ -837,7 +844,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs,
                 )?
                 .module,
                 None
@@ -851,6 +859,8 @@ mod tests {
 
     #[test]
     fn element_attributes() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         assert_eq!(
             serialize(
                 &mut hast_util_to_swc(
@@ -861,7 +871,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs,
                 )?
                 .module,
                 None
@@ -880,7 +891,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs,
                 )?
                 .module,
                 None
@@ -899,7 +911,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs,
                 )?
                 .module,
                 None
@@ -921,7 +934,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -946,7 +960,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -969,7 +984,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -983,6 +999,8 @@ mod tests {
 
     #[test]
     fn mdx_element() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let mut mdx_element_ast = hast_util_to_swc(
             &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                 name: None,
@@ -992,6 +1010,7 @@ mod tests {
             }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(
@@ -1036,7 +1055,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1057,7 +1077,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1071,6 +1092,8 @@ mod tests {
 
     #[test]
     fn mdx_element_name() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         assert_eq!(
             serialize(
                 &mut hast_util_to_swc(
@@ -1081,7 +1104,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1100,7 +1124,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1119,7 +1144,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1133,6 +1159,8 @@ mod tests {
 
     #[test]
     fn mdx_element_attributes() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         assert_eq!(
             serialize(
                 &mut hast_util_to_swc(
@@ -1146,7 +1174,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1168,7 +1197,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1190,7 +1220,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1217,7 +1248,8 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
                 None
@@ -1243,7 +1275,8 @@ mod tests {
                     position: None,
                 }),
                 None,
-                None
+                None,
+                &mut explicit_jsxs
             )
             .err()
             .unwrap()
@@ -1265,10 +1298,11 @@ mod tests {
                         position: None,
                     }),
                     None,
-                    None
+                    None,
+                    &mut explicit_jsxs
                 )?
                 .module,
-                None
+                None,
             ),
             "<a {...b}/>;\n",
             "should support an `MdxElement` (element, expression attribute)",
@@ -1283,7 +1317,8 @@ mod tests {
                     position: None,
                 }),
                 None,
-                None
+                None,
+                &mut explicit_jsxs
             ).err().unwrap().to_string(),
             "Unexpected extra content in spread (such as `{...x,y}`): only a single spread is supported (such as `{...x}`) (mdxjs-rs:swc)",
             "should support an `MdxElement` (element, broken expression attribute)",
@@ -1294,6 +1329,8 @@ mod tests {
 
     #[test]
     fn mdx_expression() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let mut mdx_expression_ast = hast_util_to_swc(
             &hast::Node::MdxExpression(hast::MdxExpression {
                 value: "a".into(),
@@ -1302,6 +1339,7 @@ mod tests {
             }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(
@@ -1323,6 +1361,7 @@ mod tests {
                                     sym: "a".into(),
                                     span: swc_core::common::DUMMY_SP,
                                     optional: false,
+                                    ctxt: SyntaxContext::empty()
                                 }))),
                                 span: swc_core::common::DUMMY_SP,
                             },)],
@@ -1351,6 +1390,8 @@ mod tests {
 
     #[test]
     fn mdx_esm() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let mut mdxjs_esm_ast = hast_util_to_swc(
             &hast::Node::MdxjsEsm(hast::MdxjsEsm {
                 value: "import a from 'b'".into(),
@@ -1359,6 +1400,7 @@ mod tests {
             }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(
@@ -1373,6 +1415,7 @@ mod tests {
                                 sym: "a".into(),
                                 optional: false,
                                 span: swc_core::common::DUMMY_SP,
+                                ctxt: SyntaxContext::empty()
                             },
                             span: swc_core::common::DUMMY_SP,
                         })],
@@ -1407,7 +1450,8 @@ mod tests {
                     stops: vec![],
                 }),
                 None,
-                None
+                None,
+                &mut explicit_jsxs
             )
             .err()
             .unwrap()
@@ -1421,6 +1465,8 @@ mod tests {
 
     #[test]
     fn root() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let mut root_ast = hast_util_to_swc(
             &hast::Node::Root(hast::Root {
                 children: vec![hast::Node::Text(hast::Text {
@@ -1431,6 +1477,7 @@ mod tests {
             }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(
@@ -1477,6 +1524,8 @@ mod tests {
 
     #[test]
     fn text() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let mut text_ast = hast_util_to_swc(
             &hast::Node::Text(hast::Text {
                 value: "a".into(),
@@ -1484,6 +1533,7 @@ mod tests {
             }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(
@@ -1530,6 +1580,8 @@ mod tests {
 
     #[test]
     fn text_empty() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let text_ast = hast_util_to_swc(
             &hast::Node::Text(hast::Text {
                 value: String::new(),
@@ -1537,6 +1589,7 @@ mod tests {
             }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(
@@ -1558,10 +1611,13 @@ mod tests {
 
     #[test]
     fn doctype() -> Result<(), markdown::message::Message> {
+        let mut explicit_jsxs = FxHashSet::default();
+
         let mut doctype_ast = hast_util_to_swc(
             &hast::Node::Doctype(hast::Doctype { position: None }),
             None,
             None,
+            &mut explicit_jsxs,
         )?;
 
         assert_eq!(

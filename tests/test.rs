@@ -339,7 +339,7 @@ fn err_expression_broken_multiline_comment_b() {
             .err()
             .unwrap()
             .to_string(),
-        "1:2: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
+        "1:6: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
         "should crash on an unclosed block comment in an empty expression",
     );
 }
@@ -368,7 +368,7 @@ fn err_expression_broken_line_comment_b() {
             .err()
             .unwrap()
             .to_string(),
-        "1:2: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
+        "1:6: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
         "should crash on an unclosed line comment in an empty expression",
     );
 }
@@ -440,7 +440,7 @@ fn err_expression_value_empty() {
             .err()
             .unwrap()
             .to_string(),
-        "1:7: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
+        "1:12: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
         "should crash on an empty value expression",
     );
 }
@@ -464,7 +464,7 @@ fn err_expression_value_comment() {
             .err()
             .unwrap()
             .to_string(),
-        "1:7: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
+        "1:18: Could not parse expression with swc: Unexpected eof (mdxjs-rs:swc)",
         "should crash on a value expression with just a comment",
     );
 }

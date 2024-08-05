@@ -8,13 +8,16 @@ use markdown::{
     Location,
 };
 
-use swc_core::common::{BytePos, Span, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::{
     BinExpr, BinaryOp, Bool, CallExpr, Callee, ComputedPropName, Expr, ExprOrSpread, Ident,
     JSXAttrName, JSXElementName, JSXMemberExpr, JSXNamespacedName, JSXObject, Lit, MemberExpr,
     MemberProp, Null, Number, ObjectLit, PropName, PropOrSpread, Str,
 };
 use swc_core::ecma::visit::{noop_visit_mut_type, VisitMut};
+use swc_core::{
+    common::{BytePos, Span, SyntaxContext, DUMMY_SP},
+    ecma::ast::IdentName,
+};
 
 /// Turn a unist position, into an SWC span, of two byte positions.
 ///
@@ -24,7 +27,6 @@ pub fn position_to_span(position: Option<&Position>) -> Span {
     position.map_or(DUMMY_SP, |d| Span {
         lo: point_to_bytepos(&d.start),
         hi: point_to_bytepos(&d.end),
-        ctxt: SyntaxContext::empty(),
     })
 }
 
@@ -34,7 +36,7 @@ pub fn position_to_span(position: Option<&Position>) -> Span {
 ///
 /// > 👉 **Note**: SWC byte positions are offset by one: they are `0` when they
 /// > are missing or incremented by `1` when valid.
-pub fn span_to_position(span: &Span, location: Option<&Location>) -> Option<Position> {
+pub fn span_to_position(span: Span, location: Option<&Location>) -> Option<Position> {
     let lo = span.lo.0 as usize;
     let hi = span.hi.0 as usize;
 
@@ -177,7 +179,6 @@ pub fn create_span(lo: u32, hi: u32) -> Span {
     Span {
         lo: BytePos(lo),
         hi: BytePos(hi),
-        ctxt: SyntaxContext::default(),
     }
 }
 
@@ -186,10 +187,9 @@ pub fn create_span(lo: u32, hi: u32) -> Span {
 /// ```js
 /// a
 /// ```
-pub fn create_ident(sym: &str) -> Ident {
-    Ident {
+pub fn create_ident(sym: &str) -> IdentName {
+    IdentName {
         sym: sym.into(),
-        optional: false,
         span: DUMMY_SP,
     }
 }
@@ -200,7 +200,7 @@ pub fn create_ident(sym: &str) -> Ident {
 /// a
 /// ```
 pub fn create_ident_expression(sym: &str) -> Expr {
-    Expr::Ident(create_ident(sym))
+    Expr::Ident(create_ident(sym).into())
 }
 
 /// Generate a null.
@@ -285,6 +285,7 @@ pub fn create_call(callee: Callee, args: Vec<ExprOrSpread>) -> CallExpr {
         args,
         span: DUMMY_SP,
         type_args: None,
+        ctxt: SyntaxContext::empty(),
     }
 }
 
@@ -379,16 +380,17 @@ pub fn create_member_prop_from_str(name: &str) -> MemberProp {
 pub fn create_jsx_name_from_str(name: &str) -> JSXElementName {
     match parse_jsx_name(name) {
         // `a`
-        JsxName::Normal(name) => JSXElementName::Ident(create_ident(name)),
+        JsxName::Normal(name) => JSXElementName::Ident(create_ident(name).into()),
         // `a:b`
         JsxName::Namespace(ns, name) => JSXElementName::JSXNamespacedName(JSXNamespacedName {
+            span: DUMMY_SP,
             ns: create_ident(ns),
             name: create_ident(name),
         }),
         // `a.b.c`
         JsxName::Member(parts) => {
             let mut member = create_jsx_member(
-                JSXObject::Ident(create_ident(parts[0])),
+                JSXObject::Ident(create_ident(parts[0]).into()),
                 create_ident(parts[1]),
             );
             let mut index = 2;
@@ -405,8 +407,12 @@ pub fn create_jsx_name_from_str(name: &str) -> JSXElementName {
 }
 
 /// Generate a member expression from an object and prop.
-pub fn create_jsx_member(obj: JSXObject, prop: Ident) -> JSXMemberExpr {
-    JSXMemberExpr { obj, prop }
+pub fn create_jsx_member(obj: JSXObject, prop: IdentName) -> JSXMemberExpr {
+    JSXMemberExpr {
+        span: DUMMY_SP,
+        obj,
+        prop,
+    }
 }
 
 /// Turn an JSX element name into an expression.
@@ -431,6 +437,7 @@ pub fn create_jsx_attr_name_from_str(name: &str) -> JSXAttrName {
         }
         // `<a b:c />`
         JsxName::Namespace(ns, name) => JSXAttrName::JSXNamespacedName(JSXNamespacedName {
+            span: DUMMY_SP,
             ns: create_ident(ns),
             name: create_ident(name),
         }),
@@ -448,11 +455,10 @@ pub fn jsx_member_expression_to_expression(node: JSXMemberExpr) -> Expr {
 }
 
 /// Turn an ident into a member prop.
-pub fn ident_to_member_prop(node: &Ident) -> MemberProp {
+pub fn ident_to_member_prop(node: &IdentName) -> MemberProp {
     if is_identifier_name(node.as_ref()) {
-        MemberProp::Ident(Ident {
+        MemberProp::Ident(IdentName {
             sym: node.sym.clone(),
-            optional: false,
             span: node.span,
         })
     } else {
@@ -652,8 +658,9 @@ mod tests {
     fn jsx_member_to_parts_test() {
         assert_eq!(
             jsx_member_to_parts(&JSXMemberExpr {
+                span: DUMMY_SP,
                 prop: create_ident("a"),
-                obj: JSXObject::Ident(create_ident("b"))
+                obj: JSXObject::Ident(create_ident("b").into())
             }),
             vec!["b", "a"],
             "should support a member with 2 items"
@@ -661,12 +668,15 @@ mod tests {
 
         assert_eq!(
             jsx_member_to_parts(&JSXMemberExpr {
+                span: DUMMY_SP,
                 prop: create_ident("a"),
                 obj: JSXObject::JSXMemberExpr(Box::new(JSXMemberExpr {
+                    span: DUMMY_SP,
                     prop: create_ident("b"),
                     obj: JSXObject::JSXMemberExpr(Box::new(JSXMemberExpr {
+                        span: DUMMY_SP,
                         prop: create_ident("c"),
-                        obj: JSXObject::Ident(create_ident("d"))
+                        obj: JSXObject::Ident(create_ident("d").into())
                     }))
                 }))
             }),
