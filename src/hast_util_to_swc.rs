@@ -315,11 +315,11 @@ fn transform_mdx_jsx_element(
                     value,
                 })
             }
-            hast::AttributeContent::Expression { value, stops } => {
+            hast::AttributeContent::Expression(d) => {
                 let expr = parse_expression_to_tree(
-                    value,
+                    &d.value,
                     &MdxExpressionKind::AttributeExpression,
-                    stops,
+                    &d.stops,
                     context.location,
                 )?;
                 JSXAttrOrSpread::SpreadElement(SpreadElement {
@@ -1290,10 +1290,12 @@ mod tests {
                 &mut hast_util_to_swc(
                     &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                         name: Some("a".into()),
-                        attributes: vec![hast::AttributeContent::Expression {
-                            value: "...b".into(),
-                            stops: vec![]
-                        }],
+                        attributes: vec![hast::AttributeContent::Expression(
+                            mdast::MdxJsxExpressionAttribute {
+                                value: "...b".into(),
+                                stops: vec![]
+                            }
+                        )],
                         children: vec![],
                         position: None,
                     }),
@@ -1312,7 +1314,14 @@ mod tests {
             hast_util_to_swc(
                 &hast::Node::MdxJsxElement(hast::MdxJsxElement {
                     name: Some("a".into()),
-                    attributes: vec![hast::AttributeContent::Expression { value: "...b,c".into(), stops: vec![] } ],
+                    attributes: vec![
+                        hast::AttributeContent::Expression(
+                            mdast::MdxJsxExpressionAttribute {
+                                value: "...b,c".into(),
+                                stops: vec![]
+                            }
+                        )
+                    ],
                     children: vec![],
                     position: None,
                 }),

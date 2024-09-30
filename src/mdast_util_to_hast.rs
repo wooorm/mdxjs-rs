@@ -315,7 +315,7 @@ pub fn mdast_util_to_hast(mdast: &mdast::Node) -> hast::Node {
 /// Turn one mdast node into hast.
 fn one(state: &mut State, node: &mdast::Node, parent: Option<&mdast::Node>) -> Result {
     match node {
-        mdast::Node::BlockQuote(d) => transform_block_quote(state, node, d),
+        mdast::Node::Blockquote(d) => transform_block_quote(state, node, d),
         mdast::Node::Break(d) => transform_break(state, node, d),
         mdast::Node::Code(d) => transform_code(state, node, d),
         mdast::Node::Delete(d) => transform_delete(state, node, d),
@@ -359,11 +359,11 @@ fn one(state: &mut State, node: &mdast::Node, parent: Option<&mdast::Node>) -> R
     }
 }
 
-/// [`BlockQuote`][mdast::BlockQuote].
+/// [`Blockquote`][mdast::Blockquote].
 fn transform_block_quote(
     state: &mut State,
     node: &mdast::Node,
-    block_quote: &mdast::BlockQuote,
+    block_quote: &mdast::Blockquote,
 ) -> Result {
     Result::Node(hast::Node::Element(hast::Element {
         tag_name: "blockquote".into(),
@@ -1302,7 +1302,7 @@ mod tests {
     #[test]
     fn blockquote() {
         assert_eq!(
-            mdast_util_to_hast(&mdast::Node::BlockQuote(mdast::BlockQuote {
+            mdast_util_to_hast(&mdast::Node::Blockquote(mdast::Blockquote {
                 children: vec![],
                 position: None,
             })),
@@ -1315,7 +1315,7 @@ mod tests {
                 })],
                 position: None
             }),
-            "should support a `BlockQuote`",
+            "should support a `Blockquote`",
         );
     }
 
@@ -2660,7 +2660,7 @@ mod tests {
         );
 
         assert_eq!(
-            mdast_util_to_hast(&mdast::Node::BlockQuote(mdast::BlockQuote {
+            mdast_util_to_hast(&mdast::Node::Blockquote(mdast::Blockquote {
                 children: vec![
                     mdast::Node::FootnoteDefinition(mdast::FootnoteDefinition {
                         children: vec![mdast::Node::Paragraph(mdast::Paragraph {
