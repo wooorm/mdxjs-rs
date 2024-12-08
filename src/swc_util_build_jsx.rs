@@ -173,7 +173,7 @@ struct State<'a> {
     fragment_expression: Expr,
 }
 
-impl<'a> State<'a> {
+impl State<'_> {
     /// Turn an attribute value into an expression.
     fn jsx_attribute_value_to_expression(
         &mut self,
@@ -590,7 +590,7 @@ impl<'a> State<'a> {
     }
 }
 
-impl<'a> VisitMut for State<'a> {
+impl VisitMut for State<'_> {
     noop_visit_mut_type!();
 
     /// Visit expressions, rewriting JSX, and walking deeper.

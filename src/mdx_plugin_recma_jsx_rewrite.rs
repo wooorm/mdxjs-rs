@@ -160,7 +160,7 @@ struct State<'a> {
     explicit_jsxs: FxHashSet<Span>,
 }
 
-impl<'a> State<'a> {
+impl State<'_> {
     /// Open a new scope.
     fn enter(&mut self, info: Option<Info>) {
         self.scopes.push(Scope {
@@ -202,7 +202,7 @@ impl<'a> State<'a> {
             // ```jsx
             // props.components
             // ```
-            if is_props_receiving_fn(&info.name) {
+            if is_props_receiving_fn(info.name.as_deref()) {
                 let member = MemberExpr {
                     obj: Box::new(create_ident_expression("props")),
                     prop: MemberProp::Ident(create_ident("components")),
@@ -552,7 +552,7 @@ impl<'a> State<'a> {
     }
 
     /// Reference a component or object name.
-    fn ref_dynamic(&mut self, path: &[String], component: bool, position: &Option<Position>) {
+    fn ref_dynamic(&mut self, path: &[String], component: bool, position: Option<&Position>) {
         let scope = self.current_top_level_info().expect("expected scope");
         let name = path.join(".");
         let existing = scope.dynamic.iter_mut().find(|d| d.name == name);
@@ -565,7 +565,7 @@ impl<'a> State<'a> {
             let dynamic = Dynamic {
                 name,
                 component,
-                position: position.clone(),
+                position: position.cloned(),
             };
 
             scope.dynamic.push(dynamic);
@@ -592,7 +592,7 @@ impl<'a> State<'a> {
         // If there is a top-level, non-global, scope which is a function:
         if let Some(info) = self.current_top_level_info() {
             // Rewrite only if we can rewrite.
-            if is_props_receiving_fn(&info.name) || self.provider {
+            if is_props_receiving_fn(info.name.as_deref()) || self.provider {
                 debug_assert!(!ids.is_empty(), "expected non-empty ids");
                 let explicit_jsx = self.explicit_jsxs.contains(&span);
                 let mut path = ids.to_owned();
@@ -611,7 +611,7 @@ impl<'a> State<'a> {
                     // Component or object not in scope.
                     let mut index = 1;
                     while index <= path.len() {
-                        self.ref_dynamic(&path[0..index], index == ids.len(), &position);
+                        self.ref_dynamic(&path[0..index], index == ids.len(), position.as_ref());
                         index += 1;
                     }
                 }
@@ -691,7 +691,7 @@ impl<'a> State<'a> {
     }
 }
 
-impl<'a> VisitMut for State<'a> {
+impl VisitMut for State<'_> {
     noop_visit_mut_type!();
 
     /// Rewrite JSX identifiers.
@@ -999,7 +999,7 @@ fn create_error_helper(development: bool, path: Option<String>) -> ModuleItem {
 }
 
 /// Check if this function is a props receiving component: it’s one of ours.
-fn is_props_receiving_fn(name: &Option<String>) -> bool {
+fn is_props_receiving_fn(name: Option<&str>) -> bool {
     if let Some(name) = name {
         name == "_createMdxContent" || name == "MDXContent"
     } else {
