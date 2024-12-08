@@ -116,7 +116,7 @@ pub struct RewriteStopsContext<'a> {
     pub location: Option<&'a Location>,
 }
 
-impl<'a> VisitMut for RewriteStopsContext<'a> {
+impl VisitMut for RewriteStopsContext<'_> {
     noop_visit_mut_type!();
 
     /// Rewrite spans.
