@@ -13,7 +13,7 @@
 
 extern crate markdown;
 mod configuration;
-mod hast;
+pub mod hast;
 mod hast_util_to_swc;
 mod mdast_util_to_hast;
 mod mdx_plugin_recma_document;
@@ -23,17 +23,21 @@ mod swc_util_build_jsx;
 mod swc_utils;
 
 use crate::{
-    hast_util_to_swc::hast_util_to_swc,
-    mdast_util_to_hast::mdast_util_to_hast,
+    hast_util_to_swc::hast_util_to_swc as to_swc,
     mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions},
     mdx_plugin_recma_jsx_rewrite::{mdx_plugin_recma_jsx_rewrite, Options as RewriteOptions},
     swc::{parse_esm, parse_expression, serialize},
     swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
 };
-use markdown::{message, to_mdast, Constructs, Location, ParseOptions};
+use hast_util_to_swc::Program;
+use markdown::{
+    message::{self, Message},
+    to_mdast, Constructs, Location, ParseOptions,
+};
 use swc_core::alloc::collections::FxHashSet;
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
+pub use crate::mdast_util_to_hast::mdast_util_to_hast;
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
 /// Turn MDX into JavaScript.
@@ -54,6 +58,16 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
 pub fn compile(value: &str, options: &Options) -> Result<String, message::Message> {
+    let mdast = mdast_util_from_mdx(value, options)?;
+    let hast = mdast_util_to_hast(&mdast);
+    let mut program = hast_util_to_swc(&hast, value, options)?;
+    Ok(serialize(&mut program.module, Some(&program.comments)))
+}
+
+pub fn mdast_util_from_mdx(
+    value: &str,
+    options: &Options,
+) -> Result<markdown::mdast::Node, Message> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,
@@ -96,6 +110,15 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
         mdx_esm_parse: Some(Box::new(parse_esm)),
         mdx_expression_parse: Some(Box::new(parse_expression)),
     };
+
+    to_mdast(value, &parse_options)
+}
+
+pub fn hast_util_to_swc(
+    hast: &hast::Node,
+    value: &str,
+    options: &Options,
+) -> Result<Program, markdown::message::Message> {
     let document_options = DocumentOptions {
         pragma: options.pragma.clone(),
         pragma_frag: options.pragma_frag.clone(),
@@ -112,11 +135,8 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
     };
 
     let mut explicit_jsxs = FxHashSet::default();
-
     let location = Location::new(value.as_bytes());
-    let mdast = to_mdast(value, &parse_options)?;
-    let hast = mdast_util_to_hast(&mdast);
-    let mut program = hast_util_to_swc(
+    let mut program = to_swc(
         &hast,
         options.filepath.clone(),
         Some(&location),
@@ -134,5 +154,5 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
         swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
     }
 
-    Ok(serialize(&mut program.module, Some(&program.comments)))
+    Ok(program)
 }

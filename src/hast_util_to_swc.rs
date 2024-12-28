@@ -27,7 +27,7 @@
 //! SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::hast;
-use crate::swc::{parse_esm_to_tree, parse_expression_to_tree};
+use crate::swc::{parse_esm_to_tree, parse_expression_to_tree, serialize};
 use crate::swc_utils::{
     create_jsx_attr_name_from_str, create_jsx_name_from_str, inter_element_whitespace,
     position_to_span,
@@ -51,6 +51,12 @@ pub struct Program {
     pub module: Module,
     /// Comments relating to AST.
     pub comments: Vec<swc_core::common::comments::Comment>,
+}
+
+impl Program {
+    pub fn serialize(&mut self) -> String {
+        serialize(&mut self.module, Some(&self.comments))
+    }
 }
 
 /// Whether we’re in HTML or SVG.
