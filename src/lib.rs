@@ -64,6 +64,26 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
     Ok(serialize(&mut program.module, Some(&program.comments)))
 }
 
+/// Turn markdown into a syntax tree.
+///
+/// ## Errors
+///
+/// There are several errors that can occur with how
+/// JSX, expressions, or ESM are written.
+///
+/// ## Examples
+///
+/// ```
+/// use mdxjs::{mdast_util_from_mdx, Options};
+/// # fn main() -> Result<(), markdown::message::Message> {
+///
+/// let tree = mdast_util_from_mdx("# Hey, *you*!", &Options::default())?;
+///
+/// println!("{:?}", tree);
+/// // => Root { children: [Heading { children: [Text { value: "Hey, ", position: Some(1:3-1:8 (2-7)) }, Emphasis { children: [Text { value: "you", position: Some(1:9-1:12 (8-11)) }], position: Some(1:8-1:13 (7-12)) }, Text { value: "!", position: Some(1:13-1:14 (12-13)) }], position: Some(1:1-1:14 (0-13)), depth: 1 }], position: Some(1:1-1:14 (0-13)) }
+/// # Ok(())
+/// # }
+/// ```
 pub fn mdast_util_from_mdx(
     value: &str,
     options: &Options,
@@ -114,6 +134,7 @@ pub fn mdast_util_from_mdx(
     to_mdast(value, &parse_options)
 }
 
+/// Compile hast into SWC’s ES AST.
 pub fn hast_util_to_swc(
     hast: &hast::Node,
     value: &str,

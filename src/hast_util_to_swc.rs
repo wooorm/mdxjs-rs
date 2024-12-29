@@ -54,6 +54,7 @@ pub struct Program {
 }
 
 impl Program {
+    /// Serialize to JS.
     pub fn serialize(&mut self) -> String {
         serialize(&mut self.module, Some(&self.comments))
     }
