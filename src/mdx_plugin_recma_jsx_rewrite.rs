@@ -43,7 +43,7 @@ pub fn mdx_plugin_recma_jsx_rewrite(
     program: &mut Program,
     options: &Options,
     location: Option<&Location>,
-    explicit_jsxs: FxHashSet<Span>,
+    explicit_jsxs: &FxHashSet<Span>,
 ) {
     let mut state = State {
         scopes: vec![],
@@ -137,7 +137,7 @@ struct Scope {
 }
 
 /// Context.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 struct State<'a> {
     /// Location info.
     location: Option<&'a Location>,
@@ -157,7 +157,7 @@ struct State<'a> {
     /// helper function to throw when they are missing.
     create_error_helper: bool,
 
-    explicit_jsxs: FxHashSet<Span>,
+    explicit_jsxs: &'a FxHashSet<Span>,
 }
 
 impl State<'_> {
@@ -1044,7 +1044,7 @@ mod tests {
 
         let mut program = hast_util_to_swc(&hast, filepath, Some(&location), &mut explicit_jsxs)?;
         mdx_plugin_recma_document(&mut program, &DocumentOptions::default(), Some(&location))?;
-        mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location), explicit_jsxs);
+        mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location), &explicit_jsxs);
         Ok(serialize(&mut program.module, Some(&program.comments)))
     }
 
@@ -1867,7 +1867,7 @@ function _missingMdxReference(id, component, place) {
                 }))))],
             },
         };
-        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, explicit_jsxs);
+        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, &explicit_jsxs);
         assert_eq!(
             serialize(&mut program.module, None),
             "let a = <b/>;\n",
@@ -1899,7 +1899,7 @@ function _missingMdxReference(id, component, place) {
                 }))))],
             },
         };
-        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, explicit_jsxs);
+        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, &explicit_jsxs);
         assert_eq!(
             serialize(&mut program.module, None),
             "let <invalid>;\n",
@@ -1931,7 +1931,7 @@ function _missingMdxReference(id, component, place) {
                 }))))],
             },
         };
-        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, explicit_jsxs);
+        mdx_plugin_recma_jsx_rewrite(&mut program, &Options::default(), None, &explicit_jsxs);
         assert_eq!(
             serialize(&mut program.module, None),
             "let a;\n",
