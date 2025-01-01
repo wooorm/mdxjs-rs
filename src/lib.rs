@@ -67,8 +67,8 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
     let location = Location::new(value.as_bytes());
     let mut explicit_jsxs = FxHashSet::default();
     let mut program = hast_util_to_swc(&hast, options, Some(&location), &mut explicit_jsxs)?;
-    mdx_plugin_recma_document(&mut program, &options, Some(&location))?;
-    mdx_plugin_recma_jsx_rewrite(&mut program, &options, Some(&location), &explicit_jsxs)?;
+    mdx_plugin_recma_document(&mut program, options, Some(&location))?;
+    mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location), &explicit_jsxs)?;
     Ok(serialize(&mut program.module, Some(&program.comments)))
 }
 
@@ -143,16 +143,26 @@ pub fn mdast_util_from_mdx(
 }
 
 /// Compile hast into SWC’s ES AST.
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
 pub fn hast_util_to_swc(
     hast: &hast::Node,
     options: &Options,
     location: Option<&Location>,
     explicit_jsxs: &mut FxHashSet<Span>,
 ) -> Result<Program, markdown::message::Message> {
-    to_swc(&hast, options.filepath.clone(), location, explicit_jsxs)
+    to_swc(hast, options.filepath.clone(), location, explicit_jsxs)
 }
 
 /// Wrap the SWC ES AST nodes coming from hast into a whole document.
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
 pub fn mdx_plugin_recma_document(
     program: &mut Program,
     options: &Options,
@@ -170,6 +180,11 @@ pub fn mdx_plugin_recma_document(
 
 /// Rewrite JSX in an MDX file so that components can be passed in and provided.
 /// Also compiles JSX to function calls unless `options.jsx` is true.
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
 pub fn mdx_plugin_recma_jsx_rewrite(
     program: &mut Program,
     options: &Options,
