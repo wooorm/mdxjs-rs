@@ -1,19 +1,4 @@
-name: main
-on:
-  - pull_request
-  - push
 jobs:
-  main:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-      - run: cargo fmt --check && cargo clippy --all-targets --all-features
-      - run: cargo check --all-features
-      - run: cargo test
   coverage:
     runs-on: ubuntu-latest
     steps:
@@ -22,4 +7,19 @@ jobs:
         with:
           toolchain: stable
       - run: cargo install cargo-tarpaulin && cargo tarpaulin --out xml
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - run: cargo fmt --check && cargo clippy --all-targets --all-features
+      - run: cargo check --all-features
+      - run: cargo test
+name: main
+on:
+  - pull_request
+  - push
