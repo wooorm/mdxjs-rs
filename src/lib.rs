@@ -25,10 +25,10 @@ mod swc_utils;
 use crate::{
     hast_util_to_swc::hast_util_to_swc as to_swc,
     mdx_plugin_recma_document::{
-        mdx_plugin_recma_document as wrap_document, Options as DocumentOptions,
+        mdx_plugin_recma_document as recma_document, Options as DocumentOptions,
     },
     mdx_plugin_recma_jsx_rewrite::{
-        mdx_plugin_recma_jsx_rewrite as jsx_rewrite, Options as RewriteOptions,
+        mdx_plugin_recma_jsx_rewrite as recma_jsx_rewrite, Options as RewriteOptions,
     },
     swc::{parse_esm, parse_expression, serialize},
     swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
@@ -72,7 +72,7 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
     Ok(serialize(&mut program.module, Some(&program.comments)))
 }
 
-/// Turn markdown into a syntax tree.
+/// Turn MDX into a syntax tree.
 ///
 /// ## Errors
 ///
@@ -146,8 +146,7 @@ pub fn mdast_util_from_mdx(
 ///
 /// ## Errors
 ///
-/// This project errors for many different reasons, such as syntax errors in
-/// the MDX format or misconfiguration.
+/// This function currently does not emit errors.
 pub fn hast_util_to_swc(
     hast: &hast::Node,
     options: &Options,
@@ -161,8 +160,7 @@ pub fn hast_util_to_swc(
 ///
 /// ## Errors
 ///
-/// This project errors for many different reasons, such as syntax errors in
-/// the MDX format or misconfiguration.
+/// This functions errors for double layouts (default exports).
 pub fn mdx_plugin_recma_document(
     program: &mut Program,
     options: &Options,
@@ -175,7 +173,7 @@ pub fn mdx_plugin_recma_document(
         jsx_import_source: options.jsx_import_source.clone(),
         jsx_runtime: options.jsx_runtime,
     };
-    wrap_document(program, &document_options, location)
+    recma_document(program, &document_options, location)
 }
 
 /// Rewrite JSX in an MDX file so that components can be passed in and provided.
@@ -183,8 +181,8 @@ pub fn mdx_plugin_recma_document(
 ///
 /// ## Errors
 ///
-/// This project errors for many different reasons, such as syntax errors in
-/// the MDX format or misconfiguration.
+/// This functions errors for incorrect JSX runtime configuration *inside*
+/// MDX files and problems with SWC (broken JS syntax).
 pub fn mdx_plugin_recma_jsx_rewrite(
     program: &mut Program,
     options: &Options,
@@ -196,7 +194,7 @@ pub fn mdx_plugin_recma_jsx_rewrite(
         provider_import_source: options.provider_import_source.clone(),
     };
 
-    jsx_rewrite(program, &rewrite_options, location, explicit_jsxs);
+    recma_jsx_rewrite(program, &rewrite_options, location, explicit_jsxs);
 
     if !options.jsx {
         let build_options = BuildOptions {
