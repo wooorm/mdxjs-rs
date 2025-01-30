@@ -1,5 +1,5 @@
 [dependencies]
-markdown = "=1.0.0-alpha.21"
+markdown = "=1.0.0-alpha.22"
 serde = { optional = true, version = "1" }
 swc_core = { features = [
   "common",
