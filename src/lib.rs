@@ -13,7 +13,7 @@
 
 extern crate markdown;
 mod configuration;
-mod hast;
+pub mod hast;
 mod hast_util_to_swc;
 mod mdast_util_to_hast;
 mod mdx_plugin_recma_document;
@@ -23,17 +23,25 @@ mod swc_util_build_jsx;
 mod swc_utils;
 
 use crate::{
-    hast_util_to_swc::hast_util_to_swc,
-    mdast_util_to_hast::mdast_util_to_hast,
-    mdx_plugin_recma_document::{mdx_plugin_recma_document, Options as DocumentOptions},
-    mdx_plugin_recma_jsx_rewrite::{mdx_plugin_recma_jsx_rewrite, Options as RewriteOptions},
+    hast_util_to_swc::hast_util_to_swc as to_swc,
+    mdx_plugin_recma_document::{
+        mdx_plugin_recma_document as wrap_document, Options as DocumentOptions,
+    },
+    mdx_plugin_recma_jsx_rewrite::{
+        mdx_plugin_recma_jsx_rewrite as jsx_rewrite, Options as RewriteOptions,
+    },
     swc::{parse_esm, parse_expression, serialize},
     swc_util_build_jsx::{swc_util_build_jsx, Options as BuildOptions},
 };
-use markdown::{message, to_mdast, Constructs, Location, ParseOptions};
-use swc_core::alloc::collections::FxHashSet;
+use hast_util_to_swc::Program;
+use markdown::{
+    message::{self, Message},
+    to_mdast, Constructs, Location, ParseOptions,
+};
+use swc_core::{alloc::collections::FxHashSet, common::Span};
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
+pub use crate::mdast_util_to_hast::mdast_util_to_hast;
 pub use crate::mdx_plugin_recma_document::JsxRuntime;
 
 /// Turn MDX into JavaScript.
@@ -54,6 +62,40 @@ pub use crate::mdx_plugin_recma_document::JsxRuntime;
 /// This project errors for many different reasons, such as syntax errors in
 /// the MDX format or misconfiguration.
 pub fn compile(value: &str, options: &Options) -> Result<String, message::Message> {
+    let mdast = mdast_util_from_mdx(value, options)?;
+    let hast = mdast_util_to_hast(&mdast);
+    let location = Location::new(value.as_bytes());
+    let mut explicit_jsxs = FxHashSet::default();
+    let mut program = hast_util_to_swc(&hast, options, Some(&location), &mut explicit_jsxs)?;
+    mdx_plugin_recma_document(&mut program, options, Some(&location))?;
+    mdx_plugin_recma_jsx_rewrite(&mut program, options, Some(&location), &explicit_jsxs)?;
+    Ok(serialize(&mut program.module, Some(&program.comments)))
+}
+
+/// Turn markdown into a syntax tree.
+///
+/// ## Errors
+///
+/// There are several errors that can occur with how
+/// JSX, expressions, or ESM are written.
+///
+/// ## Examples
+///
+/// ```
+/// use mdxjs::{mdast_util_from_mdx, Options};
+/// # fn main() -> Result<(), markdown::message::Message> {
+///
+/// let tree = mdast_util_from_mdx("# Hey, *you*!", &Options::default())?;
+///
+/// println!("{:?}", tree);
+/// // => Root { children: [Heading { children: [Text { value: "Hey, ", position: Some(1:3-1:8 (2-7)) }, Emphasis { children: [Text { value: "you", position: Some(1:9-1:12 (8-11)) }], position: Some(1:8-1:13 (7-12)) }, Text { value: "!", position: Some(1:13-1:14 (12-13)) }], position: Some(1:1-1:14 (0-13)), depth: 1 }], position: Some(1:1-1:14 (0-13)) }
+/// # Ok(())
+/// # }
+/// ```
+pub fn mdast_util_from_mdx(
+    value: &str,
+    options: &Options,
+) -> Result<markdown::mdast::Node, Message> {
     let parse_options = ParseOptions {
         constructs: Constructs {
             attention: options.parse.constructs.attention,
@@ -96,6 +138,36 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
         mdx_esm_parse: Some(Box::new(parse_esm)),
         mdx_expression_parse: Some(Box::new(parse_expression)),
     };
+
+    to_mdast(value, &parse_options)
+}
+
+/// Compile hast into SWC’s ES AST.
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
+pub fn hast_util_to_swc(
+    hast: &hast::Node,
+    options: &Options,
+    location: Option<&Location>,
+    explicit_jsxs: &mut FxHashSet<Span>,
+) -> Result<Program, markdown::message::Message> {
+    to_swc(hast, options.filepath.clone(), location, explicit_jsxs)
+}
+
+/// Wrap the SWC ES AST nodes coming from hast into a whole document.
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
+pub fn mdx_plugin_recma_document(
+    program: &mut Program,
+    options: &Options,
+    location: Option<&Location>,
+) -> Result<(), markdown::message::Message> {
     let document_options = DocumentOptions {
         pragma: options.pragma.clone(),
         pragma_frag: options.pragma_frag.clone(),
@@ -103,36 +175,36 @@ pub fn compile(value: &str, options: &Options) -> Result<String, message::Messag
         jsx_import_source: options.jsx_import_source.clone(),
         jsx_runtime: options.jsx_runtime,
     };
+    wrap_document(program, &document_options, location)
+}
+
+/// Rewrite JSX in an MDX file so that components can be passed in and provided.
+/// Also compiles JSX to function calls unless `options.jsx` is true.
+///
+/// ## Errors
+///
+/// This project errors for many different reasons, such as syntax errors in
+/// the MDX format or misconfiguration.
+pub fn mdx_plugin_recma_jsx_rewrite(
+    program: &mut Program,
+    options: &Options,
+    location: Option<&Location>,
+    explicit_jsxs: &FxHashSet<Span>,
+) -> Result<(), markdown::message::Message> {
     let rewrite_options = RewriteOptions {
         development: options.development,
         provider_import_source: options.provider_import_source.clone(),
     };
-    let build_options = BuildOptions {
-        development: options.development,
-    };
 
-    let mut explicit_jsxs = FxHashSet::default();
-
-    let location = Location::new(value.as_bytes());
-    let mdast = to_mdast(value, &parse_options)?;
-    let hast = mdast_util_to_hast(&mdast);
-    let mut program = hast_util_to_swc(
-        &hast,
-        options.filepath.clone(),
-        Some(&location),
-        &mut explicit_jsxs,
-    )?;
-    mdx_plugin_recma_document(&mut program, &document_options, Some(&location))?;
-    mdx_plugin_recma_jsx_rewrite(
-        &mut program,
-        &rewrite_options,
-        Some(&location),
-        explicit_jsxs,
-    );
+    jsx_rewrite(program, &rewrite_options, location, explicit_jsxs);
 
     if !options.jsx {
-        swc_util_build_jsx(&mut program, &build_options, Some(&location))?;
+        let build_options = BuildOptions {
+            development: options.development,
+        };
+
+        swc_util_build_jsx(program, &build_options, location)?;
     }
 
-    Ok(serialize(&mut program.module, Some(&program.comments)))
+    Ok(())
 }

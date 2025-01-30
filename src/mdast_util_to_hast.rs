@@ -231,9 +231,10 @@ pub fn mdast_util_to_hast(mdast: &mdast::Node) -> hast::Node {
                         }));
                     }
 
-                    tail_element
-                        .children
-                        .append(&mut backreference_opt.take().unwrap());
+                    if let Some(mut backreference) = backreference_opt {
+                        backreference_opt = None;
+                        tail_element.children.append(&mut backreference);
+                    }
                 }
             }
 
