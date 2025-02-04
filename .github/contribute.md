@@ -45,7 +45,7 @@ See [Project][] for more info.
 - include as much information as possible: steps to reproduce the issue,
   error message, version, operating system, etcetera
 - the more time you put into an issue, the better help you can get
-- the best issue report is a [failing test][unit-test] proving it
+- the best issue report is a failing test proving it
 
 ## Submitting a pull request
 
@@ -153,7 +153,6 @@ You can also look at the existing release notes for how to do it.
 
 [license]: https://creativecommons.org/licenses/by/4.0/
 [author]: https://wooorm.com
-[unit-test]: https://twitter.com/sindresorhus/status/579306280495357953
 [support]: support.md
 [coc]: code-of-conduct.md
 [sponsor]: https://github.com/wooorm/mdxjs-rs/#sponsor
