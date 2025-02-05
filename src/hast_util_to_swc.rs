@@ -34,7 +34,7 @@ use crate::swc_utils::{
 };
 use core::str;
 use markdown::{Location, MdxExpressionKind};
-use swc_core::alloc::collections::FxHashSet;
+use rustc_hash::FxHashSet;
 use swc_core::common::Span;
 use swc_core::ecma::ast::{
     Expr, ExprStmt, JSXAttr, JSXAttrOrSpread, JSXAttrValue, JSXClosingElement, JSXClosingFragment,

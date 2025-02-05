@@ -569,7 +569,7 @@ mod tests {
     use crate::swc_utils::create_bool_expression;
     use markdown::{to_mdast, ParseOptions};
     use pretty_assertions::assert_eq;
-    use swc_core::alloc::collections::FxHashSet;
+    use rustc_hash::FxHashSet;
     use swc_core::ecma::ast::{
         EmptyStmt, ExportDefaultDecl, ExprStmt, JSXClosingFragment, JSXFragment,
         JSXOpeningFragment, JSXText, Module, TsInterfaceBody, TsInterfaceDecl, WhileStmt,

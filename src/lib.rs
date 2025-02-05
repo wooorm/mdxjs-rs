@@ -38,7 +38,8 @@ use markdown::{
     message::{self, Message},
     to_mdast, Constructs, Location, ParseOptions,
 };
-use swc_core::{alloc::collections::FxHashSet, common::Span};
+use rustc_hash::FxHashSet;
+use swc_core::common::Span;
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
 pub use crate::mdast_util_to_hast::mdast_util_to_hast;
