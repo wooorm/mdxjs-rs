@@ -7,7 +7,7 @@ swc_core = { features = [
   "ecma_codegen",
   "ecma_parser",
   "ecma_visit",
-], version = "12" }
+], version = "13" }
 
 [dev-dependencies]
 pretty_assertions = "1"
