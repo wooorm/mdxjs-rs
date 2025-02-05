@@ -8,6 +8,7 @@ swc_core = { features = [
   "ecma_parser",
   "ecma_visit",
 ], version = "13" }
+rustc-hash = "2"
 
 [dev-dependencies]
 pretty_assertions = "1"
