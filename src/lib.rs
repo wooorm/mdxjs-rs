@@ -5,6 +5,7 @@
 //! *   [`compile()`][]
 //!     — turn MDX into JavaScript
 #![deny(clippy::pedantic)]
+#![allow(clippy::implicit_hasher)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::struct_excessive_bools)]
