@@ -5,6 +5,7 @@
 //! *   [`compile()`][]
 //!     — turn MDX into JavaScript
 #![deny(clippy::pedantic)]
+#![allow(clippy::implicit_hasher)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::struct_excessive_bools)]
@@ -38,7 +39,8 @@ use markdown::{
     message::{self, Message},
     to_mdast, Constructs, Location, ParseOptions,
 };
-use swc_core::{alloc::collections::FxHashSet, common::Span};
+use rustc_hash::FxHashSet;
+use swc_core::common::Span;
 
 pub use crate::configuration::{MdxConstructs, MdxParseOptions, Options};
 pub use crate::mdast_util_to_hast::mdast_util_to_hast;

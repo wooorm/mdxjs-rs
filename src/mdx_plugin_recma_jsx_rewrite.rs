@@ -12,7 +12,7 @@ use crate::swc_utils::{
     jsx_member_to_parts, position_to_string, span_to_position,
 };
 use markdown::{unist::Position, Location};
-use swc_core::alloc::collections::FxHashSet;
+use rustc_hash::FxHashSet;
 use swc_core::common::SyntaxContext;
 use swc_core::common::{util::take::Take, Span, DUMMY_SP};
 use swc_core::ecma::ast::{
@@ -1017,6 +1017,7 @@ mod tests {
     use crate::swc_utils::create_jsx_name_from_str;
     use markdown::{to_mdast, Location, ParseOptions};
     use pretty_assertions::assert_eq;
+    use rustc_hash::FxHashSet;
     use swc_core::ecma::ast::{Invalid, JSXOpeningElement, Module};
 
     fn compile(
