@@ -7,7 +7,7 @@ swc_core = { features = [
   "ecma_codegen",
   "ecma_parser",
   "ecma_visit",
-], version = "14" }
+], version = "19" }
 rustc-hash = "2"
 
 [dev-dependencies]
