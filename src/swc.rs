@@ -145,7 +145,7 @@ fn parse_expression_core(
                                 return Ok(Some(d.expr));
                             }
                         }
-                    };
+                    }
 
                     return Err((
                         expr_span,

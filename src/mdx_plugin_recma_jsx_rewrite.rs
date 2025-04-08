@@ -390,7 +390,7 @@ impl State<'_> {
                     definite: false,
                 };
                 declarators.push(declarator);
-            };
+            }
 
             // Add the variable declaration.
             let decl = VarDecl {
