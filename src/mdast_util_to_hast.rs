@@ -690,7 +690,7 @@ fn transform_list_item(
         if matches!(parent, mdast::Node::List(_)) {
             loose = list_loose(parent);
         }
-    };
+    }
 
     let mut properties = vec![];
 
@@ -1229,7 +1229,7 @@ fn append_result(list: &mut Vec<hast::Node>, result: Result) {
         Result::Fragment(mut fragment) => list.append(&mut fragment),
         Result::Node(node) => list.push(node),
         Result::None => {}
-    };
+    }
 }
 
 /// Replace line endings (CR, LF, CRLF) with spaces.
