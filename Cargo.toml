@@ -1,5 +1,6 @@
 [dependencies]
 markdown = "1"
+rustc-hash = "2"
 serde = { optional = true, version = "1" }
 swc_core = { features = [
   "common",
@@ -7,8 +8,7 @@ swc_core = { features = [
   "ecma_codegen",
   "ecma_parser",
   "ecma_visit",
-], version = "21" }
-rustc-hash = "2"
+], version = "22" }
 
 [dev-dependencies]
 pretty_assertions = "1"
