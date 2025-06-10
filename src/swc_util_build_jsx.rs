@@ -820,7 +820,7 @@ mod tests {
                 FileName::Anon.into(),
                 false,
                 FileName::Anon.into(),
-                value.into(),
+                value.to_string().into(),
                 BytePos::from_usize(1),
             ),
             Syntax::Es(EsSyntax {
